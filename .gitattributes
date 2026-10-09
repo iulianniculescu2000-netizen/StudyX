@@ -1,0 +1,15 @@
+# Normalize line endings
+* text=auto eol=lf
+
+# Windows batch files need CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.ico binary
+*.exe binary
+*.dll binary
+public/icon.png binary
+src/assets/hero.png binary

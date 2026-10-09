@@ -1,0 +1,64 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+release/
+
+# Electron builder cache
+.cache/
+
+# Local secrets — nu se commit niciodată
+.env
+.env.local
+.update-config.json
+.update-hashes.json
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/settings.json
+.idea/
+
+# TypeScript incremental
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# Large setup files
+*.exe
+release/
+
+
+# Security: Local config
+.claude/
+
+
+# Dump de pagini din cărțile de rezidențiat (regenerabil cu scripts/ingestKnowledge.js; duplică src/data/rezidentiat/library/)
+src/data/rezidentiat/knowledge_db.jsonl
+src/data/rezidentiat/capitole_db.json
+
+# Rapoarte de teste (regenerabile)
+playwright-report/
+test-results/
+
+# Repo-ul de update are propriul repo (studyx-releases); copia locală nu se urcă aici
+studyx-releases/
+studyx-releases-temp/
+studyx-updates/
+studyx-updates-temp/
+
+# Materiale personale și de lucru, care nu fac parte din aplicație
+sesiune_mea.json
+Captur*ecran*.png
+Chestii utile/
+Grile/
+Und/
+Probleme.txt
+index.docx
+README.md.docx
+docs/PREDARE-*.md
+docs/LOCAL-AI-*.md
+docs/PLAN-tutoriale-*.md

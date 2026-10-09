@@ -1,0 +1,56 @@
+import { FolderTree, Layers, Plus, Sparkles } from 'lucide-react';
+import type { TourDefinition } from '../types';
+
+export const residencyFlashcardsTour: TourDefinition = {
+  id: 'residencyFlashcards',
+  title: 'Rezidențiat › Flashcarduri',
+  autoStartRoute: '/rezidentiat/flashcarduri',
+  steps: [
+    {
+      id: 'rez-flash-add',
+      title: 'Cardurile tale, cu „+”',
+      body: 'Un pachet scris de tine, unul făcut cu AI, un folder nou sau un import din CSV ori din Anki. Tot ce adaugi rămâne aici, în Rezidențiat.',
+      icon: <Plus size={22} />,
+      target: '[data-tutorial="rez-flash-add"]',
+      targetPadding: 6,
+      placement: 'bottom',
+      route: '/rezidentiat/flashcarduri',
+      accent: '#BF6FFF',
+    },
+    {
+      id: 'rez-flash-ai',
+      title: 'Cu AI, la nivelul tău',
+      body: 'Alegi cât de greu să fie: ușor, mediu sau greu. Poți cere același lucru și din chat: te întreabă nivelul, câte carduri vrei și în ce folder să intre.',
+      icon: <Sparkles size={22} />,
+      target: '[data-tutorial="rez-flash-add"]',
+      targetPadding: 6,
+      placement: 'bottom',
+      route: '/rezidentiat/flashcarduri',
+      accent: '#0A84FF',
+    },
+    {
+      id: 'rez-flash-folders',
+      title: 'Foldere și pachete',
+      body: 'Pachetele stau în foldere. Le muți cu „Mută în…”, le redenumești, iar la ștergere ți se cere confirmarea.',
+      icon: <FolderTree size={22} />,
+      target: '[data-tutorial="flashcards-decks"]',
+      targetPadding: 6,
+      placement: 'top',
+      route: '/rezidentiat/flashcarduri',
+      accent: '#5E5CE6',
+      optional: true,
+    },
+    {
+      id: 'rez-flash-due',
+      title: 'Repetă ce e scadent',
+      body: 'Sus vezi ce ai de repetat azi. Cardurile scadente și cele noi sunt numărate la un loc.',
+      icon: <Layers size={22} />,
+      target: '[data-tutorial="flashcards-due"]',
+      targetPadding: 6,
+      placement: 'bottom',
+      route: '/rezidentiat/flashcarduri',
+      accent: '#30D158',
+      optional: true,
+    },
+  ],
+};

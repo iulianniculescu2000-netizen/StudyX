@@ -1,0 +1,61 @@
+import { Bot, Database, LifeBuoy, Settings as SettingsIcon, SlidersHorizontal } from 'lucide-react';
+import type { TourDefinition } from '../types';
+
+export const settingsTour: TourDefinition = {
+  id: 'settings',
+  title: 'Setări',
+  steps: [
+    {
+      id: 'settings-intro',
+      title: 'Setările, pe secțiuni',
+      body: 'Totul e împărțit în câteva secțiuni, ca să găsești repede ce cauți. Le parcurgem pe scurt.',
+      icon: <SettingsIcon size={22} />,
+      placement: 'center',
+      route: '/settings?s=aspect',
+      accent: '#0A84FF',
+    },
+    {
+      id: 'settings-tabs',
+      title: 'Aspect, performanță, date, AI, ajutor',
+      body: 'Aspectul alege tema luminoasă, cea întunecată sau automată. Performanța are „Mod economisire” pentru calculatoare mai slabe. Zona periculoasă e ultima, ca să nu o atingi din greșeală.',
+      icon: <SlidersHorizontal size={22} />,
+      target: '[data-tutorial="settings-tabs"]',
+      targetPadding: 6,
+      placement: 'bottom',
+      route: '/settings?s=aspect',
+    },
+    {
+      id: 'settings-backup',
+      title: 'Backup pentru datele tale',
+      body: '„Gestionare Date” exportă tot progresul într-un fișier și îl poate importa înapoi. Un backup făcut din când în când te scutește de griji la o reinstalare.',
+      icon: <Database size={22} />,
+      target: '[data-tutorial="settings-backup"]',
+      targetPadding: 6,
+      placement: 'bottom',
+      route: '/settings?s=date',
+      accent: '#30D158',
+    },
+    {
+      id: 'settings-ai',
+      title: 'Asistentul AI',
+      body: 'Aici salvezi cheia furnizorului AI (există chei gratuite). „Ghid chei gratuite” te duce pas cu pas. Mai multe chei înseamnă rezerve automate dacă una se blochează.',
+      icon: <Bot size={22} />,
+      target: '[data-tutorial="settings-ai"]',
+      targetPadding: 6,
+      placement: 'bottom',
+      route: '/settings?s=ai',
+      accent: '#BF6FFF',
+    },
+    {
+      id: 'settings-help',
+      title: 'Filmul și ghidurile',
+      body: 'La „Ajutor și sistem” poți revedea filmul de bun venit și poți porni oricare dintre ghidurile aplicației. Tot de aici cauți actualizări.',
+      icon: <LifeBuoy size={22} />,
+      target: '[data-tutorial="settings-help"]',
+      targetPadding: 6,
+      placement: 'bottom',
+      route: '/settings?s=ajutor',
+      accent: '#FF9F0A',
+    },
+  ],
+};

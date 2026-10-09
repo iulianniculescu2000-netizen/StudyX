@@ -1,0 +1,24 @@
+STUDYX 1.0 - LICENȚĂ DE UTILIZARE
+
+Vă mulțumim că ați ales StudyX! Prin instalarea și folosirea aplicației sunteți de acord cu următorii termeni.
+
+1. UTILIZARE
+StudyX este destinat utilizării personale, de către studenți la medicină, pentru pregătirea examenelor.
+
+2. PROPRIETATE
+Aplicația și conținutul ei propriu (cod, design, funcționalități) aparțin dezvoltatorului StudyX. Cărțile, cursurile și grilele pe care le adăugați voi rămân ale voastre sau ale autorilor lor; folosiți-le doar în limitele drepturilor pe care le aveți asupra lor.
+
+3. DATELE VOASTRE
+Profilurile, grilele, progresul, notițele și biblioteca AI se păstrează pe calculatorul vostru. Dezinstalarea aplicației nu le șterge. Faceți periodic un backup din Setări › Date și securitate.
+
+4. FUNCȚIILE AI
+Funcțiile AI sunt opționale și folosesc o cheie a voastră, de la furnizorul ales de voi. Textele trimise la AI pleacă spre acel furnizor și sunt supuse condițiilor lui. Răspunsurile AI pot conține greșeli: verificați-le în sursele bibliografice oficiale.
+
+5. RĂSPUNDERE
+Depunem toate eforturile pentru acuratețea grilelor, dar aplicația este oferită „ca atare”. Utilizatorul răspunde de verificarea informațiilor medicale în sursele oficiale.
+
+6. ACTUALIZĂRI
+Aplicația poate căuta și descărca actualizări pentru a vă îmbunătăți experiența de studiu. O actualizare se instalează doar după ce o acceptați.
+
+Succes la examene!
+Echipa StudyX

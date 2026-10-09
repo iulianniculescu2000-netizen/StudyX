@@ -1,0 +1,48 @@
+/**
+ * Shared color maps for quiz card colors.
+ * Single source of truth used by QuizCard, QuizDetail, and any other
+ * component that needs to render per-color styles.
+ */
+
+import type { QuizColor } from '../types';
+
+/** The seven folder / pack colours as plain hex, for places that need one solid swatch (sidebar, update modal, folder view). */
+export const QUIZ_COLOR_HEX: Record<QuizColor, string> = {
+  blue: '#0A84FF',
+  purple: '#5E5CE6',
+  green: '#30D158',
+  orange: '#FF9F0A',
+  pink: '#FF375F',
+  red: '#FF453A',
+  teal: '#5AC8FA',
+};
+
+/** Used by QuizCard — card background gradient + border + badge color */
+export const CARD_COLOR_MAP: Record<string, {
+  from: string;
+  to: string;
+  border: string;
+  badge: string;
+}> = {
+  blue:   { from: 'rgba(10,132,255,0.13)',  to: 'rgba(94,92,230,0.07)',   border: 'rgba(10,132,255,0.22)',  badge: '#0A84FF' },
+  purple: { from: 'rgba(94,92,230,0.13)',   to: 'rgba(175,82,222,0.07)',  border: 'rgba(94,92,230,0.22)',   badge: '#5E5CE6' },
+  green:  { from: 'rgba(48,209,88,0.10)',   to: 'rgba(52,199,89,0.05)',   border: 'rgba(48,209,88,0.18)',   badge: '#30D158' },
+  orange: { from: 'rgba(255,159,10,0.12)',  to: 'rgba(255,149,0,0.05)',   border: 'rgba(255,159,10,0.18)',  badge: '#FF9F0A' },
+  pink:   { from: 'rgba(255,55,95,0.10)',   to: 'rgba(255,45,85,0.05)',   border: 'rgba(255,55,95,0.18)',   badge: '#FF375F' },
+  red:    { from: 'rgba(255,69,58,0.12)',   to: 'rgba(255,59,48,0.06)',   border: 'rgba(255,69,58,0.22)',   badge: '#FF453A' },
+  teal:   { from: 'rgba(90,200,250,0.12)',  to: 'rgba(50,173,230,0.06)',  border: 'rgba(90,200,250,0.22)',  badge: '#5AC8FA' },
+};
+
+/** Used by QuizDetail hero card — full gradient + glow shadow */
+export const HERO_COLOR_MAP: Record<string, {
+  gradient: string;
+  glow: string;
+}> = {
+  blue:   { gradient: 'linear-gradient(135deg, #0A84FF 0%, #5E5CE6 100%)', glow: 'rgba(10,132,255,0.28)'  },
+  purple: { gradient: 'linear-gradient(135deg, #5E5CE6 0%, #AF52DE 100%)', glow: 'rgba(94,92,230,0.28)'   },
+  green:  { gradient: 'linear-gradient(135deg, #30D158 0%, #34C759 100%)', glow: 'rgba(48,209,88,0.28)'   },
+  orange: { gradient: 'linear-gradient(135deg, #FF9F0A 0%, #FF6B00 100%)', glow: 'rgba(255,159,10,0.28)'  },
+  pink:   { gradient: 'linear-gradient(135deg, #FF375F 0%, #FF2D55 100%)', glow: 'rgba(255,55,95,0.28)'   },
+  red:    { gradient: 'linear-gradient(135deg, #FF453A 0%, #FF3B30 100%)', glow: 'rgba(255,69,58,0.28)'   },
+  teal:   { gradient: 'linear-gradient(135deg, #5AC8FA 0%, #32ADE6 100%)', glow: 'rgba(90,200,250,0.28)'  },
+};

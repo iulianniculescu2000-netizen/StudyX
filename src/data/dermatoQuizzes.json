@@ -1,0 +1,2819 @@
+[
+  {
+    "id": "dermato-dermatologiege",
+    "title": "Dermato: Dermatologie generala",
+    "description": "Grile generale de dermatologie.",
+    "emoji": "🩺",
+    "category": "Dermatologie",
+    "color": "blue",
+    "shuffleAnswers": true,
+    "folderId": "f-dermatologie",
+    "createdAt": 1772825506545,
+    "questions": [
+      {
+        "id": "derm-dermatologiege-0",
+        "text": "Tratamentul pitiriazisului rozat Gibert se face cu:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Dermatocorticoizi",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "Electrocauterizare",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Antivirale",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Antimicotice",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Antibiotice",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-dermatologiege-1",
+        "text": "Ectima debuteaza cu:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Papule sau placarde eritematoase",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Noduli durerosi ce ulcereaza rapid",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Leziuni eritemato scuamoase",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Macule bine delimitate",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Bule sau pustule pe o baza eritematoasa",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-dermatologiege-2",
+        "text": "Eruptia acuta, papule sau placard cu prurit intens poate fi:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Psoriasis",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Urticaria",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "Impetigo",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Eczema dizhidrozica",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Tinea corporis",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-dermatologiege-3",
+        "text": "Fisuri comisurale dureroase, cruste melicerice cu debut prin vezicule pe fond eritematos, ne orienteaza diagnosticul de:",
+        "options": [
+          {
+            "id": "a",
+            "text": "cheilita angulara candidozica",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "carcinom spinocelular",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "pemfigus vulgar",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "melanom",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "cheilita angulara streptococica",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-dermatologiege-4",
+        "text": "Alegeți afirmațiile corecte referitoare la tabloul clinic din pitiriazisul versicolor:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Apare in special la sugar",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Maculele pot deveni hipocrome",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "Leziunile apar pe partea superioara a trunchiulut",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "Apare in special la adultul tanar",
+            "isCorrect": true
+          },
+          {
+            "id": "e",
+            "text": "Macule cu scuame fine",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      },
+      {
+        "id": "derm-dermatologiege-5",
+        "text": "Stadializarea CEAP caracteristică a C3:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Varice mici",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Varice mari",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Edem",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "Ulcer vindecat",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Modificări ale pielii.",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-dermatologiege-6",
+        "text": "Edem în CVI, când este mai grav:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Dimineața.",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "În timpul zilei.",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Seara.",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "Noaptea.",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "În ultima treime a nopţii",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-dermatologiege-7",
+        "text": "Leziune superficială ridicată, solidă, considerată în general <0,5 cm în diametru numită:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Papula.",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "Pustulă.",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Placa.",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Wheal.",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Macula",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-dermatologiege-8",
+        "text": "Acantoliza se referă la:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Îngroșarea dermei.",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Îngroșarea epidermei.",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Pierderea adeziunii celulare.",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "Celulă atipică în epidermă.",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Pierderea unei epiderme",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-dermatologiege-9",
+        "text": "O zonă circumscrisă cu schimbarea culorii pielii fără ridicare sau depresie se numește:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Bulla.",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Pustula.",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Placa.",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Wheal.",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Macula.",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-dermatologiege-10",
+        "text": "Semnul Asboe Hasen se referă la:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Presiunea de frecare asupra pieliiformarea bulla.",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Presiunea aplicată bullei a determinat extinderea laterală.",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "Decojirea solzului cu puncte mici de sângerare.",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Leziune nouă după un traumatism.",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Desenarea unei litere pe piele cu obiect contondent.",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-dermatologiege-11",
+        "text": "Un ulcer este:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Epidermă superficială.",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Rupere în epidermă.",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "Nu este bun pentru.",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "O problemă primară.",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Țesut cu efect primar.",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-dermatologiege-12",
+        "text": "Baza eritematoasă cu vezicule grupate este prezentarea clinică pentru:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Pemfigus.",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Herpes simplex.",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "Tinea corporis.",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Scabia.",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Impetigo.",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-dermatologiege-13",
+        "text": "Funcţia imunologică a pielii este îndeplinită de:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Corpuscul Pacinian.",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Melanocite.",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "celulele Langerhans.",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "celule Merkel.",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Keratinocite.",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-dermatologiege-14",
+        "text": "Ulcerul este:",
+        "options": [
+          {
+            "id": "a",
+            "text": "epiderm subtire",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "distrugerea epidermului",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "bun de nimic",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "o problema primara",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "un efect tisular primar",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-dermatologiege-15",
+        "text": "Tratamentul virusului herpetic utilizeaza:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Algocalmin",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Brivudinul",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "Chimioterapice antivirale",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "Aciclovirul",
+            "isCorrect": true
+          },
+          {
+            "id": "e",
+            "text": "Ganciclovirul",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      },
+      {
+        "id": "derm-dermatologiege-16",
+        "text": "Cele mai importante levuroze sunt :",
+        "options": [
+          {
+            "id": "a",
+            "text": "Candidozele",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "Criptococoza",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "Pitiriazisul Versicolor",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "epidermofitii",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "onicomicozele",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      },
+      {
+        "id": "derm-dermatologiege-17",
+        "text": "Afectiuni buloase sunt :",
+        "options": [
+          {
+            "id": "a",
+            "text": "afectiuni metabolice",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Pemfigusul Vulgar",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "Dermatita Herpetiforma",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "Dermatita cu IgA liniare",
+            "isCorrect": true
+          },
+          {
+            "id": "e",
+            "text": "Pemfigoidul Bulos",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      },
+      {
+        "id": "derm-dermatologiege-18",
+        "text": "Forme clinice de Candidoza :",
+        "options": [
+          {
+            "id": "a",
+            "text": "candidoza perianala",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "eczema marginata",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "intertrigo-candidozic",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "cheilita angulara",
+            "isCorrect": true
+          },
+          {
+            "id": "e",
+            "text": "vulvo-vaginita candidozica",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      },
+      {
+        "id": "derm-dermatologiege-19",
+        "text": "Micozele superficiale se subimpart in :",
+        "options": [
+          {
+            "id": "a",
+            "text": "Pilomicoze",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "perifoliculite",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "candidoze",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Epidermofitii",
+            "isCorrect": true
+          },
+          {
+            "id": "e",
+            "text": "Onicomicoze",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      },
+      {
+        "id": "derm-dermatologiege-20",
+        "text": "Ce reprezinta imaginea",
+        "options": [
+          {
+            "id": "a",
+            "text": "Tinea cruris",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Tinea corporis",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "Tinea capitis",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Tinea pedis",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Tinea faciei",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium",
+        "imageUrl": "data:image/jpeg;base64,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"
+      },
+      {
+        "id": "derm-dermatologiege-21",
+        "text": "Imaginea reprezinta :",
+        "options": [
+          {
+            "id": "a",
+            "text": "Eczema dishidrozica",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "Eczema seboreica",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Ecze manumulara",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Eczema de staza e.Eczemaatopica",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium",
+        "imageUrl": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAaABoAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCABWAJ0DASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD7m8cftDt4N8Vahov9hm6+ylf332nbv3Krfd2H+9WRH+1Sk9nJMnh/zNn3k+2f/YV5P8fbjZ8WdfVevmR/+ikrzy31D+z5PN/5Zv8AI9eBVxNSE5Ri+p9Xh8BQnSjKa3Xc+m7f9qv7R9zw5/5Of/YU+T9qbyxu/wCEcP8A4Gf/AGFfOtnJ9n1Dan+rf7lal5t8v/cqPrVfv+B2Ry3C/wAv4nv9t+009x/zLhT63n/2FSP+0qAP+RfO/wD6+f8A7CvFP+Egi1DT7OJI445ET53rP+0fvNn/AC0rT61V5dyP7Nw38n4nt8f7UbSSbF8N/d/6fP8A7CrFx+00LcfP4f8A3n9z7Z/9hXhkdx5dvcW8Uf3/AJ3eq+nyeZefP89ZSxVf+b8DSOW4X+X8We/J+0tCdLku/wCwz9oVseR9o/8AZtlaOlftAx3envcXWj/ZJGTfCn2jdv8A/HBXgEsaRxyRf36r/wBoPZ3EbxfvNi7NlH1yvD4n+BnLK8N2/E9P1j9sZtH8z/il/P2f9Pv/ANrrPj/bfY4/4o/73/UQ/wDtdeCaxZ+ZJI/+sjesOS3X7iVzwxmJl1/A0/svBxjt+L/zPq+z/a++0Psfwv5fy7/+Pzd/7JWBqf7dY06fZ/wh+/5tn/IQ/wDtdeBx6glnbyI/7zf/AB/3K4vXLhJI5Nn7z560q4yvGPuszhl2GlL4fxZ9b6f+3HHeSRo/hPyw/wDH/aH/ANrq5/w2cP8AoVx/4H//AGFfHEcifY/NrqPD9wmoW+z/AGa0+tV/5vwNP7Nwv8v4s+sI/wBrxJLfzf8AhG//ACc/+wqn/wANkN5cj/8ACJ/c/wCoh/8Aa6+c7e4/0fYn8FV/M/1n7uj61X7/AIHTHKMH/L+L/wAz6o8IftTt4q8R6Xpf/CN/ZTe3KW/mfbN+zc23d9wV9BY4Ffnx8KP3/wAT/CG2T7moQf8AoS1+hC9K9LB1Z1Yycu58xm2Ep4arGFJWTVz4g+P7oPjH4k3/AN6H/wBFJXm/mJJHseu0/aH1Dy/jZ4oRv4Gh/wDRCVw8f7y33pXi1/4svU97C/wIeiNTS7zzLf7O/wDrIW+/WpeXnl/9NN61zel3jx6h8n91t9aFxceZceV/q/43o+I9KlM2PD8dvcXkj3EnlxovyVct7hJLjekf7usPS/8AR5JEeti23/c/1dEPgFL4yxeSPHJsT/gdU5LeWP8Ae/6tN336sWen/bJJHSTZ5S73rH1DXP8AQ5IvM/i/1dc3NIcDU/tSG8vPnk8utDSrz7P5jRfv/wC/5n92uft7y30+2jd4/M31Y1C8SM28tpJ99fn2UBMz/Glvb28fm2knyTfwf3K5cx/Z7fzf+WjrWxeXH2z5H/1lY95+8jEXmeXsojH7XcJGXeT/AOr2fvI3rLuLZP8ASN/+r/gqxeS+XJIlU7iX7RHs8z79HKZGf9sf7P5SV0HguR445E/5afwVx9xJ9n+/XWeB5Iri72y3Hl/L8j1pCHvHT9k6i4k8uP8A9Dqv9oSOTZ/rN61n6heP9o2f6yOq+lyP9s2UHbS+A9H+EG+P4l+D/wDsIQf+hLX6ELX5+fBz/kpHhd/+onAn/j1foGte1l3wS9T4rP8A+PD/AA/qfnp+1BJ5Hxw8UP8A7UP/AKISuL0vUPM8uug/awk/4vv4kT++0P8A6ISvM9H1j7Pb/PJ+8Rq8aX8Wfqevh4/uIeiO0vP3dxG6VYjkf+1P+mbr8lZdneJe2fz/AOsT7laGn3EUnlq8n7ytDSE+Q6Szj+z3m/8A1lalxeJ/B/drDkk+zxx1Jb77iSPZWRr8RJJefu/kkrz/AFS41X+3I3t7fzLffsrtLyN47P5P71RyaH5elxuknlyO3z0ey5/dOyM+Q2LPw3FH5cstxv3rvlgouNPt4/MRJJI/7lSaXHaeXH50knmJ/B/frUvNLi1iOP7PJ5c7/wAD1rOlz/CcXOcPb3ktnebKx9U/4/JHrc8QaPLp/mfvP3iVy8kn+h7/APlpXND+U190ytYj/jST79Zclx5kfyf6xK1NQ/49/N/1kdcvHeJ5klaCGX9wkn3/APWVJ4f1D7PcRpWfdyeZJVezvPs95s/v0GsD0z7PcfvHf+OrFnJ5eoR7P7tV7jxJFJodvbpH5c6ffesvR7x7jUI3/wCeVa8v2TSlOUuY9c+EEkv/AAtTwvF/yz/tOD/0Kv0Jr8/vg5H/AMXD8Jv/ABtqcH/oVfoG1ergIcsJep8hnf8AvEfQ/NP9r6XZ8cvE7/3JIf8A0QlfPH9uN9skiSSveP207xLf4z+MP3n7zdb/APoiKvl+31BI47ibzP4lrxZx/fz9T6LC/wC6w9EewafrD/Z40i/eSInz10kdw8clvMn+revM/C+oeZbxyp/HXolvJ9o0+3/55o2+umMPdOeXxHeR3H2yOPZ/HWpbx/vNj1h6HJ5nl7P7tdBHJ5fzp/HWZ0D7iOKSTyov+AUv2f7H+6l/eVHZyeXqEcr/AMH36t6pskuPtH+roNSzcXGn3Fns8v8Afp9yqcd55f34/LkSsuS8eOTen+sqSTXPMk2Sx+ZJ/foDkK/iDUIrzzGST79cfcR+XHtrtNUS01S32W/7uTbXF3O+z/dSx1nOHvcxkY95eJb28kL/AOrrj7iRP9If/lnXV6pb/aKwLyz/AHnlf36QQMPWLhPsEcqfwVl29x5kkf8Az0o8SW8ttH5L/cqvp8n2j7lHxnTA6yS8f7PH+8rrPB9n+7vLv/Wb4vkrz+4uEj8uL/lo9emaPeRafp+z+/AtdMIB7U9Q+Cdw8nxI8J7/APoI2/8A6FX6FHoK/O34F3CSfETwm/8A1E4P/Qlr9Ej0FejgPgl6nyGc/wC8R9D8pP225PtH7QfjCL+5Jb/+iIq+SNY1h47yS3ST93u2V9z/ALXX7P8A8SvGHxy8V614c8NyX+mXbQ+VMn3XxAit/wCPLXyxcfsZ/HCTUJJn8D3Hzt/z0WueVL97LTqezh8VShh4RutkXPB+qf6HbxJ/rK9c0OR7zS5ET+D565vwf+yX8YLfy3uPB9xH/wBtK9g8P/s5/EWzs5Fl8NyeY67P9ZWnspHPPER7oj8NhI7eN3roPtCeZvrc0P4D+OI7eNJtDkj2VsR/BPxkP+YPJ/38rzuWXY7Y1aX86+84+PfcSSf+P1X1C8Ty9vmV6Jb/AAo8ZafHIqaJI7vWVefBXxrcSRumiP8AJWnsp/ynRHEUv5l95wknlSW/ySSeZRo+oRRx7JY/Mn/v16Rb/AvxXJZ3Hm6PJHJ/AlZcfwP8ayfI+hyf79Hspc3wmft6H8y+84OT93eSOlZeuf6Z9/8A4+Er0i4+Bnju3uN6aHJJ/wBtKjk+BnjiSTe/h+Sj2Uuxl9YpfzI8fkkSSPZ/y0rl9YjeOTen8Fe4XH7O3juST/kX5P8Av5XP3n7NfxGuPM2eH5P+/lc3sqv8o/rFLuvvPn/x5ceZZ+b/AH65fwnqiGzkd5P3lfQmufst/EvUNPki/wCEXkf/ALaLXm9v+yP8Y9PvLhIfB9x5D/8ATStYUqvY09vS5eW6OTuNcT+3NP3/ALyN2+evVLeRLjR5LhP73/jtcvb/ALI/xlk8SWe/wfcR26Mu9/Mr3iT9m/4gW+n/AGeLw3J5bqv/AC0rphSlyy0M54ilCUfeRJ8CP+Sj+D/+wnB/6EtfpJXw18JPgt4y0Txf4Uur7Q5LS3tL6KWV/wC4oZa+5RXo4KHLFnzmbVY1asZRd9Aooor0TxQooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigD/2Q=="
+      },
+      {
+        "id": "derm-dermatologiege-22",
+        "text": "Alegeti afirmatiile corectereferitoare la tabloul clinic din pitiriazisul versicolor:",
+        "options": [
+          {
+            "id": "a",
+            "text": "apare in special la adultul tanar ?",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "maculele pot devein hipocrome",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "macule cu scuame fine",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "apare in special la sugari",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "leziunile apar pe parte superioara a trunchiului",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      },
+      {
+        "id": "derm-dermatologiege-23",
+        "text": "Dezvoltarea fungilor este favorizata de:",
+        "options": [
+          {
+            "id": "a",
+            "text": "pH neutru;",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "prezenta unui mediu aerob umed;",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "temperatura de 20-37⁰C;",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "lumina;",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "uscaciune.",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      },
+      {
+        "id": "derm-dermatologiege-24",
+        "text": "Diagnosticul diferential pentru PRURIGO Cronic :",
+        "options": [
+          {
+            "id": "a",
+            "text": "dermatita acantolitica tranzitorie",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "eczema numulara",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "prurigo nodular",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "intepaturi insecte",
+            "isCorrect": true
+          },
+          {
+            "id": "e",
+            "text": "dermatita herpetiforma",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      },
+      {
+        "id": "derm-dermatologiege-25",
+        "text": "Tumorile epiteliale sunt :",
+        "options": [
+          {
+            "id": "a",
+            "text": "Fibrokeratom",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Neurom",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Hidrocistom Apocrin",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "Hemangioamele",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Pilomatrixom",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      }
+    ]
+  },
+  {
+    "id": "dermato-psoriazis",
+    "title": "Dermato: Psoriazis",
+    "description": "Psoriazis: forme clinice, semne, tratament.",
+    "emoji": "🔴",
+    "category": "Dermatologie",
+    "color": "red",
+    "shuffleAnswers": true,
+    "folderId": "f-dermatologie",
+    "createdAt": 1772821906545,
+    "questions": [
+      {
+        "id": "derm-psoriazis-0",
+        "text": "Care din urmâtoarele case de medicamente nu este implicata in etiopatogenia psoriazisului:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Corticoizi sistemici",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Antihistaminice",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "B-blocante",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Sáruri de litiu",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Antimalarice",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-psoriazis-1",
+        "text": "Semnul Kobner reprezintă:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Apariția leziunilor la apă rece",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Apariția leziunilor tipice in locul injuriilor (mecanice, fizice, chimice, solare)",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "Apariția unei hemoragii punctiforme (izolate) la raclarea ultimului strat al scuamei",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Apariția unei dungi albe pe linia de grataj al plăci de psoriazis",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Apariția leziunilor la schimbarea de anotimp",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-psoriazis-2",
+        "text": "Factorii favorizanti/declansatori in psoriazis sunt:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Traumatismele",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "Greutate",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Infectii",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "Factori psihogeni",
+            "isCorrect": true
+          },
+          {
+            "id": "e",
+            "text": "Varsta",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      },
+      {
+        "id": "derm-psoriazis-3",
+        "text": "Factori de risc ai psoriazisului:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Promiscuitate sexuală.",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Obezitatea.",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "Sărăcia.",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Studii de nivel ridicat.",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Imunodeprimat.",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-psoriazis-4",
+        "text": "Psoriazisul se agravează în:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Vară.",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Toamna.",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Iarna.",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "Primăvara.",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Fără sezon.",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-psoriazis-5",
+        "text": "Ciclul celular al pielii în psoriazis poate scădea până la:",
+        "options": [
+          {
+            "id": "a",
+            "text": "1-3 zile.",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "3-5 zile.",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "7-9 zile.",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "12-14 zile.",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "15-17 zile.",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-psoriazis-6",
+        "text": "Prima abordare terapeutică în psoriazis",
+        "options": [
+          {
+            "id": "a",
+            "text": "Dermatocoticoid.",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "Imunomodulatori.",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "PUVA.",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Retinoid.",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Keratolitice",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-psoriazis-7",
+        "text": "Care din urmatoarele clase de medicamente NU este implicata in etiopatogenia psoriazisului:",
+        "options": [
+          {
+            "id": "a",
+            "text": "B-blocante",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Saruri de litiu",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Corticoizi sistemici",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Antihistaminice",
+            "isCorrect": true
+          },
+          {
+            "id": "e",
+            "text": "Antimalarice",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-psoriazis-8",
+        "text": "Semnul Kobner reprezinta:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Aparitia leziunilor tipice in locul injuriilor (mecanice, fizice, chimice, solare)",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "Aparitia leziunilor la apa rece",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Aparitia unei dungi albe pe linia de grataj al placii de psoriazis",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Aparitia leziunilor la schimbarea de anotimp",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Aparitia unei hemoragii punctiforme (izolate) la raclarea ultimului strat al scuamei",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-psoriazis-9",
+        "text": "Formele clinice ale Psoriazisului :",
+        "options": [
+          {
+            "id": "a",
+            "text": "psoriazis pustulos",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "psoriazis inversat",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "psoriazis eritrodermic d.psoriazis vulgar",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      }
+    ]
+  },
+  {
+    "id": "dermato-anatomiehistol",
+    "title": "Dermato: Anatomie & Histologie",
+    "description": "Structura pielii, histologie, functii.",
+    "emoji": "🔭",
+    "category": "Dermatologie",
+    "color": "teal",
+    "shuffleAnswers": true,
+    "folderId": "f-dermatologie",
+    "createdAt": 1772818306545,
+    "questions": [
+      {
+        "id": "derm-anatomiehistol-0",
+        "text": "Care din următoarele este strat al dermului:",
+        "options": [
+          {
+            "id": "a",
+            "text": "stratul keratoniciar",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Corpul papilar",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "Tesutul celular subcutanat",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Stratul granulos",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Stratul bazal",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-anatomiehistol-1",
+        "text": "Îngroșarea epidermei și/sau a dermei",
+        "options": [
+          {
+            "id": "a",
+            "text": "Calus.",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "Lichenificarea.",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Scalare.",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Lipsa de sensibilitate.",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Crusta.",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-anatomiehistol-2",
+        "text": "O creștere epidermică cauzată de virus se numește:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Impetigo.",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Melanomul.",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Nevus.",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Chist.",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Verruca.",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-anatomiehistol-3",
+        "text": "Care dintre următoarele este stratul dermei:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Stratul papilar.",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "Stratul adipos subcutanat.",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Stratum granulosum.",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Stratul de cheratinocite.",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Stratul subcutanat.",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-anatomiehistol-4",
+        "text": "Care din urmatoarele este strat al dermului",
+        "options": [
+          {
+            "id": "a",
+            "text": "Stratul bazal",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Stratul granulos",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Tesutul cellular subcutanat",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Strat keratinocitar",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Corpul papilar",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-anatomiehistol-5",
+        "text": "Consecintele eritrodermiei sunt:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Hipopotasemie",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Anemie feripriva",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "Hipotermie",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "Hipercalcemie",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Hipoproteinemie",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      },
+      {
+        "id": "derm-anatomiehistol-6",
+        "text": "Keratinocitele sunt dispuse in mai multe straturi :",
+        "options": [
+          {
+            "id": "a",
+            "text": "Stratul Spinos",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "Stratul dendritic",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Stratul Lucidum",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "Stratul Granulos",
+            "isCorrect": true
+          },
+          {
+            "id": "e",
+            "text": "Stratul Bazal",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      }
+    ]
+  },
+  {
+    "id": "dermato-urticarie",
+    "title": "Dermato: Urticarie",
+    "description": "Urticarie, angioedem, dermatografism.",
+    "emoji": "🌿",
+    "category": "Dermatologie",
+    "color": "teal",
+    "shuffleAnswers": true,
+    "folderId": "f-dermatologie",
+    "createdAt": 1772814706545,
+    "questions": [
+      {
+        "id": "derm-urticarie-0",
+        "text": "Ce tratament NU este indicat in urticarie:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Antihistaminice",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Corticoterapie",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Dermatocorticoizi",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "Mixturi antipruriginoase",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "AINS",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      },
+      {
+        "id": "derm-urticarie-1",
+        "text": "Papulo-vezicule de tip prurigo, leziuni de grataj si placi urticariene ne pot orienta spre:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Erizipel",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Psoriazis",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Pemfigus Vulgar",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Eczema cronica",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Scabie",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-urticarie-2",
+        "text": "Marginea urticariei:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Ascuțită.",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "Ridicat.",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Slab identificat.",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Neregulat.",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Bordul vezicul",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-urticarie-3",
+        "text": "In tratamentul urticariei :",
+        "options": [
+          {
+            "id": "a",
+            "text": "Se adm doar antihistaminice anti H1 de generatia 2",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Se adm. Antihistaminice ca prima intentie",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "Se adm. Corticoterapie ca prima intentie",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Se adm. Antiinflamatorii nesteroidiene",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "SE adm. Doar anthistaminice anti H1",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-urticarie-4",
+        "text": "Dermatografismul este:",
+        "options": [
+          {
+            "id": "a",
+            "text": "un examen paraclinic",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "o reactie a tegumentului la presiune",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "un medicament",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "o forma de urticarie",
+            "isCorrect": true
+          },
+          {
+            "id": "e",
+            "text": "un semn clinic",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      },
+      {
+        "id": "derm-urticarie-5",
+        "text": "Urticaria este:",
+        "options": [
+          {
+            "id": "a",
+            "text": "o infectie micotica",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "o infectie virala",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "o infectie bacteriana",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "o reactie autoimuna",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "o reactie inflamatorie",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-urticarie-6",
+        "text": "Clinic , Urticaria se manifesta prin :",
+        "options": [
+          {
+            "id": "a",
+            "text": "Placard acoperit de scoame",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Placard edematos",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "Placard eritematos",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "Placard cu caracter fugace",
+            "isCorrect": true
+          },
+          {
+            "id": "e",
+            "text": "Placard pruriginos",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      }
+    ]
+  },
+  {
+    "id": "dermato-scabiepediculo",
+    "title": "Dermato: Scabie & Pediculoze",
+    "description": "Scabie, pediculoze, ectoparazitoze.",
+    "emoji": "🪲",
+    "category": "Dermatologie",
+    "color": "orange",
+    "shuffleAnswers": true,
+    "folderId": "f-dermatologie",
+    "createdAt": 1772811106545,
+    "questions": [
+      {
+        "id": "derm-scabiepediculo-0",
+        "text": "Leziunile specifice din scabie :",
+        "options": [
+          {
+            "id": "a",
+            "text": "Papulo-vezicule de tip prurigo",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Veziculele perlate",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "Leziuni de grataj",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Vezicule grupate in buchete",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Placi urticariene",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-scabiepediculo-1",
+        "text": "Sediul comun al scabiei la adult exclude:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Axilele.",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Inghinala.",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Fese.",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "scalpul",
+            "isCorrect": true
+          },
+          {
+            "id": "e",
+            "text": "Picioarele.",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-scabiepediculo-2",
+        "text": "Acarianul scabiei rămâne în viață pe îmbrăcăminte/cearșafuri:",
+        "options": [
+          {
+            "id": "a",
+            "text": "12 ore.",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "24 de ore.",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "2-3 zile.",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "1 săptămână.",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "3 săptămâni.",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-scabiepediculo-3",
+        "text": "Factori de risc NU pentru scabie:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Promiscuitate sexuală.",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Înghesuirea.",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Studii de nivel ridicat.",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "Sărăcia.",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Imunodeprimat",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-scabiepediculo-4",
+        "text": "Leziuni specifice din scabie sunt :",
+        "options": [
+          {
+            "id": "a",
+            "text": "Vezicule grupate in buchete",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Vezicule perlate",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "Leziuni de grataj",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Papulo-vezicule de tip prurigo e.Placiurticariene",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-scabiepediculo-5",
+        "text": "Definitia Pediculozei este :",
+        "options": [
+          {
+            "id": "a",
+            "text": "Afectiune infectioasaprodusa de paduchi – paraziti hematofagi obligatorii ai pasarilor si oamenilor",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "Dismbriolazie circumscris adatorata unei acumulari anormale de melanocyte c.Afectiune infectioasa produs de Sarcoptesscabiei",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      }
+    ]
+  },
+  {
+    "id": "dermato-piodermite",
+    "title": "Dermato: Piodermite",
+    "description": "Impetigo, erizipel, furuncul, celulita.",
+    "emoji": "🦠",
+    "category": "Dermatologie",
+    "color": "green",
+    "shuffleAnswers": true,
+    "folderId": "f-dermatologie",
+    "createdAt": 1772807506545,
+    "questions": [
+      {
+        "id": "derm-piodermite-0",
+        "text": "Tratamentul pentru erizipel este:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Ketoconazol",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Aciclovir",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Penicilina",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "Oxacilina",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Clotrimazol",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-piodermite-1",
+        "text": "Diagnosticul diferential al impetigo-ului se face cu:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Herpes simplex",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "Psoriazis",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Eczema numulara",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "Eruptii post-medicamentoase",
+            "isCorrect": true
+          },
+          {
+            "id": "e",
+            "text": "Herpesul circinat",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      },
+      {
+        "id": "derm-piodermite-2",
+        "text": "Impetigo bulos este:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Boala streptococică.",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Boala stafilococică.",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "Boală imunitară.",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Boala alergică.",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Boală fungică.",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-piodermite-3",
+        "text": "Zona afectata obisnuit de Impetigo",
+        "options": [
+          {
+            "id": "a",
+            "text": "scalp",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "fata,brate,picioare si poponet",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-piodermite-4",
+        "text": "Manifestarile clinice pentru Impetigo sunt :",
+        "options": [
+          {
+            "id": "a",
+            "text": "zonele de electie sunt fata si membre",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "vezicule pe baza eritematoasa",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "halou eritemato-edematos",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "cruste galbene-brune",
+            "isCorrect": true
+          },
+          {
+            "id": "e",
+            "text": "tendinta la vindecare spontana in 2-3 saptamani",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      },
+      {
+        "id": "derm-piodermite-5",
+        "text": "Furunculul este produs de :",
+        "options": [
+          {
+            "id": "a",
+            "text": "Stafilococul auriu",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "Streptococii anaerobi",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "igiena deficitara",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "deficitul de fier",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "alti germeni",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      }
+    ]
+  },
+  {
+    "id": "dermato-tumoricutanate",
+    "title": "Dermato: Tumori cutanate",
+    "description": "Carcinom bazocelular, spinocelular, melanom.",
+    "emoji": "🎯",
+    "category": "Dermatologie",
+    "color": "red",
+    "shuffleAnswers": true,
+    "folderId": "f-dermatologie",
+    "createdAt": 1772803906545,
+    "questions": [
+      {
+        "id": "derm-tumoricutanate-0",
+        "text": "Carcinomul bazocelular este tumora malignã :",
+        "options": [
+          {
+            "id": "a",
+            "text": "Glandelor apocrine",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Keratocitului",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "Adipocitului",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Fibroblastului",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Melanocitului",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-tumoricutanate-1",
+        "text": "Factor care influențează prognosticul carcinomului spinocelular sunt:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Marimea tumorii",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "Fototipul cutanat",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Profunzimea tumorali",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "Localizarea",
+            "isCorrect": true
+          },
+          {
+            "id": "e",
+            "text": "Gradul de diferențiere al tumorii",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      },
+      {
+        "id": "derm-tumoricutanate-2",
+        "text": "Care dintre urmatoarele NU este factor de risc in melanoma :",
+        "options": [
+          {
+            "id": "a",
+            "text": "Leziunile melanice preexistente",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Radiatiile solare",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Varsta",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "Fototipul cutanat",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Factori genetici",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-tumoricutanate-3",
+        "text": "Factorii care influeanteaza prognosticul carcinomului spinocelular sunt:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Marimea tumorii",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "Localizare",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "Profunzimea tumorii",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "Gradul de diferentiere al tumorii",
+            "isCorrect": true
+          },
+          {
+            "id": "e",
+            "text": "Fototipul cutanat",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      },
+      {
+        "id": "derm-tumoricutanate-4",
+        "text": "Carcinomul bazocelular este tumora maligna a:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Adipocitului",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Fibroblastului",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Melanocitului",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Glandelor apocrine",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Keratocitului",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium"
+      }
+    ]
+  },
+  {
+    "id": "dermato-dermatofitoze",
+    "title": "Dermato: Dermatofitoze",
+    "description": "Tinea corporis, capitis, unguium, dermatofiti.",
+    "emoji": "🍄",
+    "category": "Dermatologie",
+    "color": "orange",
+    "shuffleAnswers": true,
+    "folderId": "f-dermatologie",
+    "createdAt": 1772800306545,
+    "questions": [
+      {
+        "id": "derm-dermatofitoze-0",
+        "text": "Care din urmatoarele caracteristici apartin dermatofitilor:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Sunt întotdeauna patogene",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "Sunt oportuniste",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Nu afecteaza mucoasele",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "Se clasifica dupa modul de transmitere:antropofil, zoofil, Geofil",
+            "isCorrect": true
+          },
+          {
+            "id": "e",
+            "text": "Afecteaza atat pielea cat si mucoasele",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      },
+      {
+        "id": "derm-dermatofitoze-1",
+        "text": "Diagnosticul diferential pentru TINEA PEDIS:",
+        "options": [
+          {
+            "id": "a",
+            "text": "lupus eritematos discoid",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "dermatita de contact",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "candidoza",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "infectii bacteriene",
+            "isCorrect": true
+          },
+          {
+            "id": "e",
+            "text": "dermatita seboreica",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      },
+      {
+        "id": "derm-dermatofitoze-2",
+        "text": "Diagnosticul diferential pentru TINEA FACIEI:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Psoriazis",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "Dermatita seboreica",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "Dermatita de contact",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Eczema atopica",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Lupus eritematos discoid",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      },
+      {
+        "id": "derm-dermatofitoze-3",
+        "text": "Diagnosticul diferential pentru Tinea Barbae :",
+        "options": [
+          {
+            "id": "a",
+            "text": "Dermatita Seboreica",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Candidoza",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Foliculita",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "Sicozis Stafilococic",
+            "isCorrect": true
+          },
+          {
+            "id": "e",
+            "text": "Pseudofoliculita barbii",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      },
+      {
+        "id": "derm-dermatofitoze-4",
+        "text": "Definitia TINEA CAPITIS este :",
+        "options": [
+          {
+            "id": "a",
+            "text": "dermatofitie a piciorului",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "dermatofitie a fetei",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "infectii dermatofitice ale palmei",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "infectia dermatofitica a regiunii inghinale",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "dermatofitie care afecteaza regiunea scalpului",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium"
+      }
+    ]
+  },
+  {
+    "id": "dermato-micoze",
+    "title": "Dermato: Micoze",
+    "description": "Candidoze, pitiriazis versicolor, antifungice.",
+    "emoji": "🧫",
+    "category": "Dermatologie",
+    "color": "purple",
+    "shuffleAnswers": true,
+    "folderId": "f-dermatologie",
+    "createdAt": 1772796706545,
+    "questions": [
+      {
+        "id": "derm-micoze-0",
+        "text": "Terbinafina este un medicament:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Antimicotic",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "Antibacterian",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Imunomodulator",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Antiparazital",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Antiviral",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-micoze-1",
+        "text": "Care dintre urmatoarele medicamente sunt antifungice:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Ciclopiroxolamina",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "Amfotericina",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "Fluconozol",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "Voseptol",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Terbinafina",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      },
+      {
+        "id": "derm-micoze-2",
+        "text": "Terbinafină:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Antibacterian.",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Antiviral.",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Antimicotic.",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-micoze-3",
+        "text": "Care din urmatoarele medicamente sunt antifungice:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Ciclopiroxolamina",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Amfotericina B",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "Fluconazol",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "Voseptol",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Terbinafina",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      }
+    ]
+  },
+  {
+    "id": "dermato-herpesvirale",
+    "title": "Dermato: Herpes & Virale",
+    "description": "Herpes simplex, zoster, varicela, antivirale.",
+    "emoji": "⚡",
+    "category": "Dermatologie",
+    "color": "blue",
+    "shuffleAnswers": true,
+    "folderId": "f-dermatologie",
+    "createdAt": 1772793106545,
+    "questions": [
+      {
+        "id": "derm-herpesvirale-0",
+        "text": "Care din urmâtoarele afectiuni este sinonima cu herpes circinat:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Herpes simplex",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Herpes zoster",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Tinea corporis",
+            "isCorrect": true
+          },
+          {
+            "id": "d",
+            "text": "Candidoza",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Foliculita",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-herpesvirale-1",
+        "text": "Virusul Herpes simplex nu persist in:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Ganglioni linfatici regionali",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "Perimetrul zonei cutanate sau mucoase a primoinfectiei",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Ganglionii spinali al nervilor sacral",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Glandele salivare si lacrimale",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Celulele Schwann ale nervilor senzitivi din teritoriul cutanat infectat initial",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-herpesvirale-2",
+        "text": "Eruptia din herpes zoster NU evolueaza spre:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Hemoragie",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Ulcerare",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Crustificare",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Necrozà",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "Lichenificare",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-herpesvirale-3",
+        "text": "Virusul herpes simplex nu persista in :",
+        "options": [
+          {
+            "id": "a",
+            "text": "Ganglionii spinali ai nervilor sacrati",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Ganglionii limfatici regionali",
+            "isCorrect": true
+          },
+          {
+            "id": "c",
+            "text": "Celulele Schwann ale nervilor senzitivi din teritoriul cutanat infectat initial d.Perimetrul zonei cutante sau mucosae a primoinfectiei",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      }
+    ]
+  },
+  {
+    "id": "dermato-sifilisbts",
+    "title": "Dermato: Sifilis & BTS",
+    "description": "Sifilis, boli cu transmitere sexuala.",
+    "emoji": "🔬",
+    "category": "Dermatologie",
+    "color": "purple",
+    "shuffleAnswers": true,
+    "folderId": "f-dermatologie",
+    "createdAt": 1772789506545,
+    "questions": [
+      {
+        "id": "derm-sifilisbts-0",
+        "text": "Care din urmatoarele nu este forma de sifilis:",
+        "options": [
+          {
+            "id": "a",
+            "text": "primar",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "tertiar",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "secundar",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "latent",
+            "isCorrect": false
+          },
+          {
+            "id": "e",
+            "text": "intermediar",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium"
+      },
+      {
+        "id": "derm-sifilisbts-1",
+        "text": "Care din urmatoarele nu este stadiu clinic de sifilis:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Sifilis primar",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "Sifilis secundar",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Sifilis tertiar",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Sifilis recent",
+            "isCorrect": true
+          },
+          {
+            "id": "e",
+            "text": "Sifilis latent",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      }
+    ]
+  },
+  {
+    "id": "dermato-pemfigusbulos",
+    "title": "Dermato: Pemfigus & Bulos",
+    "description": "Pemfigus vulgar, pemfigoid bulos.",
+    "emoji": "💊",
+    "category": "Dermatologie",
+    "color": "pink",
+    "shuffleAnswers": true,
+    "folderId": "f-dermatologie",
+    "createdAt": 1772785906545,
+    "questions": [
+      {
+        "id": "derm-pemfigusbulos-0",
+        "text": "Leziunea bucală la pacientul cu pemfigus valgaris poate precede leziunea cutanată cu:",
+        "options": [
+          {
+            "id": "a",
+            "text": "1 lună.",
+            "isCorrect": false
+          },
+          {
+            "id": "b",
+            "text": "2 luni.",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "3 luni.",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "6 luni.",
+            "isCorrect": true
+          },
+          {
+            "id": "e",
+            "text": "9 luni.",
+            "isCorrect": false
+          }
+        ],
+        "difficulty": "medium"
+      }
+    ]
+  },
+  {
+    "id": "dermato-eczemedermatit",
+    "title": "Dermato: Eczeme & Dermatite",
+    "description": "Eczeme atopice, de contact, dermatite.",
+    "emoji": "💧",
+    "category": "Dermatologie",
+    "color": "blue",
+    "shuffleAnswers": true,
+    "folderId": "f-dermatologie",
+    "createdAt": 1772782306545,
+    "questions": [
+      {
+        "id": "derm-eczemedermatit-0",
+        "text": "Dermatita seboreica se caracterizeaza prin:",
+        "options": [
+          {
+            "id": "a",
+            "text": "Leziuni eritematoase, bine delimitate, acoperite de scuame groase",
+            "isCorrect": true
+          },
+          {
+            "id": "b",
+            "text": "Tratamentul de electie este cu antihistaminice",
+            "isCorrect": false
+          },
+          {
+            "id": "c",
+            "text": "Leziuni eritematoase, bine delimitate, acoperite de scuame alb-sidefii",
+            "isCorrect": false
+          },
+          {
+            "id": "d",
+            "text": "Localizarea in arii bogate in glande sebacee",
+            "isCorrect": true
+          },
+          {
+            "id": "e",
+            "text": "Evolutie cronica",
+            "isCorrect": true
+          }
+        ],
+        "difficulty": "medium",
+        "multipleCorrect": true
+      }
+    ]
+  }
+]

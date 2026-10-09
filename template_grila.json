@@ -1,0 +1,47 @@
+{
+  "title": "Titlul grilei tale",
+  "description": "O scurtă descriere a grilei",
+  "emoji": "📚",
+  "category": "Anatomie",
+  "color": "blue",
+  "shuffleQuestions": false,
+  "shuffleAnswers": false,
+  "questions": [
+    {
+      "text": "Care este capitala Franței?",
+      "multipleCorrect": false,
+      "difficulty": "easy",
+      "explanation": "Paris este capitala și cel mai mare oraș al Franței.",
+      "options": [
+        { "text": "Paris", "isCorrect": true },
+        { "text": "Lyon", "isCorrect": false },
+        { "text": "Marseille", "isCorrect": false },
+        { "text": "Bordeaux", "isCorrect": false }
+      ]
+    },
+    {
+      "text": "Care dintre următoarele sunt oase ale piciorului? (selectează toate variantele corecte)",
+      "multipleCorrect": true,
+      "difficulty": "medium",
+      "explanation": "Femurul, tibia și fibula sunt oasele principale ale piciorului.",
+      "options": [
+        { "text": "Femur", "isCorrect": true },
+        { "text": "Tibie", "isCorrect": true },
+        { "text": "Fibulă", "isCorrect": true },
+        { "text": "Humerus", "isCorrect": false }
+      ]
+    },
+    {
+      "text": "Exemplu de întrebare dificilă",
+      "multipleCorrect": false,
+      "difficulty": "hard",
+      "explanation": "Explicație opțională pentru răspunsul corect.",
+      "options": [
+        { "text": "Răspuns corect", "isCorrect": true },
+        { "text": "Răspuns greșit 1", "isCorrect": false },
+        { "text": "Răspuns greșit 2", "isCorrect": false },
+        { "text": "Răspuns greșit 3", "isCorrect": false }
+      ]
+    }
+  ]
+}

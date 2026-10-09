@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https: http://127.0.0.1:* http://localhost:* http://[::1]:*; worker-src 'self' blob:; manifest-src 'self';">
+
+    <!-- PWA -->
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="theme-color" content="#F5F5F7" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="Aplicație de grile și flashcarduri pentru studenții la medicină" />
+
+    <!-- iOS: allow install to home screen as a standalone app -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="StudyX" />
+    <link rel="apple-touch-icon" href="./icon.png" />
+
+    <title>StudyX Premium</title>
+
+    <!--
+      Theme bootstrap: runs before anything paints so the first frame is already in the
+      right theme (no white/black flash while the app loads). Keep the hex values and the
+      storage key in sync with src/theme/themes.ts and src/store/themeStore.ts — a unit test
+      (src/test/themeBootstrap.test.ts) fails if they drift apart.
+    -->
+    <style>
+      html { background: #F5F5F7; color-scheme: light; }
+      html[data-theme="dark"] { background: #0B0B0E; color-scheme: dark; }
+    </style>
+    <script>
+      (function () {
+        try {
+          var mode = 'auto';
+          var raw = localStorage.getItem('studyx-theme-mode');
+          if (raw) {
+            var saved = JSON.parse(raw);
+            var value = saved && saved.state && saved.state.mode;
+            if (value === 'light' || value === 'dark' || value === 'auto') mode = value;
+          }
+          var dark = mode === 'dark' ||
+            (mode === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var root = document.documentElement;
+          var bg = dark ? '#0B0B0E' : '#F5F5F7';
+          root.setAttribute('data-theme', dark ? 'dark' : 'light');
+          root.setAttribute('data-theme-mode', mode);
+          if (dark) root.classList.add('dark');
+          root.style.background = bg;
+          root.style.colorScheme = dark ? 'dark' : 'light';
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', bg);
+        } catch (e) { /* storage blocked: the app applies the theme once it loads */ }
+      })();
+    </script>
+    <script type="module" src="./src/main.tsx"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

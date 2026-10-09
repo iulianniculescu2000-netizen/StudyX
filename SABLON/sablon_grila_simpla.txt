@@ -1,0 +1,66 @@
+============================================================
+  ȘABLON GRILĂ SIMPLĂ (fără imagini) — StudyX
+  Salvează conținutul de mai jos ca fișier .json
+============================================================
+
+{
+  "title": "Titlul grilei",
+  "description": "Scurtă descriere a conținutului",
+  "emoji": "📚",
+  "category": "Anatomie",
+  "color": "blue",
+  "shuffleQuestions": false,
+  "shuffleAnswers": false,
+  "questions": [
+    {
+      "text": "Prima întrebare — un singur răspuns corect?",
+      "multipleCorrect": false,
+      "difficulty": "easy",
+      "explanation": "Explicație opțională afișată după răspuns.",
+      "options": [
+        { "text": "Răspuns CORECT", "isCorrect": true },
+        { "text": "Răspuns greșit 1", "isCorrect": false },
+        { "text": "Răspuns greșit 2", "isCorrect": false },
+        { "text": "Răspuns greșit 3", "isCorrect": false }
+      ]
+    },
+    {
+      "text": "A doua întrebare — răspunsuri MULTIPLE corecte?",
+      "multipleCorrect": true,
+      "difficulty": "medium",
+      "explanation": "Explicație pentru răspunsurile corecte.",
+      "options": [
+        { "text": "Răspuns CORECT 1", "isCorrect": true },
+        { "text": "Răspuns CORECT 2", "isCorrect": true },
+        { "text": "Răspuns greșit 1", "isCorrect": false },
+        { "text": "Răspuns greșit 2", "isCorrect": false }
+      ]
+    },
+    {
+      "text": "A treia întrebare — dificultate ridicată?",
+      "multipleCorrect": false,
+      "difficulty": "hard",
+      "options": [
+        { "text": "Răspuns CORECT", "isCorrect": true },
+        { "text": "Răspuns greșit 1", "isCorrect": false },
+        { "text": "Răspuns greșit 2", "isCorrect": false },
+        { "text": "Răspuns greșit 3", "isCorrect": false }
+      ]
+    }
+  ]
+}
+
+============================================================
+  REFERINȚĂ RAPIDĂ
+============================================================
+
+  color        → blue / purple / green / orange / pink / red / teal
+  difficulty   → easy / medium / hard   (opțional, poate lipsi)
+  explanation  → text liber             (opțional, poate lipsi)
+  multipleCorrect false = un singur răspuns cu "isCorrect": true
+  multipleCorrect true  = două sau mai multe cu "isCorrect": true
+
+  Poți importa și un array de grile:
+  [ { ...grila1 }, { ...grila2 }, { ...grila3 } ]
+
+============================================================

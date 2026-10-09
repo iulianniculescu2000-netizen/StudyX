@@ -1,0 +1,60 @@
+import { BookOpen, Filter, MousePointerClick, Plus, Upload } from 'lucide-react';
+import type { TourDefinition } from '../types';
+
+export const quizzesTour: TourDefinition = {
+  id: 'quizzes',
+  title: 'Grilele tale',
+  steps: [
+    {
+      id: 'quizzes-intro',
+      title: 'Biblioteca ta de grile',
+      body: 'Aici stau toate grilele tale, într-un singur loc: cele create de tine, cele importate și cele generate cu AI.',
+      icon: <BookOpen size={22} />,
+      placement: 'center',
+      route: '/quizzes',
+      accent: '#0A84FF',
+    },
+    {
+      id: 'quizzes-add',
+      title: 'Grilă nouă sau import',
+      body: '„Grilă nouă” deschide editorul. „Import grile” aduce un fișier .json primit de la un coleg sau exportat din StudyX.',
+      icon: <Plus size={22} />,
+      target: '[data-tutorial="quizzes-actions"]',
+      targetPadding: 8,
+      placement: 'bottom',
+      route: '/quizzes',
+      accent: '#30D158',
+    },
+    {
+      id: 'quizzes-filters',
+      title: 'Caută și filtrează',
+      body: 'Cauți după titlu, descriere sau subiect, filtrezi după categorie sau etichetă și ordonezi după nume, număr de întrebări sau scor maxim.',
+      icon: <Filter size={22} />,
+      target: '[data-tutorial="quizzes-filters"]',
+      targetPadding: 6,
+      placement: 'bottom',
+      route: '/quizzes',
+      accent: '#FF9F0A',
+    },
+    {
+      id: 'quizzes-card',
+      title: 'O grilă, la îndemână',
+      body: 'Apeși pe grilă ca să vezi detaliile și să alegi modul de lucru. Cu mouse-ul deasupra apar „Joacă”, fixarea sus, editarea și ștergerea (cu confirmare).',
+      icon: <MousePointerClick size={22} />,
+      target: '[data-tutorial="quiz-card"]',
+      targetPadding: 6,
+      placement: 'right',
+      route: '/quizzes',
+      accent: '#BF6FFF',
+      optional: true,
+    },
+    {
+      id: 'quizzes-more',
+      title: 'Ai cursuri, nu grile gata făcute?',
+      body: 'Încarcă-le în Biblioteca AI, iar AI Studio generează grile din ele. Din chat poți cere direct: „fă-mi 10 grile din capitolul acesta”.',
+      icon: <Upload size={22} />,
+      placement: 'center',
+      accent: '#64D2FF',
+    },
+  ],
+};

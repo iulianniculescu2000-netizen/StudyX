@@ -1,0 +1,136 @@
+============================================================
+  ȘABLON GRILĂ CU IMAGINI — StudyX
+  Salvează conținutul de mai jos ca fișier .json
+============================================================
+
+IMPORTANT — cum funcționează imaginile:
+  • Câmpul "imageUrl" acceptă două formate:
+      1. Base64 — imagine codificată direct în fișier (vezi mai jos)
+      2. URL extern — link direct la o imagine online
+  • Imaginea este afișată SUB textul întrebării în:
+      QuizPlay, Flashcarduri, Revizuire rezultate,
+      Recapitulare spațiată, previzualizare QuizDetail
+  • Formate acceptate: JPG, JPEG, PNG, GIF, WEBP, BMP
+  • Cel mai simplu: folosește butonul 📷 din editorul de grilă
+    (QuizCreate) care adaugă automat Base64
+
+------------------------------------------------------------
+  VARIANTA 1 — URL extern (cel mai simplu pentru JSON manual)
+------------------------------------------------------------
+
+{
+  "title": "Histologie — Identificare țesuturi",
+  "description": "Recunoașterea țesuturilor din imagini histologice.",
+  "emoji": "🔬",
+  "category": "Histologie",
+  "color": "purple",
+  "shuffleQuestions": false,
+  "shuffleAnswers": false,
+  "questions": [
+    {
+      "text": "Ce tip de țesut este vizibil în imaginea de mai jos?",
+      "multipleCorrect": false,
+      "difficulty": "medium",
+      "explanation": "Țesutul epitelial pavimentos stratificat se recunoaște prin straturile multiple de celule plate.",
+      "imageUrl": "https://example.com/imagine-histologie.jpg",
+      "options": [
+        { "text": "Epiteliu pavimentos stratificat", "isCorrect": true },
+        { "text": "Epiteliu cilindric simplu", "isCorrect": false },
+        { "text": "Țesut conjunctiv dens", "isCorrect": false },
+        { "text": "Țesut muscular striat", "isCorrect": false }
+      ]
+    },
+    {
+      "text": "Identifică structura indicată de săgeată în imaginea alăturată.",
+      "multipleCorrect": false,
+      "difficulty": "hard",
+      "imageUrl": "https://example.com/imagine-anatomie.png",
+      "options": [
+        { "text": "Nodul sinusatrial", "isCorrect": true },
+        { "text": "Nodul atrioventricular", "isCorrect": false },
+        { "text": "Fasciculul His", "isCorrect": false },
+        { "text": "Fibrele Purkinje", "isCorrect": false }
+      ]
+    },
+    {
+      "text": "Întrebare fără imagine — text simplu.",
+      "multipleCorrect": false,
+      "difficulty": "easy",
+      "options": [
+        { "text": "Răspuns corect", "isCorrect": true },
+        { "text": "Răspuns greșit", "isCorrect": false },
+        { "text": "Răspuns greșit", "isCorrect": false },
+        { "text": "Răspuns greșit", "isCorrect": false }
+      ]
+    }
+  ]
+}
+
+------------------------------------------------------------
+  VARIANTA 2 — Base64 (imagine inclusă direct în fișier)
+------------------------------------------------------------
+
+{
+  "title": "Exemplu cu imagine Base64",
+  "description": "Grila cu imagine codificată Base64.",
+  "emoji": "🖼️",
+  "category": "Histologie",
+  "color": "green",
+  "shuffleQuestions": false,
+  "shuffleAnswers": false,
+  "questions": [
+    {
+      "text": "Ce structură este reprezentată în imagine?",
+      "multipleCorrect": false,
+      "difficulty": "medium",
+      "imageUrl": "data:image/jpeg;base64,/9j/4AAQSkZJRgAB... (șir base64 complet)",
+      "options": [
+        { "text": "Răspuns corect", "isCorrect": true },
+        { "text": "Răspuns greșit 1", "isCorrect": false },
+        { "text": "Răspuns greșit 2", "isCorrect": false },
+        { "text": "Răspuns greșit 3", "isCorrect": false }
+      ]
+    }
+  ]
+}
+
+------------------------------------------------------------
+  CUM OBȚII UN ȘIRUL BASE64 PENTRU O IMAGINE
+------------------------------------------------------------
+
+  Metoda 1 (recomandată) — folosește editorul din aplicație:
+    1. Mergi la QuizCreate (Grilă nouă sau Editează)
+    2. La întrebarea dorită apasă butonul 📷
+    3. Selectează imaginea de pe calculator
+    4. Aplicația o convertește automat și o salvează
+
+  Metoda 2 — online converter:
+    1. Mergi la: base64.guru/converter/encode/image
+    2. Încarcă imaginea
+    3. Copiază șirul generat
+    4. Pune-l în "imageUrl": "data:image/jpeg;base64,SIRUL_COPIAT"
+
+  Metoda 3 — PowerShell (Windows):
+    [Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\cale\imagine.jpg"))
+    Rezultatul se pune după: "data:image/jpeg;base64,"
+
+------------------------------------------------------------
+  NOTE IMPORTANTE
+------------------------------------------------------------
+
+  • Fișierele JSON cu Base64 pot fi FOARTE MARI (1 imagine ~500KB+)
+  • Preferă URL-uri externe pentru fișiere mici și ușor de gestionat
+  • Imaginile sunt stocate în localStorage al aplicației
+  • Câmpul "imageUrl" este OPȚIONAL — poate lipsi complet
+    dacă întrebarea nu are imagine
+
+============================================================
+  REFERINȚĂ RAPIDĂ CÂMPURI
+============================================================
+
+  color        → blue / purple / green / orange / pink / red / teal
+  difficulty   → easy / medium / hard   (opțional)
+  explanation  → text liber             (opțional)
+  imageUrl     → URL sau "data:image/FORMAT;base64,..." (opțional)
+
+============================================================

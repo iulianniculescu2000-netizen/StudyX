@@ -1,0 +1,87 @@
+============================================================
+  ȘABLON GRILĂ - StudyX (.json)
+  Copiază conținutul de mai jos și salvează ca fișier .json
+============================================================
+
+{
+  "title": "Titlul grilei tale",
+  "description": "O scurtă descriere a grilei",
+  "emoji": "📚",
+  "category": "Anatomie",
+  "color": "blue",
+  "shuffleQuestions": false,
+  "shuffleAnswers": false,
+  "questions": [
+    {
+      "text": "Textul întrebării tale?",
+      "multipleCorrect": false,
+      "difficulty": "easy",
+      "explanation": "Explicație opțională afișată după răspuns.",
+      "options": [
+        { "text": "Răspuns CORECT", "isCorrect": true },
+        { "text": "Răspuns greșit 1", "isCorrect": false },
+        { "text": "Răspuns greșit 2", "isCorrect": false },
+        { "text": "Răspuns greșit 3", "isCorrect": false }
+      ]
+    },
+    {
+      "text": "Întrebare cu răspunsuri MULTIPLE corecte?",
+      "multipleCorrect": true,
+      "difficulty": "medium",
+      "explanation": "Explicație pentru răspunsurile corecte.",
+      "options": [
+        { "text": "Răspuns CORECT 1", "isCorrect": true },
+        { "text": "Răspuns CORECT 2", "isCorrect": true },
+        { "text": "Răspuns greșit 1", "isCorrect": false },
+        { "text": "Răspuns greșit 2", "isCorrect": false }
+      ]
+    }
+  ]
+}
+
+============================================================
+  REFERINȚĂ CÂMPURI
+============================================================
+
+  GRILĂ (nivel superior):
+  ┌─────────────────┬───────────────────────────────────────────────┐
+  │ Câmp            │ Valori                                        │
+  ├─────────────────┼───────────────────────────────────────────────┤
+  │ title           │ Orice text                                    │
+  │ description     │ Orice text                                    │
+  │ emoji           │ Orice emoji (ex: 📚 🧠 ❤️ 🦴 💊 🧪 ⚗️)      │
+  │ category        │ Orice text (ex: Anatomie, Fiziologie, etc.)   │
+  │ color           │ blue / purple / green / orange / pink /       │
+  │                 │ red / teal                                    │
+  │ shuffleQuestions│ true / false                                  │
+  │ shuffleAnswers  │ true / false                                  │
+  └─────────────────┴───────────────────────────────────────────────┘
+
+  ÎNTREBARE (în "questions"):
+  ┌─────────────────┬───────────────────────────────────────────────┐
+  │ Câmp            │ Valori                                        │
+  ├─────────────────┼───────────────────────────────────────────────┤
+  │ text            │ Orice text                                    │
+  │ multipleCorrect │ false = un singur răspuns corect              │
+  │                 │ true  = mai multe răspunsuri corecte          │
+  │ difficulty      │ easy / medium / hard  (opțional)             │
+  │ explanation     │ Orice text (opțional, poate lipsi)           │
+  └─────────────────┴───────────────────────────────────────────────┘
+
+  OPȚIUNE (în "options"):
+  ┌─────────────────┬───────────────────────────────────────────────┐
+  │ Câmp            │ Valori                                        │
+  ├─────────────────┼───────────────────────────────────────────────┤
+  │ text            │ Orice text                                    │
+  │ isCorrect       │ true / false                                  │
+  └─────────────────┴───────────────────────────────────────────────┘
+
+  NOTE:
+  - Poți adăuga oricâte întrebări în "questions" []
+  - Poți adăuga oricâte opțiuni în "options" [] (minim 2)
+  - Pentru multipleCorrect: false → exact 1 opțiune cu isCorrect: true
+  - Pentru multipleCorrect: true  → 2+ opțiuni cu isCorrect: true
+  - Câmpurile "difficulty" și "explanation" sunt opționale
+  - Poți importa și un array de grile: [{ ...grila1 }, { ...grila2 }]
+
+============================================================
