@@ -1,3 +1,4 @@
+import { optionLetter } from '../../lib/optionLetter';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, Eye, ImagePlus, Layers, Plus, Sparkles, Trash2, X } from 'lucide-react';
 import type { Question } from '../../types';
@@ -165,7 +166,7 @@ export function QuizQuestionEditor({
             >
               <button
                 onClick={() => onToggleCorrect(option.id)}
-                aria-label={`Marchează opțiunea ${option.id.toUpperCase()} ca fiind corectă`}
+                aria-label={`Marchează opțiunea ${optionLetter(index)} ca fiind corectă`}
                 aria-pressed={option.isCorrect}
                 className="flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-[background-color,border-color,color,opacity,transform]"
                 style={{
@@ -176,11 +177,11 @@ export function QuizQuestionEditor({
                 {option.isCorrect && <Check size={12} className="text-white" />}
               </button>
               <span className="text-xs font-bold" style={{ color: theme.text3, minWidth: 16 }}>
-                {option.id.toUpperCase()}
+                {optionLetter(index)}
               </span>
               <input
                 type="text"
-                placeholder={`Opțiunea ${option.id.toUpperCase()}...`}
+                placeholder={`Opțiunea ${optionLetter(index)}...`}
                 value={option.text}
                 onChange={(event) => onOptionTextChange(option.id, event.target.value)}
                 className="input-bare min-w-0 flex-1 text-sm"
@@ -189,7 +190,7 @@ export function QuizQuestionEditor({
               {currentQ.options.length > 2 && (
                 <button
                   onClick={() => onOptionRemove(option.id)}
-                  aria-label={`Șterge opțiunea ${option.id.toUpperCase()}`}
+                  aria-label={`Șterge opțiunea ${optionLetter(index)}`}
                   className="opacity-0 group-hover:opacity-100 p-1 rounded-lg transition-[background-color,border-color,color,opacity,transform]"
                   style={{ color: theme.danger }}
                 >

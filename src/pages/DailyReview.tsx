@@ -5,6 +5,7 @@
  * Shows all questions whose nextReview <= now, one by one.
  * Records answers back into statsStore so the SM-2 algorithm advances.
  */
+import { optionLetter } from '../lib/optionLetter';
 import ProgressBar from '../components/fx/ProgressBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useCallback, useMemo, useRef } from 'react';
@@ -295,7 +296,7 @@ export default function DailyReview() {
 
             {/* Options */}
             <div className="space-y-2.5 mb-4">
-              {current.question.options.map((opt) => {
+              {current.question.options.map((opt, optIndex) => {
                 const isSelected = selected.includes(opt.id);
                 const isCorrect = opt.isCorrect;
                 let bg = theme.surface;
@@ -326,7 +327,7 @@ export default function DailyReview() {
                             : isSelected ? `${theme.accent}22` : theme.surface2,
                         color: revealed && isCorrect ? theme.success : revealed && isSelected && !isCorrect ? theme.danger : isSelected ? theme.accentText : theme.text3,
                       }}>
-                      {revealed && isCorrect ? <Check size={12} /> : revealed && isSelected && !isCorrect ? <X size={12} /> : opt.id.toUpperCase()}
+                      {revealed && isCorrect ? <Check size={12} /> : revealed && isSelected && !isCorrect ? <X size={12} /> : optionLetter(optIndex)}
                     </span>
                     <span className="text-sm">{opt.text}</span>
                   </motion.button>

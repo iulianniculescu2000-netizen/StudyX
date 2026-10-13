@@ -52,6 +52,26 @@ describe('DailyReview', () => {
     expect(screen.getByText(/Sesiune SM-2 completă/)).toBeTruthy();
   });
 
+  it('arată litera variantei (A, B…), nu id-ul intern, la întrebările importate cu id-uri de tip cod', () => {
+    const coded: Question = {
+      id: 'q1', text: 'Întrebarea cu coduri',
+      options: [
+        { id: '3-1-6976F9', text: 'prima', isCorrect: true },
+        { id: '3-2-AB12CD', text: 'a doua', isCorrect: false },
+        { id: '3-3-62444C', text: 'a treia', isCorrect: false },
+      ],
+    };
+    useQuizStore.setState({ quizzes: [quiz([coded])] });
+    useStatsStore.setState({ questionStats: { 'z:q1': dueStat('q1') } });
+
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: /Începe sesiunea/ }));
+    const text = document.body.textContent ?? '';
+    expect(text).not.toMatch(/3-1-6976F9|3-2-AB12CD|3-3-62444C/);
+    const badges = screen.getAllByRole('button', { name: /prima|a doua|a treia/ }).map((button) => button.querySelector('span')?.textContent);
+    expect(badges).toEqual(['A', 'B', 'C']);
+  });
+
   it('shows the skeleton instead of "Ești la zi!" before the stores have hydrated', () => {
     useQuizStore.setState({ _hasHydrated: false });
     const { container } = renderPage();
