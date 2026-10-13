@@ -127,9 +127,12 @@ function normalizeQuestion(question: QuestionGenerationResponse['questions'][num
   };
 }
 
-/** Loose comparison key for spotting option texts that are the same answer twice. */
+/**
+ * Loose comparison key for spotting option texts that are the same answer twice. Semnele care schimbă sensul rămân în cheie
+ * („< 140/90” și „> 140/90”, „↑ TSH” și „↓ TSH”, „α-blocant” și „β-blocant” sunt răspunsuri diferite).
+ */
 function optionKey(text: string): string {
-  return text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  return text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9<>=≥≤↑↓±%α-ω]+/g, ' ').trim();
 }
 
 /**
@@ -479,7 +482,7 @@ export async function generateMnemonicForConcept(concept: string, correctAnswer:
   const raw = await groqRequest({
     task: 'mnemonic',
     messages: [
-      { role: 'system', content: buildMnemonicPrompt(concept, context) },
+      { role: 'system', content: buildMnemonicPrompt(concept, context, correctAnswer) },
       { role: 'user', content: `Creează un mnemonic creativ în JSON, integral în română, pentru a reține răspunsul "${correctAnswer}" la conceptul "${concept}".` },
     ],
     skipLibraryContext: true,

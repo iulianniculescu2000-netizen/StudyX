@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeTopicMastery, isTopicPracticeQuiz, pickStudyFocus, TOPIC_PRACTICE_TAG, type TopicMastery } from './topicMastery';
+import { computeTopicMastery, folderNamesOf, isTopicPracticeQuiz, pickStudyFocus, TOPIC_PRACTICE_TAG, type TopicMastery } from './topicMastery';
 import type { QuestionStat, Quiz } from '../types';
 
 const DAY = 86_400_000;
@@ -94,5 +94,26 @@ describe('isTopicPracticeQuiz', () => {
     expect(isTopicPracticeQuiz({ tags: ['recovery', TOPIC_PRACTICE_TAG] })).toBe(true);
     expect(isTopicPracticeQuiz({ tags: ['recovery'] })).toBe(false);
     expect(isTopicPracticeQuiz({})).toBe(false);
+  });
+});
+
+describe('subiectul unei întrebări, ca la Statistici', () => {
+  it('nu ia etichete tehnice („ai”, „chapter-pack”, numele unui fișier) drept subiecte', () => {
+    const q = quiz('a', 'Cardiologie', ['1']);
+    q.questions[0].tags = ['ai-studio', 'chapter-pack', 'Kumar.pdf'];
+    const rows = computeTopicMastery([q], { 'a:1': stat('a', '1', { timesCorrect: 2 }) }, NOW);
+    expect(rows.map((r) => r.topic)).toEqual(['Cardiologie']);
+  });
+
+  it('o întrebare fără etichete are ca subiect folderul setului, înaintea categoriei', () => {
+    const q = quiz('a', 'Altele', ['1'], { folderId: 'f1' } as Partial<Quiz>);
+    const rows = computeTopicMastery([q], { 'a:1': stat('a', '1', { timesCorrect: 2 }) }, NOW, folderNamesOf([{ id: 'f1', name: 'Hematologie' }]));
+    expect(rows.map((r) => r.topic)).toEqual(['Hematologie']);
+  });
+
+  it('etichetele setului nu sunt sursă de subiect', () => {
+    const q = quiz('a', 'Nefrologie', ['1'], { tags: ['ai', 'chat', 'Aritmii'] });
+    const rows = computeTopicMastery([q], { 'a:1': stat('a', '1', { timesCorrect: 2 }) }, NOW);
+    expect(rows.map((r) => r.topic)).toEqual(['Nefrologie']);
   });
 });

@@ -5,7 +5,10 @@
  */
 
 const APP_QUESTION_RES: RegExp[] = [
-  /\b(?:buton\w*|meniu\w*|optiune\w*|setari\w*|setare|ecran\w*|pagina de|bara laterala)\b/,
+  /\b(?:buton\w*|pagina de|bara laterala)\b/,
+  // „opțiune”, „meniu”, „setări”, „ecran” apar și în medicină („opțiunea terapeutică de elecție”, „meniul dietetic”, „ecranarea cancerului”):
+  // sunt întrebări despre aplicație doar împreună cu o formulare despre aplicație.
+  /^(?=.*\b(?:meniu\w*|optiune\w*|setari\w*|setare|ecran\w*)\b)(?=.*\b(?:aplicati\w*|studyx|unde|in chat|cum (?:schimb|deschid|gasesc|activez|dezactivez|folosesc|modific))\b)/,
   /\b(?:reindex\w*|sincronizar\w*|sincronizez)\b/,
   /\bcum (?:folosesc|adaug|import|salvez|mut|sterg|creez|pornesc|opresc|activez|dezactivez) (?:o |un |de |)(?:carte|carti|folder|set|pachet|cheie|cheia|aplicatia|profil\w*|grile|grilele|flashcard\w*)\b/,
   /\b(?:in|din) (?:studyx|aplicatie|aplicatia)\b/,

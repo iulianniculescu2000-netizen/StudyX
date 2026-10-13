@@ -127,8 +127,9 @@ export function sanitizeUserInput(input: string) {
 /** Regula repetată înainte și după context: modelul o respectă mai bine când o vede și la final. */
 function subjectRuleText(subject: string) {
   return (
-    `SUBIECT OBLIGATORIU: „${subject}”. Fiecare întrebare trebuie să fie despre acest subiect, nu despre altă patologie, ` +
-    'specialitate sau capitol, nici măcar înrudite. Dacă o abreviere e ambiguă (de exemplu AR), subiectul este cel din contextul dat. ' +
+    `SUBIECT OBLIGATORIU: „${subject}”. Enunțul și răspunsul corect al fiecărei întrebări sunt despre acest subiect, nu despre altă ` +
+    'patologie, specialitate sau capitol. Entitățile înrudite pot apărea doar ca distractori sau în diagnosticul diferențial. ' +
+    'Abrevierile explicate în subiect se citesc așa cum sunt explicate. ' +
     'Dacă nu poți formula suficiente întrebări fidele subiectului, returnează mai puține, nu schimba subiectul.'
   );
 }
@@ -215,6 +216,7 @@ export function buildExplanationPrompt(
   question?: Question,
   contextPayload?: AIContextPayload,
 ) {
+  const answeredCorrectly = userAnswer.trim() !== '' && userAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
   const optionLines = question?.options
     .map((option, index) => {
       const label = String.fromCharCode(65 + index);
@@ -226,11 +228,15 @@ export function buildExplanationPrompt(
     AI_PERSONALITY,
     GROUNDING_RULES,
     TRUSTED_GENERAL_KNOWLEDGE_RULES,
-    'SCOP: explicație CLARĂ după o grilă greșită. Acoperă mecanismul corect și toate variantele greșite cheie. Nu scrie eseuri, dar nu sacrifica niciun mecanism important.',
+    answeredCorrectly
+      ? 'SCOP: explicație CLARĂ după o grilă rezolvată CORECT: confirmă de ce e bună alegerea și arată capcana în care ai fi putut cădea. Acoperă mecanismul corect și variantele apropiate. Nu scrie eseuri, dar nu sacrifica niciun mecanism important.'
+      : 'SCOP: explicație CLARĂ după o grilă greșită. Acoperă mecanismul corect și toate variantele greșite cheie. Nu scrie eseuri, dar nu sacrifica niciun mecanism important.',
     STRUCTURED_OUTPUT_RULES,
     'STRUCTURA EXPLICAȚIEI — exact aceste patru secțiuni, în această ordine, separate prin linie goală (\\n\\n în JSON):\n' +
       '**✅ De ce e corect:** mecanismul fiziopatologic cheie, 1-2 propoziții.\n\n' +
-      '**❌ De ce cade varianta ta:** ce confuzie clinică clasică reprezintă, 1-2 propoziții.\n\n' +
+      (answeredCorrectly
+        ? '**⚠️ Capcana clasică:** ce variantă apropiată ar tenta alți studenți și de ce cade, 1-2 propoziții.\n\n'
+        : '**❌ De ce cade varianta ta:** ce confuzie clinică clasică reprezintă, 1-2 propoziții.\n\n') +
       '**⚠️ Celelalte variante:** listă cu „- ”, câte un rând scurt pentru fiecare variantă greșită rămasă.\n\n' +
       '**🧠 Regula de examen:** o singură propoziție scurtă și memorabilă.',
     'Nu repeta întrebarea. Fii direct ca un profesor care corectează oral.',
@@ -246,14 +252,16 @@ export function buildExplanationPrompt(
     .join('\n\n');
 }
 
-export function buildMnemonicPrompt(concept: string, contextPayload?: AIContextPayload) {
+export function buildMnemonicPrompt(concept: string, contextPayload?: AIContextPayload, correctAnswer?: string) {
   return [
     AI_PERSONALITY,
     GROUNDING_RULES,
     TRUSTED_GENERAL_KNOWLEDGE_RULES,
     `CONCEPT: ${sanitizeUserInput(concept)}`,
+    correctAnswer ? `RĂSPUNS CORECT DE REȚINUT: ${sanitizeUserInput(correctAnswer)}` : '',
     contextPayload?.summary ? `CONTEXT:\n${contextPayload.summary}` : '',
     'Creează un mnemonic medical memorabil pentru studenți români. Poate fi acronim, rimă, poveste scurtă sau asociere vizuală.',
+    'REGULĂ DE CORECTITUDINE: fiecare literă sau element al mnemonicului corespunde unui element real și complet din ce trebuie reținut; nu adăuga, nu omite și nu inventa fapte ca să iasă acronimul. Dacă nu poți face un acronim corect, folosește o imagine sau o rimă.',
     'Returnează strict JSON: {"mnemonic":"textul mnemonic complet"}',
   ]
     .filter(Boolean)
@@ -266,8 +274,10 @@ export function buildHintPrompt(question: Question, contextPayload?: AIContextPa
     GROUNDING_RULES,
     TRUSTED_GENERAL_KNOWLEDGE_RULES,
     `ÎNTREBAREA: ${sanitizeUserInput(question.text)}`,
+    `OPȚIUNI: ${sanitizeUserInput(question.options.map((option, index) => `${String.fromCharCode(65 + index)}. ${option.text}`).join(' | '))}`,
+    `RĂSPUNS CORECT (indiciile duc la el, nu la altă variantă): ${sanitizeUserInput(question.options.filter((option) => option.isCorrect).map((option) => option.text).join('; '))}`,
     contextPayload?.summary ? `CONTEXT:\n${contextPayload.summary}` : '',
-    'Generează 3 indicii progresive, de la vag la aproape complet, fără a strica imediat răspunsul.',
+    'Generează 3 indicii progresive, de la vag la aproape complet. „light” și „medium” NU numesc și nu descriu transparent răspunsul corect; doar „full” poate fi explicația aproape completă.',
     'Returnează strict JSON:\n' +
       '{"light":"indiciu vag","medium":"indiciu mediu","full":"explicatia aproape completa"}',
   ]

@@ -1,3 +1,5 @@
+import { useFolderStore } from '../store/folderStore';
+import { folderNamesOf } from '../lib/topicMastery';
 import TopicProgressCard from '../components/quiz-results/TopicProgressCard';
 import { topicMasteryDelta } from '../lib/topicMasteryDelta';
 import { EXAM_SIM_TAG } from '../lib/examSimulation';
@@ -41,6 +43,8 @@ export default function QuizResults() {
   // Hooks must be called unconditionally — before any early returns
   const hasKey = useAIStore((s) => s.hasKey);
   const questionStats = useStatsStore((s) => s.questionStats);
+  const folders = useFolderStore((s) => s.folders);
+  const folderNames = useMemo(() => folderNamesOf(folders), [folders]);
   const getAccuracy = useStatsStore((s) => s.getAccuracy);
   const activeProfileId = useUserStore((state) => state.activeProfileId);
   const setChatOpen = useUIStore((state) => state.setChatOpen);
@@ -74,8 +78,8 @@ export default function QuizResults() {
   const questions = useMemo(() => orderedQuestions ?? quiz?.questions ?? [], [orderedQuestions, quiz?.questions]);
   // „Exersare: <subiect>” / „Grile noi: <subiect>”: cât s-a mișcat stăpânirea subiectului prin sesiunea asta.
   const masteryDelta = useMemo(
-    () => (quiz && session && !singleQuestionResult ? topicMasteryDelta(quizzes, questionStats, quiz, session.answers) : null),
-    [quizzes, questionStats, quiz, session, singleQuestionResult],
+    () => (quiz && session && !singleQuestionResult ? topicMasteryDelta(quizzes, questionStats, quiz, session.answers, Date.now(), folderNames) : null),
+    [quizzes, questionStats, quiz, session, singleQuestionResult, folderNames],
   );
   const isAdaptiveExam = quiz?.tags?.includes('adaptive-exam') ?? false;
   const isRecoverySession = quiz?.tags?.includes('recovery') ?? false;

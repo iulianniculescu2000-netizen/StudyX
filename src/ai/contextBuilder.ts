@@ -50,7 +50,7 @@ export interface NumberedContext {
   sources: ContextSource[];
 }
 
-const HEADER = 'Surse numerotate din biblioteca utilizatorului. Când folosești o informație dintr-o sursă, citeaz-o inline cu numărul ei, ex. [1]; nu cita surse pe care nu le-ai folosit.';
+const HEADER = 'Surse numerotate din biblioteca utilizatorului. Când folosești o informație dintr-o sursă, citează-o inline cu numărul ei, ex. [1]; nu cita surse pe care nu le-ai folosit.';
 
 export function cleanSourceName(name: string): string {
   return name.replace(/\.(pdf|docx?|txt|md)$/i, '').trim() || name;

@@ -27,6 +27,13 @@ describe('buildAnswerQuizRequest', () => {
     expect(buildAnswerQuizRequest('', 'Text fără titlu despre gută').subject).toBe('Text fără titlu despre gută');
   });
 
+  it('nu folosește drept subiect un mesaj-comandă („mai simplu”, „Continuă exact de unde ai rămas”)', () => {
+    for (const prompt of ['mai simplu', 'da', 'Continuă exact de unde ai rămas, fără să repeți ce ai scris deja.']) {
+      expect(buildAnswerQuizRequest(prompt, answer).subject, prompt).toBe('Artrita reumatoidă: schemă de tratament');
+    }
+    expect(buildAnswerQuizRequest('mai simplu', 'Text fără titlu despre gută și tratamentul ei acut').subject).toBe('Text fără titlu despre gută și tratamentul ei acut');
+  });
+
   it('limitează lungimea materialului', () => {
     const { prefetchedContext } = buildAnswerQuizRequest('x', 'a'.repeat(20000));
     expect(prefetchedContext.summary.length).toBeLessThan(6300);

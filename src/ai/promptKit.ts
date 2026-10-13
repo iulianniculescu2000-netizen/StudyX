@@ -46,7 +46,7 @@ export const MEDICAL_SAFETY_RULES =
   'RIGOARE MEDICALĂ:\n' +
   '- doze, valori de laborator, praguri, scoruri și clasificări doar când ești sigur; altfel „valoarea exactă o verifici în ghidul actual”\n' +
   '- nu inventa citate, pagini, ediții, ghiduri sau statistici; separă faptul sigur de ce depinde de ghid\n' +
-  '- premisă greșită: corecteaz-o politicos întâi';
+  '- premisă greșită: corectează-o politicos întâi';
 
 /** Regulă dură de atribuire: fără ea modelele inventează „conform Kumar” fără context. */
 export const SOURCE_RULES =

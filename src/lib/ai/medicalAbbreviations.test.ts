@@ -14,4 +14,15 @@ describe('explainAbbreviations', () => {
     expect(explainAbbreviations('arterita Takayasu, SARS, MARE')).toBe('arterita Takayasu, SARS, MARE');
     expect(explainAbbreviations('artrita reumatoidă')).toBe('artrita reumatoidă');
   });
+
+  it('nu contrazice utilizatorul care a explicat deja abrevierea sau vorbește despre aortă', () => {
+    expect(explainAbbreviations('SA (stenoză aortică) și tratamentul ei')).toBe('SA (stenoză aortică) și tratamentul ei');
+    expect(explainAbbreviations('stenoza aortică (SA), indicații chirurgicale')).toBe('stenoza aortică (SA), indicații chirurgicale');
+    expect(explainAbbreviations('AR aortică: criterii de severitate')).toBe('AR aortică: criterii de severitate');
+    expect(explainAbbreviations('artrita reumatoidă (AR)')).toBe('artrita reumatoidă (AR)');
+  });
+
+  it('folosește grafia corectă a tromboembolismului', () => {
+    expect(explainAbbreviations('profilaxia TEP')).toContain('tromboembolismul pulmonar');
+  });
 });

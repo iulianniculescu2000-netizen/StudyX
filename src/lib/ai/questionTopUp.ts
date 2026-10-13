@@ -37,7 +37,8 @@ export function questionTextKey(text: string): string {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, ' ')
+    // Semnele care schimbă sensul rămân: „< 140/90” și „> 140/90”, „↑ TSH” și „↓ TSH” nu sunt același enunț.
+    .replace(/[^a-z0-9<>=≥≤↑↓±%α-ω]+/g, ' ')
     .trim();
 }
 

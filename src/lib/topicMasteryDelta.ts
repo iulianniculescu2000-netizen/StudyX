@@ -25,12 +25,13 @@ export function topicMasteryDelta(
   quiz: Quiz,
   answers: Record<string, string[]> | undefined,
   now: number = Date.now(),
+  folderNames: ReadonlyMap<string, string> = new Map(),
 ): MasteryDelta | null {
   if (!(quiz.tags ?? []).includes(TOPIC_PRACTICE_TAG)) return null;
   const topic = quiz.questions.map((question) => question.tags?.[0]).find((tag): tag is string => !!tag);
   if (!topic) return null;
 
-  const after = computeTopicMastery(quizzes, stats, now).find((entry) => entry.topic === topic);
+  const after = computeTopicMastery(quizzes, stats, now, folderNames).find((entry) => entry.topic === topic);
   if (!after) return null;
 
   const rewound: Record<string, QuestionStat> = { ...stats };
@@ -46,6 +47,6 @@ export function topicMasteryDelta(
       : { ...stat, timesWrong: Math.max(0, stat.timesWrong - 1) };
   }
 
-  const before = computeTopicMastery(quizzes, rewound, now).find((entry) => entry.topic === topic);
+  const before = computeTopicMastery(quizzes, rewound, now, folderNames).find((entry) => entry.topic === topic);
   return { topic, before: before ? before.mastery : null, after: after.mastery, answeredNow };
 }

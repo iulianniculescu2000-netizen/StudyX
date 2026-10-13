@@ -23,6 +23,7 @@ export function buildTopicPracticeQuiz(
   stats: Record<string, QuestionStat>,
   limit = 10,
   now: number = Date.now(),
+  folderNames: ReadonlyMap<string, string> = new Map(),
 ): Quiz | null {
   const scored: { question: Quiz['questions'][number]; score: number }[] = [];
   const seen = new Set<string>();
@@ -30,7 +31,7 @@ export function buildTopicPracticeQuiz(
   for (const quiz of quizzes) {
     if (!countsForMastery(quiz) || (quiz.tags ?? []).includes(TOPIC_PRACTICE_TAG)) continue;
     for (const question of quiz.questions) {
-      if (!questionTopics(quiz, question).includes(topic)) continue;
+      if (!questionTopics(quiz, question, folderNames).includes(topic)) continue;
       if (!question.options.some((option) => option.isCorrect)) continue;
       const fingerprint = normalize(question.text);
       if (seen.has(fingerprint)) continue;

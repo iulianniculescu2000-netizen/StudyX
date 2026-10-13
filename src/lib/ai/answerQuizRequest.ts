@@ -1,9 +1,11 @@
 import type { AIContextPayload } from '../../ai/types';
+import { lacksSubject } from '../../components/ai-chat/retrievalQuery';
 
 const MAX_ANSWER_CHARS = 6000;
 const MAX_SUBJECT_CHARS = 160;
 
 const clean = (value: string) => value.replace(/\s+/g, ' ').trim();
+const CONTINUATION = /^\s*continu[aă]/i;
 
 /** Primul titlu markdown sau prima linie în bold din răspuns: numele real al subiectului, fără abrevieri ambigue. */
 function headingOf(answer: string): string {
@@ -23,7 +25,9 @@ export interface AnswerQuizRequest {
  */
 export function buildAnswerQuizRequest(userPrompt: string, answer: string): AnswerQuizRequest {
   const material = answer.trim().slice(0, MAX_ANSWER_CHARS);
-  const asked = clean(userPrompt).slice(0, MAX_SUBJECT_CHARS);
+  // „mai simplu”, „da”, „Continuă exact de unde ai rămas…” nu sunt subiecte: subiectul se ia din răspunsul însuși.
+  const askedRaw = clean(userPrompt).slice(0, MAX_SUBJECT_CHARS);
+  const asked = askedRaw && !lacksSubject(askedRaw) && !CONTINUATION.test(askedRaw) ? askedRaw : '';
   const heading = headingOf(material);
   const subject = asked && heading && !asked.toLowerCase().includes(heading.toLowerCase())
     ? `${asked} (${heading})`.slice(0, MAX_SUBJECT_CHARS * 2)

@@ -1,6 +1,7 @@
 import type { QuestionStat, Quiz } from '../types';
 import { isFlashcardDeck } from './deckKind';
 import { isFolderSessionQuiz } from './rezidentiatOverview';
+import { topicsOfQuestion } from './analyticsStats';
 
 export interface TopicMastery {
   topic: string;
@@ -44,12 +45,11 @@ export const STALE_AFTER_DAYS = 7;
 const FORGET_FULL_DAYS = 30;
 const FORGET_MAX = 0.25;
 
-function topicsOf(quiz: Quiz, tags: string[] | undefined): string[] {
-  const own = (tags ?? []).filter((tag) => !STRUCTURE_TAG.test(tag));
-  if (own.length > 0) return own;
-  const category = quiz.category?.trim();
-  return category ? [category] : [];
-}
+const NO_FOLDER_NAMES: ReadonlyMap<string, string> = new Map();
+
+/** Numele folderelor după id, pentru ca subiectul unei întrebări fără etichete să fie folderul ei (ca la Statistici). */
+export const folderNamesOf = (folders: ReadonlyArray<{ id: string; name: string }>): ReadonlyMap<string, string> =>
+  new Map(folders.map((folder) => [folder.id, folder.name]));
 
 /** Grilele care contează pentru stăpânire: nu flashcarduri, nu pachete arhivate, nu sesiuni generate (în afară de exersarea țintită). */
 export function countsForMastery(quiz: Quiz): boolean {
@@ -58,10 +58,13 @@ export function countsForMastery(quiz: Quiz): boolean {
   return tags.includes(TOPIC_PRACTICE_TAG) || !tags.some((tag) => GENERATED_TAGS.includes(tag));
 }
 
-/** Subiectele unei întrebări: etichetele ei, apoi cele ale pachetului, apoi categoria pachetului. */
-export function questionTopics(quiz: Quiz, question: Quiz['questions'][number]): string[] {
-  const quizTags = (quiz.tags ?? []).filter((tag) => !STRUCTURE_TAG.test(tag));
-  return topicsOf(quiz, question.tags?.length ? question.tags : quizTags);
+/**
+ * Subiectele unei întrebări, la fel ca în Statistici (`topicsOfQuestion`): etichetele ei care spun despre ce e vorba (nu
+ * „ai”, „chapter-pack”, numele unui fișier), apoi folderul, apoi categoria. Etichetele setului nu sunt sursă de subiect.
+ */
+export function questionTopics(quiz: Quiz, question: Quiz['questions'][number], folderNames: ReadonlyMap<string, string> = NO_FOLDER_NAMES): string[] {
+  const tags = (question.tags ?? []).filter((tag) => !STRUCTURE_TAG.test(tag));
+  return topicsOfQuestion(quiz, { tags }, folderNames);
 }
 
 /** Stăpânirea fiecărui subiect, din aceleași statistici pe întrebare ca restul aplicației. */
@@ -69,6 +72,7 @@ export function computeTopicMastery(
   quizzes: Quiz[],
   stats: Record<string, QuestionStat>,
   now: number = Date.now(),
+  folderNames: ReadonlyMap<string, string> = NO_FOLDER_NAMES,
 ): TopicMastery[] {
   const acc = new Map<string, { correct: number; wrong: number; lastSeen: number }>();
 
@@ -80,7 +84,7 @@ export function computeTopicMastery(
       if (!stat || stat.retired) continue;
       const total = stat.timesCorrect + stat.timesWrong;
       if (total <= 0) continue;
-      for (const topic of questionTopics(quiz, question)) {
+      for (const topic of questionTopics(quiz, question, folderNames)) {
         const row = acc.get(topic) ?? { correct: 0, wrong: 0, lastSeen: 0 };
         row.correct += stat.timesCorrect;
         row.wrong += stat.timesWrong;

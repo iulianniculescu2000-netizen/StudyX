@@ -299,6 +299,9 @@ export function buildStudioContextPayload({
   };
 }
 
+/** Lungimea maximă a unui enunț de grilă la pachetele din documente (vinietă clinică inclusă). */
+export const STUDIO_MAX_STEM_CHARS = 360;
+
 export function isStudioQuestionQualityAcceptable(question: Question, sourceName: string) {
   const correctCount = question.options.filter((option) => option.isCorrect).length;
   if (question.multipleCorrect || correctCount > 1) {
@@ -312,7 +315,8 @@ export function isStudioQuestionQualityAcceptable(question: Question, sourceName
     if (question.options.length < 4 || question.options.length > 5) return false;
     if (correctCount !== 1) return false;
   }
-  if (question.text.length < 18 || question.text.length > 180) return false;
+  // Nivelul dificil cere vinietă clinică (pacient, simptome, semne): 180 de caractere o tăiau, iar întrebarea cădea în șablon.
+  if (question.text.length < 18 || question.text.length > STUDIO_MAX_STEM_CHARS) return false;
   if (isBadStudioPrompt(question.text, sourceName)) return false;
   if (!isCleanOptionText(question.text, { allowTrailingColon: true })) return false;
 
@@ -326,8 +330,9 @@ export function isStudioQuestionQualityAcceptable(question: Question, sourceName
 
   return question.options.every((option) => {
     const text = normalizeText(option.text);
-    if (!text || text.length > 120) return false;
-    if (countWords(text) < 2 || countWords(text) > 18) return false;
+    // Un nume de medicament sau de diagnostic („Amiodarona”, „Sifilis”) e o opțiune bună: de la un cuvânt.
+    if (!text || text.length < 3 || text.length > 160) return false;
+    if (countWords(text) > 24) return false;
     if (isBadStudioPrompt(text, sourceName)) return false;
     if (!isCleanOptionText(text)) return false;
     return true;

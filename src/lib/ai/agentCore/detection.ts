@@ -15,9 +15,9 @@ export const ENDING = '[a-zăâîșț]*';
  */
 export const COMMAND_PATTERNS = [
   // Actions
-  `cre[ea]z${ENDING}`, `creaz${ENDING}`, `adaug${ENDING}`, `gener${ENDING}`,
+  `cre[ea]z${ENDING}`, `creaz${ENDING}`, `adaug${ENDING}`, `gener(?:ea[zț]|e[aă]z[aă]|a[tț]i|a)(?![a-zăâîșț])`,
   `[sș]terg${ENDING}`, `mut[aă]${ENDING}`, `redenum${ENDING}`, `organiz${ENDING}`,
-  `import${ENDING}`, `pune${ENDING}`, `bag[aă]\\b`,
+  `import(?:[aă]|e[aă]z[aă]|a[tț]i)(?![a-zăâîșț])`, `pune${ENDING}`, `bag[aă]\\b`,
   // Imperative "fă" / "fă-mi", kept tight so ordinary "fa..." words don't match.
   'f[aă]\\s*-?\\s*mi\\b', 'f[aă]\\b', 'face\\b',
   // Things the actions operate on
@@ -36,8 +36,14 @@ export function looksLikeAgentCommand(text: string): boolean {
   const value = text.trim();
   if (value.length < 4) return false;
   if (value.endsWith('?') && !COMMAND_HINTS.test(value)) return false;
+  // „Ce face metformina?”, „Cum se pune diagnosticul de lupus?”: cuvinte-comandă într-o întrebare, nu o comandă.
+  if (QUESTION_START.test(value) && !EXPLICIT_COMMAND.test(value)) return false;
   return COMMAND_HINTS.test(value);
 }
+
+const QUESTION_START = /^\s*(?:cum|ce|care|c[aă]t[ei]?|c[aâ]nd|unde|cine|de ce|la ce|pentru ce)\b/i;
+/** Formele care sunt o comandă chiar dacă mesajul începe cu un cuvânt de întrebare („ce grile mi-ai putea face?”). */
+const EXPLICIT_COMMAND = /(?:^|[^a-zăâîșț])(?:f[aă]\s*-?\s*mi|cre(?:e[aă]|[aă])z[aă]|genere[aă]z[aă]|adaug[aă]|[sș]terge|redenume[sș]te|import[aă])(?![a-zăâîșț])/i;
 
 /**
  * Short "do it again" follow-ups ("mai încearcă", "încă o dată", "reia").

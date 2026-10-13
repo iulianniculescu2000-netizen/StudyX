@@ -31,7 +31,8 @@ import { isRezidentiatQuiz } from '../lib/rezidentiatBank';
 import { isFlashcardDeck } from '../lib/deckKind';
 import { isChapterDeck } from '../lib/chapterDecks';
 import { buildDueItems } from '../lib/dueItems';
-import { computeTopicMastery, isTopicPracticeQuiz, pickStudyFocus } from '../lib/topicMastery';
+import { computeTopicMastery, folderNamesOf, isTopicPracticeQuiz, pickStudyFocus } from '../lib/topicMastery';
+import { useFolderStore } from '../store/folderStore';
 import { buildTopicPracticeQuiz } from '../lib/topicPractice';
 import { upsertGeneratedQuiz } from '../lib/generatedQuiz';
 import { generateAiPracticeQuiz } from '../lib/topicAiPractice';
@@ -166,9 +167,11 @@ export default function Dashboard() {
 
   // „Pentru tine”: subiecte slabe sau lăsate în urmă, din aceleași răspunsuri ca restul panoului (fără AI).
   const navigate = useNavigate();
-  const focus = useMemo(() => pickStudyFocus(computeTopicMastery(quizzes, questionStats ?? {})), [quizzes, questionStats]);
+  const folders = useFolderStore((s) => s.folders);
+  const folderNames = useMemo(() => folderNamesOf(folders), [folders]);
+  const focus = useMemo(() => pickStudyFocus(computeTopicMastery(quizzes, questionStats ?? {}, Date.now(), folderNames)), [quizzes, questionStats, folderNames]);
   const practiceTopic = (topic: string) => {
-    const quiz = buildTopicPracticeQuiz(topic, quizzes, questionStats ?? {});
+    const quiz = buildTopicPracticeQuiz(topic, quizzes, questionStats ?? {}, 10, Date.now(), folderNames);
     if (quiz) navigate(`/play/${upsertGeneratedQuiz(quiz)}`);
   };
   // Grile noi pe subiect, de la AI: apare doar cu o cheie; fără ea rămâne exersarea din întrebările proprii.

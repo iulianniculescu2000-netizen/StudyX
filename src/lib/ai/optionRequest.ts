@@ -27,8 +27,10 @@ function fold(text: string): string {
 }
 
 const CREATE_VERB = /\b(fa|faci|face|facem|creeaza|creaza|creezi|genereaza|generezi|vreau|imi trebuie|am nevoie|pregateste|construieste|adauga|alcatuieste|scrie|propune)\b/;
-const FLASHCARD_WORD = /\b(flash ?card\w*|carduri|cartonase|fise|fisa)\b/;
-const QUIZ_WORD = /\b(gril[aeă]|grile|intrebari|chestionar\w*|teste?)\b/;
+// „fișa de observație” nu e o cerere de flashcarduri: doar „fișe de studiu / memorare / recapitulare”.
+const FLASHCARD_WORD = /\b(flash ?card\w*|carduri|cartonase|fise de (?:studiu|memor\w+|recapitulare))\b/;
+// „teste” singur înseamnă și analize („ce teste se fac pentru lupus”): grile doar cu număr, „un test”, „mini-test” sau „teste grilă”.
+const QUIZ_WORD = /\b(gril[aeă]|grile|intrebari|chestionar\w*|\d+\s+(?:de\s+)?teste?|un\s+test|mini-?test\w*|teste?\s+gril\w*)\b/;
 const BLOCKERS = /\b(sterge|stergi|muta|redenumeste|arhiveaza|elimina|din documentul|din cursul|din pdf|din fisier\w*|din notite|din textul)\b/;
 
 const NUMBER_WORDS: Record<string, number> = {

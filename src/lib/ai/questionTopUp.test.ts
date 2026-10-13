@@ -106,3 +106,18 @@ describe('describeShortfall', () => {
     expect(describeShortfall('IMA', { requested: 5, received: 5, rounds: 1, medicallyFlaggedCount: 2 })[0]).toContain('le-am înlocuit');
   });
 });
+
+describe('questionTextKey: semnele care schimbă sensul', () => {
+  it('nu face identice enunțuri care diferă prin < / > / ↑ / ↓ sau litere grecești', () => {
+    const keys = [
+      questionTextKey('TA < 140/90 mmHg'), questionTextKey('TA > 140/90 mmHg'),
+      questionTextKey('↑ TSH și ↓ T4'), questionTextKey('↓ TSH și ↑ T4'),
+      questionTextKey('α-blocant'), questionTextKey('β-blocant'),
+    ];
+    expect(new Set(keys).size).toBe(6);
+  });
+
+  it('rămâne insensibilă la diacritice, majuscule și punctuație obișnuită', () => {
+    expect(questionTextKey('Care e Tratamentul, de ELECȚIE?')).toBe(questionTextKey('care e tratamentul de electie'));
+  });
+});
