@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChatMessage } from './shared';
+import { persistableMessages } from './chatPersistence';
 
 // v2: bumped to clear old messages with malformed citation.topic === citation.source
 export const CHAT_STORAGE_KEY = 'studyx:chat:messages:v2';
@@ -18,7 +19,8 @@ function loadMessages(key: string): ChatMessage[] {
   try {
     const stored = localStorage.getItem(key);
     if (!stored) return [];
-    return JSON.parse(stored) as ChatMessage[];
+    // Placeholderele goale salvate de versiunile anterioare nu se mai afișează (fără text, doar cu surse fără legătură).
+    return persistableMessages(JSON.parse(stored) as ChatMessage[]);
   } catch {
     return [];
   }
@@ -121,7 +123,7 @@ export function useChatMessages(options: { open: boolean; calmMotion: boolean; t
   // Saving serializes up to PERSISTED_MESSAGE_LIMIT messages synchronously: doing that on every streamed token
   // blocked the main thread. It now waits for a short pause, and is flushed when the thread changes or the page closes.
   useEffect(() => {
-    const snapshot = messages.slice(-PERSISTED_MESSAGE_LIMIT);
+    const snapshot = persistableMessages(messages).slice(-PERSISTED_MESSAGE_LIMIT);
     const save = () => {
       try {
         localStorage.setItem(storageKey, JSON.stringify(snapshot));
@@ -144,7 +146,7 @@ export function useChatMessages(options: { open: boolean; calmMotion: boolean; t
   // cleanup runs, `messagesRef` still holds that thread's messages.
   useEffect(() => () => {
     try {
-      localStorage.setItem(storageKey, JSON.stringify(messagesRef.current.slice(-PERSISTED_MESSAGE_LIMIT)));
+      localStorage.setItem(storageKey, JSON.stringify(persistableMessages(messagesRef.current).slice(-PERSISTED_MESSAGE_LIMIT)));
     } catch {
       // quota exceeded — ignore
     }

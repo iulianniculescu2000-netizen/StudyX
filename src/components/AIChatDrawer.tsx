@@ -1,3 +1,6 @@
+import { flashcardDestinationFor, quizDestinationFor } from '../lib/ai/chatSaveDestination';
+import { filterRelevantChunks, resolveRetrievalText } from './ai-chat/retrievalQuery';
+import { suggestsDiagram } from '../ai/promptKit';
 import { buildAnswerQuizRequest } from '../lib/ai/answerQuizRequest';
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -481,24 +484,28 @@ export default function AIChatDrawer() {
     setMode(smartMode);
   }, [manualMode, mode, open, smartMode]);
 
+  const retrievalTextFor = (text: string) => resolveRetrievalText(text, { quizQuestion: activeQuizContext?.questionText, history: messages });
+
   const buildScopedContext = async (text: string, sourceIdOverride?: string | null) => {
     const { retrieveRelevantChunks } = await loadAIChatRuntime();
     const targetSourceId = sourceIdOverride ?? scopedSource?.id ?? null;
     // „Unde găsesc butonul de reindexare?” nu se caută în cărți: ar aduce și cita fragmente medicale fără legătură.
     if (!targetSourceId && isAppQuestion(text)) return [];
     // Ajutător cu cost 0 (implicit activ doar cu AI local): abrevieri/sinonime/fără formule de comandă pentru regăsire.
-    const searchText = queryForRetrieval(text);
+    // Un mesaj fără subiect („fa mi o schema”, „această grilă”) se caută după subiectul conversației sau al grilei deschise.
+    const searchText = queryForRetrieval(retrievalTextFor(text));
 
     if (!targetSourceId) {
       const scopeFilters = retrievalFiltersForScope(knowledgeSources, aiLibraryFolders, sourceScope);
       if (scopeFilters === null) return [];
       const candidates = await retrieveRelevantChunks(searchText, null, 8, { ...scopeFilters, ...(chapterScopeRef.current ? { activeScope: chapterScopeRef.current } : {}) });
-      return diversifyChunks(candidates, 5);
+      return filterRelevantChunks(diversifyChunks(candidates, 5));
     }
 
     const scopedChunks = await retrieveRelevantChunks(searchText, null, 5, { sourceIds: [targetSourceId] });
-    if (scopedChunks.length > 0) {
-      return scopedChunks.slice(0, 5);
+    const relevantScoped = filterRelevantChunks(scopedChunks.slice(0, 5));
+    if (relevantScoped.length > 0) {
+      return relevantScoped;
     }
 
     // Retrieval-ul semantic nu a găsit nimic relevant în sursa scopată. NU injectăm primele N chunk-uri cu
@@ -764,7 +771,8 @@ export default function AIChatDrawer() {
       // ── Regular streaming chat path ───────────────────────────────────────
       setThinkingPhase(readySources.length > 0 ? 'Caut în biblioteca ta…' : 'Pregătesc răspunsul…');
       const { generateChatResponseStream } = await loadAIChatRuntime();
-      const contextCacheKey = `${text.slice(0, 120)}::${scopedSource?.id ?? ''}`;
+      const retrievalText = retrievalTextFor(text);
+      const contextCacheKey = `${retrievalText.slice(0, 120)}::${scopedSource?.id ?? ''}`;
       const cachedChunks = contextCacheRef.current.get(contextCacheKey);
       const contextChunks = cachedChunks ?? await buildScopedContext(text);
       if (!cachedChunks) contextCacheRef.current.set(contextCacheKey, contextChunks);
@@ -774,7 +782,7 @@ export default function AIChatDrawer() {
         const chunk = contextChunks.find((entry) => entry.id === source.id);
         return {
           ...citationFromSource(source, chunk?.topic),
-          excerpt: chunk ? extractRelevantExcerpt(chunk.text, text) : source.excerpt,
+          excerpt: chunk ? extractRelevantExcerpt(chunk.text, retrievalText) : source.excerpt,
         };
       });
 
@@ -848,7 +856,7 @@ export default function AIChatDrawer() {
       let hasStreamed = false;
       const finalText = await generateChatResponseStream(
         text,
-        `${chapterPrefix}${quizContextPrefix}${scopePrefix}${contextSummary}`,
+        `${chapterPrefix}${scopePrefix}${contextSummary}`,
         historyForAI,
         (chunk) => {
           if (abortCtrl.signal.aborted) return;
@@ -862,7 +870,10 @@ export default function AIChatDrawer() {
         },
         {
           mode: activeMode,
-          hasContext: contextChunks.length > 0,
+          hasContext: contextChunks.length > 0 || Boolean(chapterBlock),
+          // Grila discutată intră în prompt chiar când biblioteca nu a dat fragmente.
+          tutorContext: quizContextPrefix.trim() || undefined,
+          recentDiagram: [...messages.slice(-4), userMsg].some((m) => m.mode === 'diagram' || m.content.includes('```schema') || (m.role === 'user' && suggestsDiagram(m.content))),
           scopedSourceName: scopedSource?.name,
           studyContext,
           focusTopics: weakTopics.map((topic) => topic.topic),
@@ -1026,6 +1037,8 @@ export default function AIChatDrawer() {
     const front = (prev?.role === 'user' ? prev.content : '').trim() || 'Recapitulare din chat';
     const back = answer.content.trim();
     if (!back) return;
+    // În chatul Rezidențiat, cardul rămâne în Rezidențiat (nu printre flashcardurile generale).
+    const where = flashcardDestinationFor(sourceScope);
     const card: Question = {
       id: crypto.randomUUID().replace(/-/g, '').slice(0, 12),
       text: front,
@@ -1042,15 +1055,15 @@ export default function AIChatDrawer() {
       color: 'purple',
       category: 'AI Flashcards',
       kind: 'flashcard',
-      folderId: null,
+      folderId: where.folderId,
       shuffleQuestions: false,
       shuffleAnswers: false,
-      tags: ['flashcard', 'ai', 'chat'],
+      tags: ['flashcard', 'ai', 'chat', ...where.tags],
       questions: [card],
       createdAt: Date.now(),
     };
     addQuiz(deck);
-    addToast('Am salvat un flashcard din răspuns.', 'success');
+    addToast(chatThread === 'rezidentiat' ? 'Am salvat un flashcard în Rezidențiat › Flashcarduri.' : 'Am salvat un flashcard din răspuns.', 'success');
   };
 
   /** Moves the active provider to the next one that has a key; returns a sentence for the user. */
@@ -1136,18 +1149,20 @@ export default function AIChatDrawer() {
       }
       assertSameProfile();
       const quizId = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+      // În chatul Rezidențiat, grilele merg pe specialitatea subiectului, în Rezidențiat (nu în Toate grilele).
+      const where = quizDestinationFor(sourceScope, subject);
       addQuiz({
         id: quizId,
         title: `Test din chat · ${new Date().toLocaleDateString('ro-RO')}`,
         description: `${result.questions.length} grile generate din conversația cu StudyX AI.`,
         emoji: '🧪',
         color: 'blue',
-        category: 'AI Studio',
+        category: where.category ?? 'AI Studio',
         kind: 'quiz',
-        folderId: null,
+        folderId: where.folderId,
         shuffleQuestions: true,
         shuffleAnswers: true,
-        tags: ['ai', 'chat'],
+        tags: ['ai', 'chat', ...where.tags],
         questions: result.questions,
         createdAt: Date.now(),
       });

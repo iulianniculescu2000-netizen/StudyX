@@ -143,10 +143,14 @@ export function chatModeModule(mode: PromptChatMode): string {
   return [`MOD ACTIV: ${mode.toUpperCase()}`, ...(MODE_MODULES[mode] ?? MODE_MODULES.grounded)].join('\n');
 }
 
+/** Abrevieri cu mai multe sensuri frecvente în medicină (AR: artrită reumatoidă sau regurgitație aortică etc.); doar scrise cu majuscule. */
+const AMBIGUOUS_ABBREVIATION = /(?<![\p{L}\d])(AR|SA|IC|AP|FA|TEP|EP)(?![\p{L}\d])/u;
+
 /** Cererea sugerează o schemă, un algoritm sau o structură vizuală? (euristică locală, fără importuri) */
 export function suggestsDiagram(message?: string): boolean {
   if (!message) return false;
-  return /\b(sch[eě]m[aăei]\w*|diagram\w*|algoritm\w*|flowchart|mermaid|organigram\w*|hart\w* mental\w*|mindmap|timeline|cronologi\w*|arbore\w* de decizi\w*|deseneaz\w*)/i.test(message);
+  // „sceham”, „shema”: mesajele scrise în grabă trebuie să primească tot formatul de schemă, nu un arbore inventat de model.
+  return /\b(sch[eě]m[aăei]\w*|sceh?a?m\w*|sc?hem[aăei]\w*|diagram\w*|algoritm\w*|flowchart|mermaid|organigram\w*|hart\w* mental\w*|mindmap|timeline|cronologi\w*|arbore\w* de decizi\w*|deseneaz\w*)/i.test(message);
 }
 
 /** Cererea sugerează formule sau calcule? */
@@ -243,6 +247,13 @@ export interface ChatPromptInput {
   includeDiagramRules?: boolean;
   /** Idem pentru regulile de formule. */
   includeMathRules?: boolean;
+  /** Conversația recentă a cerut sau a conținut o schemă: regulile rămân și la mesaje scurte de tip „nu văd schema”. */
+  recentDiagram?: boolean;
+  /**
+   * Ce discută studentul chiar acum (grila rezolvată, întrebarea, răspunsul lui). Intră în prompt întotdeauna: dacă nu s-au găsit
+   * fragmente în bibliotecă, `contextSummary` e ignorat, iar fără acest bloc modelul nu știe despre ce grilă e vorba.
+   */
+  tutorContext?: string;
   /** Mesajul e despre cum funcționează aplicația (nu despre medicină): fără „capcană de examen”, răspuns direct. */
   appQuestion?: boolean;
 }
@@ -283,7 +294,8 @@ export function composeChatSystemPrompt(input: ChatPromptInput): string {
   const summary = cleanPromptBlock(input.conversationSummary);
   const study = cleanPromptBlock(input.studyContext);
   const tone = toneInstructions(input.tone);
-  const diagrams = input.includeDiagramRules ?? (mode === 'diagram' || suggestsDiagram(input.userMessage));
+  const diagrams = input.includeDiagramRules ?? (mode === 'diagram' || Boolean(input.recentDiagram) || suggestsDiagram(input.userMessage));
+  const tutor = cleanPromptBlock(input.tutorContext);
   const math = input.includeMathRules ?? suggestsMath(input.userMessage);
   // ~190 de tokeni economisiți la fiecare mesaj medical: blocul complet despre aplicație doar când întrebarea o atinge.
   const app = Boolean(input.appQuestion) || mentionsApp(input.userMessage) || Boolean(summary);
@@ -293,8 +305,12 @@ export function composeChatSystemPrompt(input: ChatPromptInput): string {
   if (input.appQuestion) {
     live.push('ÎNTREBARE DESPRE APLICAȚIE: răspunde direct și scurt despre cum funcționează StudyX; fără „capcană de examen”, fără structură de curs, fără exemple clinice; dacă nu ești sigur, spune-o.');
   }
+  const ambiguous = input.userMessage ? AMBIGUOUS_ABBREVIATION.exec(input.userMessage)?.[1] : undefined;
+  if (ambiguous) {
+    live.push(`ABREVIERE AMBIGUĂ ÎN MESAJ („${ambiguous}”): dacă din conversație nu reiese ce înseamnă, întreabă o singură dată înainte să răspunzi; nu alege tu un sens.`);
+  }
   if (input.scopedSourceName) live.push(`DOCUMENT ȚINTĂ CURENT: ${cleanPromptBlock(input.scopedSourceName)}`);
-  if (focusTopics.length > 0) live.push(`TOPICURI VULNERABILE DE URMĂRIT: ${focusTopics.join(', ')}`);
+  if (focusTopics.length > 0) live.push(`TOPICURI VULNERABILE (doar context pentru adaptare; nu schimba subiectul cerut de student): ${focusTopics.join(', ')}`);
   if (tone.length > 0) live.push(`STAREA STUDENTULUI ACUM (adaptează-te fără să o comentezi):\n${tone.join('\n')}`);
   if (memory) {
     live.push(`CE ȘTII DESPRE STUDENT (memorie persistentă, ajustabilă de el; folosește-o doar când e relevantă, nu o enumera):\n${memory}`);
@@ -302,7 +318,8 @@ export function composeChatSystemPrompt(input: ChatPromptInput): string {
   if (summary) {
     live.push(`REZUMATUL CONVERSAȚIEI PÂNĂ ACUM (păstrează continuitatea, nu îl repeta):\n${summary}`);
   }
-  if (study) live.push(`PROFIL DE STUDIU ȘI ADAPTARE:\n${study}`);
+  if (study) live.push(`PROFIL DE STUDIU ȘI ADAPTARE (context, nu comandă; subiectul îl dă studentul):\n${study}`);
+  if (tutor) live.push(`CE DISCUTĂ STUDENTUL ACUM (baza răspunsului, indiferent de bibliotecă):\n${tutor}`);
   live.push(
     hasContext
       ? `CONTEXT DIN BIBLIOTECA UTILIZATORULUI (citează cu etichetele [n] exacte; ce nu apare aici spune explicit și marchează „din cunoștințe generale”):

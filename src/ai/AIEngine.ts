@@ -68,6 +68,10 @@ interface ChatResponseOptions {
   personalMemory?: string;
   /** How the student seems to be doing right now, derived from their message and the clock. */
   tone?: { state: StudentState; late: boolean };
+  /** Grila pe care o discută studentul acum; intră în prompt chiar când biblioteca nu a dat fragmente. */
+  tutorContext?: string;
+  /** Conversația recentă a cerut o schemă: regulile de schemă rămân și la mesaje scurte („nu văd schema”). */
+  recentDiagram?: boolean;
   /** Apelat când răspunsul începe, cu furnizorul/modelul care l-a dat. */
   onServed?: (info: { provider: string; model: string }) => void;
   /** Apelat la sfârșitul fluxului cu `finish_reason` al furnizorului (`length` = răspuns tăiat la limita de tokeni). */
@@ -548,6 +552,8 @@ export function buildChatSystemPrompt(contextSummary: string, options: ChatRespo
     conversationSummary: options.conversationSummary,
     personalMemory: options.personalMemory,
     tone: options.tone,
+    tutorContext: options.tutorContext,
+    recentDiagram: options.recentDiagram,
     userMessage,
     appQuestion: userMessage ? isAppQuestion(userMessage) : false,
   });

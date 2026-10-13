@@ -24,6 +24,7 @@
  * export and zoom are shared.
  */
 import type { DiagramEdge, DiagramNode, NodeShape, NodeTone, ParsedDiagram } from './diagram';
+import { normalizeLooseSchema } from './schemaLoose';
 
 /** Past this many steps a schema stops being readable in a chat bubble. */
 export const SCHEMA_MAX_NODES = 16;
@@ -129,7 +130,8 @@ interface Draft {
 }
 
 function readEntries(source: string): Draft {
-  const lines = decodeEntities(source).replace(/\r/g, '').split('\n');
+  // Arborii de text cu emoji și ├─► (o greșeală frecventă a modelelor) se convertesc în formatul compact înainte de citire.
+  const lines = normalizeLooseSchema(decodeEntities(source).replace(/\r/g, '')).split('\n');
   const draft: Draft = { roots: [], stepCount: 0, truncated: false };
   const stack: Entry[] = [];
   let seq = 0;

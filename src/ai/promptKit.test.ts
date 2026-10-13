@@ -37,7 +37,8 @@ import { normalizeRomanianDiacritics } from '../lib/flashcardText';
  */
 const BASE_CEILING = 4500;
 /** Plafon cu modulul de carte și ambele module condiționale (schemă + formule) active. */
-const FULL_CEILING = 5800;
+// 5900 (era 5800): regula „fără arbori ASCII sau emoji-cifre” din modulul de schemă (~25 de tokeni, doar când schema e cerută).
+const FULL_CEILING = 5900;
 
 describe('compunerea promptului de chat pe moduri', () => {
   it.each(PROMPT_CHAT_MODES)('modul %s are baza comună și propriul modul', (mode) => {
@@ -248,7 +249,7 @@ describe('blocurile dinamice', () => {
     expect(full).toContain('PROFIL DE STUDIU');
     expect(full).toContain('frustrat');
     expect(full).toContain('târziu noaptea');
-    expect(full).toContain('TOPICURI VULNERABILE DE URMĂRIT: HTA, FiA');
+    expect(full).toContain('TOPICURI VULNERABILE (doar context pentru adaptare; nu schimba subiectul cerut de student): HTA, FiA');
     expect(full).toContain('DOCUMENT ȚINTĂ CURENT: Curs HTA.pdf');
     expect(full).toContain('CONTEXT DIN BIBLIOTECA UTILIZATORULUI');
     expect(full).toContain('HTA = presiune arterială crescută');
