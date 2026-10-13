@@ -31,6 +31,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { useTutorialStore } from '../store/tutorialStore';
 import { RELEASE_DISPLAY_NAME, type TourId } from '../tutorial/tourMeta';
 import { useUserStore } from '../store/userStore';
+import FocusCardDemo from './micro/FocusCardDemo';
 import { useOverlayFlag } from '../hooks/useOverlayFlag';
 import { useAdaptiveMotion } from '../hooks/useAdaptiveMotion';
 import { useFocusTrap } from '../hooks/useFocusTrap';
@@ -271,6 +272,8 @@ const StudyDemo = ({ theme }: { theme: Theme }) => <LitRowsDemo theme={theme} ro
 const AIDemo = ({ theme }: { theme: Theme }) => <LitRowsDemo theme={theme} rows={aiRows} />;
 const ResidencyDemo = ({ theme }: { theme: Theme }) => <LitRowsDemo theme={theme} rows={residencyRows} />;
 const HelpDemo = ({ theme }: { theme: Theme }) => <LitRowsDemo theme={theme} rows={helpRows} />;
+/** Micro-demo animat (cu pauză și reluare) în locul cadrului cu rânduri: arată cardul „Pentru tine” de la început la sfârșit. */
+const FocusDemo = () => <div className="mx-auto w-full max-w-[420px]"><FocusCardDemo /></div>;
 
 /**
  * The slides, in order. At most seven. For 1.0 they present the whole app; in later releases they tell what changed
@@ -307,6 +310,14 @@ const SLIDES: Slide[] = [
     description: 'Grile, cărți și carduri aranjate pe discipline, foldere proprii și un plan în patru treceri până la examen.',
     Demo: ResidencyDemo,
     cta: { label: 'Arată-mi Rezidențiat', to: '/rezidentiat', tour: 'residency' },
+  },
+  {
+    id: 'focus',
+    badge: 'Pentru tine',
+    title: 'Aplicația îți spune ce să exersezi azi',
+    description: 'Din răspunsurile tale, StudyX găsește subiectele cu cele mai multe greșeli și pe cele lăsate în urmă. Exersezi din întrebările tale sau, cu o cheie AI, din grile noi pe același subiect, iar la final vezi cât a crescut stăpânirea.',
+    Demo: FocusDemo,
+    cta: { label: 'Arată-mi Panoul', to: '/', tour: 'dashboard' },
   },
   {
     id: 'exam',
@@ -477,7 +488,7 @@ export default function WhatsNewTour() {
                   <Rocket size={17} />
                 </motion.div>
                 <div>
-                  <div className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: theme.accentText }}>
+                  <div className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: theme.text2 }}>
                     Prezentare
                   </div>
                   <div id={titleId} className="text-[13px] font-black tracking-tight" style={{ color: theme.text }}>

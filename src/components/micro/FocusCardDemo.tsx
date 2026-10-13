@@ -2,6 +2,7 @@ import { Check, RotateCcw, Target } from 'lucide-react';
 import { useTheme } from '../../theme/ThemeContext';
 import { fraction, useCountTo, useSceneTime } from '../film/useTimeline';
 import MicroDemo from './MicroDemo';
+import { stageOpacity } from './stageOpacity';
 
 const DURATION = 11_000;
 const MARKS = [0, 3600, 7200] as const;
@@ -15,9 +16,7 @@ const TRANSCRIPT = 'Cardul Pentru tine arată Aritmii, cu 10 greșeli din 12 ră
 /** O etapă se vede între `from` și `to`, cu intrare și ieșire scurte, derivate din ceas. */
 function useStageOpacity(from: number, to: number) {
   const { elapsedMs } = useSceneTime();
-  const fadeIn = fraction(elapsedMs, from, 280);
-  const fadeOut = to >= DURATION ? 1 : 1 - fraction(elapsedMs, to - 280, 280);
-  return Math.min(fadeIn, fadeOut);
+  return stageOpacity(elapsedMs, from, to, DURATION);
 }
 
 function Row({ icon, title, meta, action, accent, emphasis = 0 }: { icon: 'weak' | 'stale'; title: string; meta: string; action: string; accent: boolean; emphasis?: number }) {

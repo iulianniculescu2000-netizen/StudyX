@@ -1,6 +1,7 @@
 import { plural } from '../../lib/plural';
 import { aiStatus } from '../contextText';
 import { BookMarked, Repeat2, Search, Sparkles } from 'lucide-react';
+import ErrorsDemo from '../../components/micro/ErrorsDemo';
 import type { TourDefinition } from '../types';
 
 export const errorsTour: TourDefinition = {
@@ -13,6 +14,7 @@ export const errorsTour: TourDefinition = {
       title: 'Învață din ce ai greșit',
       body: (ctx) => ctx.errorCount === 0 ? 'Nu ai greșeli deschise. Caietul se completează din răspunsurile greșite înregistrate; greșelile fixate nu mai apar în lista curentă.' : `Ai ${plural(ctx.errorCount, 'greșeală deschisă', 'greșeli deschise')}. Deschide o întrebare pentru răspunsul corect și explicație.`,
       icon: <BookMarked size={22} />,
+      Extra: ErrorsDemo,
       placement: 'center',
       route: '/erori',
       accent: '#FF453A',

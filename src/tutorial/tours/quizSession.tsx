@@ -1,4 +1,5 @@
 import { BookOpen, ListChecks, Play, CheckCircle } from 'lucide-react';
+import SourceDemo from '../../components/micro/SourceDemo';
 import type { TourDefinition, TourStep } from '../types';
 
 const inQuiz = (pathname: string) => /^\/(quiz|play)\/[^/]+$/.test(pathname);
@@ -22,7 +23,7 @@ export const quizSessionTour: TourDefinition = {
       body: 'Citește enunțul și verifică dacă are răspunsuri multiple. În Studiu selectezi variantele și apeși Verifică. În Examen, un răspuns unic trece imediat mai departe; răspunsurile multiple se confirmă. Urmează eticheta butonului pentru a continua.',
       icon: <ListChecks size={22} />, target: '[data-tutorial="quiz-session-question"]', placement: 'top' }),
     { id: 'quiz-session-feedback', title: 'Folosește feedbackul',
-      body: 'În Studiu citește explicația după verificare și evaluează cât de sigur ai fost, dacă apar controalele de încredere. În Examen evaluarea vine la final. La rezultate poți revizui răspunsurile și alege următorul pas. Ghidul este reluabil din Setări › Ajutor.',
-      icon: <CheckCircle size={22} />, placement: 'center' },
+      body: 'În Studiu citește explicația după verificare și evaluează cât de sigur ai fost, dacă apar controalele de încredere. Cu documente gata în bibliotecă, „Vezi în carte” caută fragmentul potrivit când apeși tu. În Examen evaluarea vine la final. La rezultate poți revizui răspunsurile și alege următorul pas.',
+      icon: <CheckCircle size={22} />, Extra: SourceDemo, placement: 'center' },
   ],
 };

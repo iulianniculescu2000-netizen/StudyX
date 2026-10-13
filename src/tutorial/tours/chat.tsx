@@ -1,6 +1,7 @@
 import { plural } from '../../lib/plural';
 import { aiStatus } from '../contextText';
 import { Bot, ListChecks, Network, Layers3, BookOpen, ShieldCheck } from 'lucide-react';
+import ChatRequestDemo from '../../components/micro/ChatRequestDemo';
 import type { TourDefinition } from '../types';
 
 /** Manual and without routes: replaying help preserves the current chat, panel and draft. */
@@ -12,7 +13,7 @@ export const chatTour: TourDefinition = {
       icon: <Bot size={22} />, target: '[data-tutorial="ai-chat-button"]', targetPadding: 8, placement: 'left', accent: '#BF6FFF' },
     { id: 'chat-options', title: 'Modul răspunsului și setările materialului',
       body: 'Auto alege forma răspunsului; modul ales manual rămâne până revii la Auto și nu trimite singur mesaje. Pentru grile și flashcarduri, cartea de opțiuni îți permite să alegi subiectul, nivelul, numărul și folderul; generarea pornește după confirmarea ta.',
-      icon: <ListChecks size={22} />, placement: 'center', accent: '#0A84FF' },
+      icon: <ListChecks size={22} />, Extra: ChatRequestDemo, placement: 'center', accent: '#0A84FF' },
     { id: 'chat-citations', title: 'Documentele și citările',
       body: (ctx) => `${ctx.readySourceCount > 0 ? `Ai ${plural(ctx.readySourceCount, 'document gata', 'documente gata')} pentru context.` : 'Adaugă un document în Biblioteca AI și așteaptă starea Gata.'} Citările [n] deschid fragmentul folosit; Deschide în carte oferă contextul disponibil. Fără documente gata, răspunsul nu poate fi verificat în biblioteca ta.`,
       icon: <BookOpen size={22} />, placement: 'center' },
