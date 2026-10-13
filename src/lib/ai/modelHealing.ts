@@ -36,10 +36,10 @@ const MODEL_CANDIDATES: Record<ProviderId, AIModel[]> = {
   // though `/models` still lists them (the catalog entry outlives actual
   // invocability, so checkModelAvailability's liveIds check alone isn't
   // enough to catch this class of retirement).
-  // 2026-10-13, din pagina oficială de modele: stabile gemini-3.8-flash, gemini-3.6-flash, gemini-3.5-flash-lite, gemini-3.1-flash-lite;
+  // 2026-10-13, din pagina oficială de modele: stabile gemini-4-argon, gemini-3.8-flash, gemini-3.6-flash, gemini-3.5-flash-lite, gemini-3.1-flash-lite;
   // gemini-3.1-pro-preview e preview. gemini-3.7-flash și gemini-3.5-flash nu mai sunt listate (se scot din rezerve: ar fi încercări
   // sigur eșuate). Variantele „lite” sunt ultima rezervă înainte de preview: mai puțin capabile, dar răspund.
-  google: ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-3.1-pro-preview'],
+  google: ['gemini-3.8-flash', 'gemini-4-argon', 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-3.1-pro-preview'],
   // "-latest" aliases, not dated model names — Mistral keeps these pointed at
   // their current model, so (unlike NVIDIA's dated pick, dead within 2 weeks)
   // this shouldn't need healing from a rename/retirement in the first place.

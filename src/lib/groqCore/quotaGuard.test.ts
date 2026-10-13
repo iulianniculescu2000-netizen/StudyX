@@ -51,7 +51,7 @@ describe('lanțul de încercări', () => {
   it('după modelul ales vin celelalte modele ale aceluiași furnizor, apoi următorii furnizori', () => {
     const chain = buildProviderChain('google', 'gemini-3.8-flash', KEYS);
     expect(chain.map((link) => `${link.provider}:${link.model}`)).toEqual([
-      'google:gemini-3.8-flash', 'google:gemini-3.6-flash', 'google:gemini-3.5-flash-lite', 'google:gemini-3.1-flash-lite', 'google:gemini-3.1-pro-preview',
+      'google:gemini-3.8-flash', 'google:gemini-4-argon', 'google:gemini-3.6-flash', 'google:gemini-3.5-flash-lite', 'google:gemini-3.1-flash-lite', 'google:gemini-3.1-pro-preview',
       'groq:openai/gpt-oss-120b', 'groq:openai/gpt-oss-20b',
       'mistral:mistral-small-latest', 'mistral:mistral-large-latest',
     ]);
@@ -60,7 +60,7 @@ describe('lanțul de încercări', () => {
   it('modelul cu cota epuizată dispare din lanț, iar celelalte rămân în ordine', () => {
     noteModelFailure('google', 'gemini-3.8-flash', GEMINI_DAILY);
     const chain = buildProviderChain('google', 'gemini-3.8-flash', KEYS);
-    expect(chain[0]).toMatchObject({ provider: 'google', model: 'gemini-3.6-flash' });
+    expect(chain[0]).toMatchObject({ provider: 'google', model: 'gemini-4-argon' });
     expect(chain.some((link) => link.model === 'gemini-3.8-flash')).toBe(false);
   });
 
