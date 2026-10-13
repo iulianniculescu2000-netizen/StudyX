@@ -39,6 +39,7 @@ import FolderRow from './knowledge-vault/FolderRow';
 import SourceRow, { type MenuPos } from './knowledge-vault/SourceRow';
 import ReaderModal from './knowledge-vault/ReaderModal';
 import { useVaultUpload } from './knowledge-vault/useVaultUpload';
+import { tidyBookText } from './quiz-play/relevantDocFormatting';
 
 export default function KnowledgeVault() {
   const theme = useTheme();
@@ -307,7 +308,7 @@ export default function KnowledgeVault() {
       const chunks = await getVaultChunksBySource(source.id);
       const previewText = chunks
         .slice(0, 8)
-        .map((chunk) => chunk.text.trim())
+        .map((chunk) => tidyBookText(chunk.text).trim())
         .filter(Boolean)
         .join('\n\n');
       setReaderContent(previewText || 'Nu am găsit încă fragmente pentru această sursă.');

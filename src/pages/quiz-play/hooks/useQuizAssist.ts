@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useToastStore } from '../../../store/toastStore';
-import { useAIStore } from '../../../store/aiStore';
 import type { Question } from '../../../types';
-import type { AIAnalysisResult, HintResult, RetrievedChunk } from '../../../ai/types';
+import type { AIAnalysisResult, HintResult } from '../../../ai/types';
+import type { BookPassage, PassageQuery } from '../../../lib/bookPassage';
+import { AGENT_STEP_LABEL, type AgentCall, type AgentStep } from '../../../lib/bookAgent';
+import { AGENT_SYSTEM_PROMPT } from '../../../lib/bookAgent/prompts';
 import {
   buildAnalysisFallback,
   buildHintFallback,
@@ -11,13 +13,52 @@ import {
   getCorrectAnswerText,
 } from '../../../helpers/quizAi';
 import { getCorrectOptionIds, isCorrectSelection } from '../helpers';
-import { pickRelevantDoc } from '../relevantDocPick';
 
 const loadAIEngine = () => import('../../../ai/AIEngine');
 
 /** Ce susține grila: răspunsul corect și explicația. Fragmentul din carte trebuie să aibă legătură cu ele, nu doar cu enunțul. */
-const answerTextOf = (question: Question) =>
-  `${question.options.filter((option) => option.isCorrect).map((option) => option.text).join(' ')} ${question.explanation ?? ''}`;
+const correctTextOf = (question: Question) => question.options.filter((option) => option.isCorrect).map((option) => option.text).join(', ');
+
+/** Ce știe agentul „Vezi în carte” despre grilă: enunțul, răspunsul corect, explicația și variantele greșite. */
+const queryOf = (question: Question): PassageQuery => ({
+  question: question.text,
+  answer: correctTextOf(question),
+  explanation: question.explanation,
+  wrongAnswers: question.options.filter((option) => !option.isCorrect).map((option) => option.text),
+});
+
+/** Cât așteaptă agentul fiecare pas: localizatorul e un ajutor (se renunță repede la el), judecătorul decide pasajul. */
+const AGENT_CALL_TIMEOUT_MS: Record<AgentCall, number> = { locate: 15_000, judge: 40_000 };
+
+/**
+ * O cerere a agentului „Vezi în carte”: JSON strict, buget mare de tokeni (modelele de raționament îl consumă pe gândire înainte
+ * de răspuns) și anulată la timp, ca un model care tace să nu țină studentul în așteptare. La anulare agentul arată cel mai bun
+ * pasaj găsit fără AI, dacă scorul îl justifică.
+ */
+async function askBookAgentModel(
+  request: typeof import('../../../lib/groq').groqRequest,
+  prompt: string,
+  call: AgentCall,
+): Promise<string> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new Error('timeout')), AGENT_CALL_TIMEOUT_MS[call]);
+  try {
+    return await request({
+      task: 'analysis',
+      messages: [
+        { role: 'system', content: AGENT_SYSTEM_PROMPT },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.1,
+      maxTokens: 2500,
+      jsonMode: true,
+      skipLibraryContext: true,
+      abortSignal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 interface Options {
   question: Question | undefined;
@@ -49,12 +90,12 @@ export function useQuizAssist({ question, revealed, examMode, currentIdx, answer
   const [hintData, setHintData] = useState<HintResult | null>(null);
   const [hintLoading, setHintLoading] = useState(false);
   const [showSmartNudge, setShowSmartNudge] = useState(false);
-  const [relevantDocChunk, setRelevantDocChunk] = useState<RetrievedChunk | null>(null);
+  /** Pasajul din cărțile incluse găsit de agent pentru întrebarea curentă. */
+  const [relevantPassage, setRelevantPassage] = useState<BookPassage | null>(null);
   const [relevantDocModalOpen, setRelevantDocModalOpen] = useState(false);
-  /** Întrebarea pentru care e valabil `relevantDocChunk`: un fragment găsit la o întrebare nu se arată la următoarea. */
+  /** Întrebarea pentru care e valabil `relevantPassage`: un pasaj găsit la o întrebare nu se arată la următoarea. */
   const [relevantDocQuestionId, setRelevantDocQuestionId] = useState<string | null>(null);
-  const [sourceLookup, setSourceLookup] = useState<{ questionId: string; status: 'loading' | 'none' } | null>(null);
-  const hasLibrary = useAIStore((state) => state.knowledgeSources.some((source) => source.indexStatus === 'ready'));
+  const [sourceLookup, setSourceLookup] = useState<{ questionId: string; status: 'loading' | 'none'; step?: AgentStep } | null>(null);
   /**
    * Generation token for in-flight AI requests. The AI helpers are plain promises with no abort
    * support, so bumping this invalidates any reply still in flight (otherwise a slow explanation
@@ -63,6 +104,8 @@ export function useQuizAssist({ question, revealed, examMode, currentIdx, answer
   const aiRequestIdRef = useRef(0);
   /** Tracks which questions already triggered a proactive vault lookup, so a wrong answer toasts at most once. */
   const vaultCheckedRef = useRef<Set<string>>(new Set());
+  /** Toast-ul proactiv e creat într-un efect, dar trebuie să deschidă aceeași căutare ca butonul „Vezi în carte”. */
+  const openSourceRef = useRef<() => Promise<void>>(async () => undefined);
 
   // Smart nudge: if the user is stuck for >12s, pulse the hint button
   useEffect(() => {
@@ -206,9 +249,8 @@ export function useQuizAssist({ question, revealed, examMode, currentIdx, answer
     }
   }, [revealed, examMode, question, analysisQuestionId, answers, selectedNow]);
 
-  // Proactive RAG: when a study-mode answer is wrong, quietly check the Knowledge Vault for a
-  // relevant document and offer to open it via a toast. Silent when the vault is empty, the
-  // match is weak, or on any error.
+  // La un răspuns greșit în modul de studiu, verifică discret (fără AI, fără cost) dacă una dintre cele trei cărți incluse
+  // are un pasaj clar pentru grilă și oferă să-l deschidă. Tăcut când nu găsește nimic sau la orice eroare.
   useEffect(() => {
     if (!revealed || examMode || !question) return;
     if (vaultCheckedRef.current.has(question.id)) return;
@@ -217,69 +259,68 @@ export function useQuizAssist({ question, revealed, examMode, currentIdx, answer
     if (isCorrectSelection(currentAnswers, getCorrectOptionIds(question.options))) return;
 
     vaultCheckedRef.current.add(question.id);
-    const questionText = question.text;
-    const questionId = question.id;
+    const query = queryOf(question);
     let cancelled = false;
     (async () => {
       try {
-        const { retrieveRelevantChunks } = await import('../../../ai/retriever');
-        const hits = await retrieveRelevantChunks(questionText, null, 6);
-        if (cancelled) return;
-        // Primul rezultat putea fi doar un titlu: se alege primul fragment cu text de citit și cuvinte-cheie comune cu întrebarea.
-        const top = pickRelevantDoc(questionText, hits, answerTextOf(question));
-        if (!top) return;
-        setRelevantDocChunk(top);
-        setRelevantDocQuestionId(questionId);
+        const [{ findPassageCandidates }, { FALLBACK_MIN_SCORE }] = await Promise.all([import('../../../lib/bookPassage'), import('../../../lib/bookAgent')]);
+        const [best] = await findPassageCandidates(query, 1);
+        if (cancelled || !best || best.score < FALLBACK_MIN_SCORE) return;
         addToast(
-          `Ai un document relevant: "${top.source}"`,
+          'Ai un pasaj relevant în carte pentru această grilă',
           'info',
           7500,
-          { label: 'Vezi fragmentul', onClick: () => setRelevantDocModalOpen(true) },
+          { label: 'Vezi în carte', onClick: () => { void openSourceRef.current(); } },
         );
       } catch {
-        // Proactive nicety — never disrupt the session on failure.
+        // Doar o amabilitate: nu întrerupe niciodată sesiunea.
       }
     })();
     return () => { cancelled = true; };
   }, [revealed, examMode, question, answers, selectedNow, addToast]);
 
   /**
-   * „Vezi în carte”, la cerere: caută fragmentul abia când studentul apasă (căutarea folosește embeddings, deci nu rulează
-   * la fiecare întrebare) și deschide fereastra. Un fragment deja găsit pentru întrebare se redeschide fără altă căutare.
+   * „Vezi în carte”, la cerere: agentul înțelege grila, caută în Kumar, Lawrence și Sinopsis, alege pasajul care susține
+   * răspunsul corect și îl marchează. Un pasaj găsit pentru întrebare se redeschide fără altă căutare.
    */
   const openQuestionSource = useCallback(async () => {
     if (!question) return;
-    if (relevantDocChunk && relevantDocQuestionId === question.id) {
+    if (relevantPassage && relevantDocQuestionId === question.id) {
       setRelevantDocModalOpen(true);
       return;
     }
     if (sourceLookup?.status === 'loading') return;
     const questionId = question.id;
-    setSourceLookup({ questionId, status: 'loading' });
+    setSourceLookup({ questionId, status: 'loading', step: 'understand' });
     try {
-      const { retrieveRelevantChunks } = await import('../../../ai/retriever');
-      const hits = await retrieveRelevantChunks(question.text, null, 6);
-      const top = pickRelevantDoc(question.text, hits, answerTextOf(question));
-      if (!top) {
+      const [{ runBookAgent }, { groqRequest }] = await Promise.all([import('../../../lib/bookAgent'), import('../../../lib/groq')]);
+      const passage = await runBookAgent(
+        queryOf(question),
+        (prompt, call) => askBookAgentModel(groqRequest, prompt, call),
+        { onStep: (step) => setSourceLookup((current) => (current && current.questionId === questionId ? { ...current, step } : current)) },
+      );
+      if (!passage) {
         setSourceLookup({ questionId, status: 'none' });
         return;
       }
-      setRelevantDocChunk(top);
+      setRelevantPassage(passage);
       setRelevantDocQuestionId(questionId);
       setSourceLookup(null);
       setRelevantDocModalOpen(true);
     } catch {
       setSourceLookup({ questionId, status: 'none' });
     }
-  }, [question, relevantDocChunk, relevantDocQuestionId, sourceLookup?.status]);
+  }, [question, relevantPassage, relevantDocQuestionId, sourceLookup?.status]);
+  useEffect(() => { openSourceRef.current = openQuestionSource; }, [openQuestionSource]);
 
   const sourceStatus: 'idle' | 'loading' | 'none' = !question || !sourceLookup || sourceLookup.questionId !== question.id ? 'idle' : sourceLookup.status;
+  const sourceStepLabel = sourceStatus === 'loading' && sourceLookup?.step ? AGENT_STEP_LABEL[sourceLookup.step] : 'Caut în carte…';
 
   return {
     aiText, aiLoading, mnemonicText, mnemonicLoading, activeAIPanel, setActiveAIPanel,
     analysisResult, nextTopicHint, hintLevel, hintData, hintLoading, showSmartNudge,
     handleGetHint, handleAIExplain, handleGenerateMnemonic, resetAssistiveState, resetForNewSet,
-    relevantDocChunk, relevantDocModalOpen, setRelevantDocModalOpen,
-    hasLibrary, openQuestionSource, sourceStatus,
+    relevantPassage, relevantDocModalOpen, setRelevantDocModalOpen,
+    openQuestionSource, sourceStatus, sourceStepLabel,
   };
 }

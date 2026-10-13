@@ -1,4 +1,5 @@
 import type { Folder } from '../../types';
+import { tidyBookText } from '../../pages/quiz-play/relevantDocFormatting';
 
 /** Spreads retrieved chunks across sources instead of letting one document dominate the citation list. */
 export function diversifyChunks<T extends { source: string; score: number }>(
@@ -25,7 +26,8 @@ export function diversifyChunks<T extends { source: string; score: number }>(
 
 /** Best-matching sentence excerpt from a chunk, for the citation preview. */
 export function extractRelevantExcerpt(chunkText: string, query: string, maxLen = 220): string {
-  const clean = chunkText.replace(/\s+/g, ' ').trim();
+  // Textul din cărți vine din OCR: diacritice cu sedilă, cratime de rând și litere confundate se repară înainte de citat.
+  const clean = tidyBookText(chunkText).replace(/\s+/g, ' ').trim();
   const sentences = clean.match(/[^.!?]+[.!?]*/g) ?? [clean];
   const queryWords = new Set(
     query.toLowerCase().split(/\s+/).filter((w) => w.length > 3),

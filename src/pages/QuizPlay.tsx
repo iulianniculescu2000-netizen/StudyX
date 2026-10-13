@@ -605,23 +605,21 @@ function QuizPlaySession({ quiz, orderedQuestions, examMode, timedMode, examMinu
                           <span className="font-semibold" style={{ color: theme.accentText }}>Explicație: </span>
                           {cleanQuestionExplanation(question.explanation)}
                         </p>
-                        {assist.hasLibrary && (
-                          <div className="mt-3 flex flex-wrap items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => void assist.openQuestionSource()}
-                              disabled={assist.sourceStatus === 'loading'}
-                              className="press-feedback focus-ring glass-panel inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold disabled:opacity-60"
-                              style={{ color: theme.accentText }}
-                            >
-                              <BookOpen size={13} aria-hidden="true" />
-                              {assist.sourceStatus === 'loading' ? 'Caut în bibliotecă…' : 'Vezi în carte'}
-                            </button>
-                            {assist.sourceStatus === 'none' && (
-                              <span role="status" className="text-[12px]" style={{ color: theme.text3 }}>Nu am găsit un fragment potrivit în bibliotecă.</span>
-                            )}
-                          </div>
-                        )}
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void assist.openQuestionSource()}
+                            disabled={assist.sourceStatus === 'loading'}
+                            className="press-feedback focus-ring glass-panel inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold disabled:opacity-60"
+                            style={{ color: theme.accentText }}
+                          >
+                            <BookOpen size={13} aria-hidden="true" />
+                            {assist.sourceStatus === 'loading' ? assist.sourceStepLabel : 'Vezi în carte'}
+                          </button>
+                          {assist.sourceStatus === 'none' && (
+                            <span role="status" className="text-[12px]" style={{ color: theme.text3 }}>Nu am găsit în cărți un pasaj care să susțină această grilă.</span>
+                          )}
+                        </div>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -739,7 +737,8 @@ function QuizPlaySession({ quiz, orderedQuestions, examMode, timedMode, examMinu
 
       <RelevantDocModal
         open={assist.relevantDocModalOpen}
-        chunk={assist.relevantDocChunk}
+        chunk={null}
+        passage={assist.relevantPassage}
         onClose={() => assist.setRelevantDocModalOpen(false)}
       />
     </div>
