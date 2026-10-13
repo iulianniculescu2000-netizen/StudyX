@@ -18,8 +18,41 @@ const TIMEOUT_COOLDOWN_MS = 5 * 60_000;
 const DEFAULT_DAILY_COOLDOWN_MS = 6 * 3600_000;
 const MAX_COOLDOWN_MS = 26 * 3600_000;
 
+const STORAGE_KEY = 'studyx-model-cooldowns';
 const cooldownUntil = new Map<string, number>();
 const keyOf = (provider: string, model: string) => `${provider}:${model}`;
+let loaded = false;
+
+/** Pauzele supraviețuiesc repornirii: altfel prima cerere de după pornire ar lovi din nou, degeaba, cota zilnică deja epuizată. */
+function load(now = Date.now()): void {
+  if (loaded) return;
+  loaded = true;
+  try {
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as Record<string, unknown>;
+    for (const [key, until] of Object.entries(stored)) {
+      if (typeof until === 'number' && until > now && until - now <= MAX_COOLDOWN_MS) cooldownUntil.set(key, until);
+    }
+  } catch {
+    /* fără localStorage sau date stricate: se pornește fără pauze salvate */
+  }
+}
+
+function save(now = Date.now()): void {
+  try {
+    const live = Object.fromEntries([...cooldownUntil].filter(([, until]) => until > now));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(live));
+  } catch {
+    /* spațiu plin sau blocat: pauzele rămân doar în memorie */
+  }
+}
+
+/** Cererea e prea mare pentru limita modelului („Requested 9500” peste „Limit 8000”): alt model sau o pauză nu o repară. */
+export function isOversizedRequest(message: string): boolean {
+  const requested = /requested\s+(\d+)/i.exec(message);
+  const limit = /(?<![a-z])limit\s*:?\s*(\d+)/i.exec(message);
+  if (requested && limit && Number(requested[1]) > Number(limit[1])) return true;
+  return /request too large|reduce your message size|context length|too many tokens in (?:the )?request/i.test(message);
+}
 
 export const isDailyQuotaError = (message: string): boolean => RATE_LIMITED.test(message) && DAILY_QUOTA.test(message);
 export const isAuthFailure = (message: string): boolean => AUTH_FAILURE.test(message);
@@ -29,15 +62,19 @@ export const isAuthFailure = (message: string): boolean => AUTH_FAILURE.test(mes
  * O cheie greșită, un serviciu căzut (5xx) sau o cerere prea mare nu se rezolvă cu alt model: se trece direct la alt furnizor.
  */
 export function isModelSpecificFailure(message: string, status?: number): boolean {
-  if (isAuthFailure(message)) return false;
+  if (isAuthFailure(message) || isOversizedRequest(message)) return false;
   return status === 429 || RATE_LIMITED.test(message) || isModelUnavailableError(message);
 }
 
 /** După o eroare de limită, modelul se sare: până la resetarea indicată de furnizor (zilnică) sau scurt (val de cereri). */
 export function noteModelFailure(provider: string, model: string, message: string, now = Date.now()): void {
+  load(now);
+  // O cerere prea mare nu spune nimic despre sănătatea modelului: nu se pune în pauză.
+  if (isOversizedRequest(message)) return;
   // Un model care a tăcut până la timeout se sare câteva minute: următoarele cereri nu mai pierd timp cu el.
   if (/nu a răspuns în \d+/i.test(message)) {
     cooldownUntil.set(keyOf(provider, model), now + TIMEOUT_COOLDOWN_MS);
+    save(now);
     return;
   }
   if (!RATE_LIMITED.test(message)) return;
@@ -48,9 +85,11 @@ export function noteModelFailure(provider: string, model: string, message: strin
     : daily ? DEFAULT_DAILY_COOLDOWN_MS : SHORT_COOLDOWN_MS;
   // O limită pe minut care cere o așteptare lungă nu e o pauză scurtă; una zilnică fără durată declarată rămâne 6 ore.
   cooldownUntil.set(keyOf(provider, model), now + Math.max(wait, daily ? SHORT_COOLDOWN_MS : 1000));
+  save(now);
 }
 
 export function isModelCoolingDown(provider: string, model: string, now = Date.now()): boolean {
+  load(now);
   const until = cooldownUntil.get(keyOf(provider, model));
   if (until === undefined) return false;
   if (until <= now) {
@@ -63,4 +102,10 @@ export function isModelCoolingDown(provider: string, model: string, now = Date.n
 /** Pentru teste. */
 export function resetQuotaGuard(): void {
   cooldownUntil.clear();
+  loaded = true;
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    /* nimic de curățat */
+  }
 }

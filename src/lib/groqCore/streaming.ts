@@ -11,7 +11,7 @@ import { groqGovernor } from './governors';
 import { sanitizeKey } from './keys';
 import { buildProviderChain, getProviderConfig, markServed, trackProviderOutcome } from './providers';
 import { paceProvider } from './providerPacing';
-import { isModelSpecificFailure, noteModelFailure } from './quotaGuard';
+import { isModelSpecificFailure, isOversizedRequest, noteModelFailure } from './quotaGuard';
 import { TASK_MAX_TOKENS, buildKnowledgeQuery, estimateMessagesTokens } from './requestConfig';
 import { MAX_RATE_LIMIT_WAIT_MS, sleepMs } from './retry';
 import type { GroqMessage, LocalCallOptions, ProviderId } from './types';
@@ -137,7 +137,7 @@ export async function groqStream(
           markServed(link.provider, link.model);
           options.onServed?.({ provider: link.provider, model: link.model });
           providerName = cfg.name;
-          trackProviderOutcome(link.provider, primaryProvider, cfg.name, !isRequestSpecificError(lastError), lastError);
+          trackProviderOutcome(link.provider, primaryProvider, cfg.name, !(isRequestSpecificError(lastError) || isOversizedRequest(lastError)), lastError);
           break;
         }
         const failure = await extractApiErrorMessage(attempt);

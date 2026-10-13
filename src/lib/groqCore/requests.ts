@@ -11,7 +11,7 @@ import { backgroundGovernor, generationGovernor, groqGovernor } from './governor
 import { sanitizeKey } from './keys';
 import { buildProviderChain, getProviderConfig, markServed, trackProviderOutcome } from './providers';
 import { paceProvider } from './providerPacing';
-import { isDailyQuotaError, isModelCoolingDown, isModelSpecificFailure, noteModelFailure } from './quotaGuard';
+import { isDailyQuotaError, isModelCoolingDown, isModelSpecificFailure, isOversizedRequest, noteModelFailure } from './quotaGuard';
 import { lightModelFor, logPromptBreakdown } from '../ai/tokenBudget';
 import { TASK_MAX_TOKENS, TASK_TEMPERATURE, buildKnowledgeQuery, estimateMessagesTokens } from './requestConfig';
 import { MAX_RATE_LIMIT_WAIT_MS, NON_RETRYABLE_STATUSES, REQUEST_TIMEOUT_MS, ANALYSIS_TIMEOUT_MS, getRetryDelayMs, sleepMs } from './retry';
@@ -226,7 +226,7 @@ export async function groqRequest({
       try {
         const result = await attemptOnProvider(cfg, link, finalMessages, finalTemperature, finalMaxTokens, task, !!next, abortSignal, jsonMode);
         if (!only) {
-          trackProviderOutcome(link.provider, primaryProvider, cfg.name, !isRequestSpecificError(lastError), lastError);
+          trackProviderOutcome(link.provider, primaryProvider, cfg.name, !(isRequestSpecificError(lastError) || isOversizedRequest(lastError)), lastError);
           markServed(link.provider, link.model);
         }
         onServed?.({ provider: link.provider, model: link.model });
@@ -254,7 +254,7 @@ export async function groqRequest({
               const healedResult = await attemptOnProvider(
                 cfg, { ...link, model: altModel }, finalMessages, finalTemperature, finalMaxTokens, task, !!next, abortSignal, jsonMode,
               );
-              trackProviderOutcome(link.provider, primaryProvider, cfg.name, !isRequestSpecificError(lastError), lastError);
+              trackProviderOutcome(link.provider, primaryProvider, cfg.name, !(isRequestSpecificError(lastError) || isOversizedRequest(lastError)), lastError);
               healPrimaryModelChoice(link.provider, primaryProvider, link.model, altModel, cfg.name);
               return healedResult;
             } catch (healError: unknown) {
