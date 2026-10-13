@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useToastStore } from '../../../store/toastStore';
+import { useAIStore } from '../../../store/aiStore';
 import type { Question } from '../../../types';
 import type { AIAnalysisResult, HintResult, RetrievedChunk } from '../../../ai/types';
 import {
@@ -10,6 +11,7 @@ import {
   getCorrectAnswerText,
 } from '../../../helpers/quizAi';
 import { getCorrectOptionIds, isCorrectSelection } from '../helpers';
+import { pickRelevantDoc } from '../relevantDocPick';
 
 const loadAIEngine = () => import('../../../ai/AIEngine');
 
@@ -45,6 +47,10 @@ export function useQuizAssist({ question, revealed, examMode, currentIdx, answer
   const [showSmartNudge, setShowSmartNudge] = useState(false);
   const [relevantDocChunk, setRelevantDocChunk] = useState<RetrievedChunk | null>(null);
   const [relevantDocModalOpen, setRelevantDocModalOpen] = useState(false);
+  /** Întrebarea pentru care e valabil `relevantDocChunk`: un fragment găsit la o întrebare nu se arată la următoarea. */
+  const [relevantDocQuestionId, setRelevantDocQuestionId] = useState<string | null>(null);
+  const [sourceLookup, setSourceLookup] = useState<{ questionId: string; status: 'loading' | 'none' } | null>(null);
+  const hasLibrary = useAIStore((state) => state.knowledgeSources.some((source) => source.indexStatus === 'ready'));
   /**
    * Generation token for in-flight AI requests. The AI helpers are plain promises with no abort
    * support, so bumping this invalidates any reply still in flight (otherwise a slow explanation
@@ -208,16 +214,18 @@ export function useQuizAssist({ question, revealed, examMode, currentIdx, answer
 
     vaultCheckedRef.current.add(question.id);
     const questionText = question.text;
+    const questionId = question.id;
     let cancelled = false;
     (async () => {
       try {
         const { retrieveRelevantChunks } = await import('../../../ai/retriever');
-        const hits = await retrieveRelevantChunks(questionText, null, 1);
+        const hits = await retrieveRelevantChunks(questionText, null, 6);
         if (cancelled) return;
-        const top = hits[0];
-        // Require a confident match so we never surface an irrelevant document.
-        if (!top || top.score < 0.35 || !top.source) return;
+        // Primul rezultat putea fi doar un titlu: se alege primul fragment cu text de citit și cuvinte-cheie comune cu întrebarea.
+        const top = pickRelevantDoc(questionText, hits);
+        if (!top) return;
         setRelevantDocChunk(top);
+        setRelevantDocQuestionId(questionId);
         addToast(
           `Ai un document relevant: "${top.source}"`,
           'info',
@@ -231,10 +239,43 @@ export function useQuizAssist({ question, revealed, examMode, currentIdx, answer
     return () => { cancelled = true; };
   }, [revealed, examMode, question, answers, selectedNow, addToast]);
 
+  /**
+   * „Vezi în carte”, la cerere: caută fragmentul abia când studentul apasă (căutarea folosește embeddings, deci nu rulează
+   * la fiecare întrebare) și deschide fereastra. Un fragment deja găsit pentru întrebare se redeschide fără altă căutare.
+   */
+  const openQuestionSource = useCallback(async () => {
+    if (!question) return;
+    if (relevantDocChunk && relevantDocQuestionId === question.id) {
+      setRelevantDocModalOpen(true);
+      return;
+    }
+    if (sourceLookup?.status === 'loading') return;
+    const questionId = question.id;
+    setSourceLookup({ questionId, status: 'loading' });
+    try {
+      const { retrieveRelevantChunks } = await import('../../../ai/retriever');
+      const hits = await retrieveRelevantChunks(question.text, null, 6);
+      const top = pickRelevantDoc(`${question.text} ${question.explanation ?? ''}`, hits);
+      if (!top) {
+        setSourceLookup({ questionId, status: 'none' });
+        return;
+      }
+      setRelevantDocChunk(top);
+      setRelevantDocQuestionId(questionId);
+      setSourceLookup(null);
+      setRelevantDocModalOpen(true);
+    } catch {
+      setSourceLookup({ questionId, status: 'none' });
+    }
+  }, [question, relevantDocChunk, relevantDocQuestionId, sourceLookup?.status]);
+
+  const sourceStatus: 'idle' | 'loading' | 'none' = !question || !sourceLookup || sourceLookup.questionId !== question.id ? 'idle' : sourceLookup.status;
+
   return {
     aiText, aiLoading, mnemonicText, mnemonicLoading, activeAIPanel, setActiveAIPanel,
     analysisResult, nextTopicHint, hintLevel, hintData, hintLoading, showSmartNudge,
     handleGetHint, handleAIExplain, handleGenerateMnemonic, resetAssistiveState, resetForNewSet,
     relevantDocChunk, relevantDocModalOpen, setRelevantDocModalOpen,
+    hasLibrary, openQuestionSource, sourceStatus,
   };
 }

@@ -1,3 +1,5 @@
+import TopicProgressCard from '../components/quiz-results/TopicProgressCard';
+import { topicMasteryDelta } from '../lib/topicMasteryDelta';
 import { EXAM_SIM_TAG } from '../lib/examSimulation';
 import { useBack } from '../hooks/useBack';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -70,6 +72,11 @@ export default function QuizResults() {
 
   const quiz = quizzes.find((q) => q.id === id);
   const questions = useMemo(() => orderedQuestions ?? quiz?.questions ?? [], [orderedQuestions, quiz?.questions]);
+  // „Exersare: <subiect>” / „Grile noi: <subiect>”: cât s-a mișcat stăpânirea subiectului prin sesiunea asta.
+  const masteryDelta = useMemo(
+    () => (quiz && session && !singleQuestionResult ? topicMasteryDelta(quizzes, questionStats, quiz, session.answers) : null),
+    [quizzes, questionStats, quiz, session, singleQuestionResult],
+  );
   const isAdaptiveExam = quiz?.tags?.includes('adaptive-exam') ?? false;
   const isRecoverySession = quiz?.tags?.includes('recovery') ?? false;
   const isMistakeDeck = quiz?.tags?.includes('mistake-bank') ?? false;
@@ -268,6 +275,7 @@ export default function QuizResults() {
           pct={pct} grade={grade} duration={duration} formatTime={formatTime}
           wrongCount={wrongEntries.length} unansweredCount={unansweredCount} disciplineResults={disciplineResults} />
         </div>
+        {masteryDelta && <TopicProgressCard delta={masteryDelta} />}
         {singleQuestionResult && (
           <p className="-mt-4 mb-6 rounded-[var(--r-md)] px-4 py-3 text-center text-xs leading-relaxed"
             style={{ background: theme.surface2, color: theme.text2, border: `1px solid ${theme.border}` }}>

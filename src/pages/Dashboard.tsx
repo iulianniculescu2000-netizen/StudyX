@@ -1,6 +1,6 @@
 import { formatStudyTime } from '../lib/formatStudyTime';
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { BookOpen, Plus } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
 import { useUserStore } from '../store/userStore';
@@ -17,6 +17,7 @@ import { useOrganizareStore } from '../store/organizareStore';
 import DashboardHeroCard from '../components/dashboard/DashboardHeroCard';
 import DashboardCrunchCard from '../components/dashboard/DashboardCrunchCard';
 import DashboardTodayCard from '../components/dashboard/DashboardTodayCard';
+import DashboardFocusCard from '../components/dashboard/DashboardFocusCard';
 import DashboardStatStrip, { type DashboardStat } from '../components/dashboard/DashboardStatStrip';
 import DashboardTipStrip from '../components/dashboard/DashboardTipStrip';
 import StudyConsistencyMap from '../components/dashboard/StudyConsistencyMap';
@@ -30,6 +31,13 @@ import { isRezidentiatQuiz } from '../lib/rezidentiatBank';
 import { isFlashcardDeck } from '../lib/deckKind';
 import { isChapterDeck } from '../lib/chapterDecks';
 import { buildDueItems } from '../lib/dueItems';
+import { computeTopicMastery, pickStudyFocus } from '../lib/topicMastery';
+import { buildTopicPracticeQuiz } from '../lib/topicPractice';
+import { upsertGeneratedQuiz } from '../lib/generatedQuiz';
+import { generateAiPracticeQuiz } from '../lib/topicAiPractice';
+import { friendlyAIError } from '../lib/ai/friendlyError';
+import { useAIStore } from '../store/aiStore';
+import { useToastStore } from '../store/toastStore';
 import { effectiveStreak } from '../lib/gamificationProgress';
 import { localDateStr } from '../lib/studyPlan';
 import { useAdaptiveMotion } from '../hooks/useAdaptiveMotion';
@@ -156,6 +164,33 @@ export default function Dashboard() {
   // Same list as the Recapitulare page: only real, still existing multiple-choice questions.
   const dueCount = useMemo(() => buildDueItems(questionStats ?? {}, quizzes).length, [questionStats, quizzes]);
 
+  // „Pentru tine”: subiecte slabe sau lăsate în urmă, din aceleași răspunsuri ca restul panoului (fără AI).
+  const navigate = useNavigate();
+  const focus = useMemo(() => pickStudyFocus(computeTopicMastery(quizzes, questionStats ?? {})), [quizzes, questionStats]);
+  const practiceTopic = (topic: string) => {
+    const quiz = buildTopicPracticeQuiz(topic, quizzes, questionStats ?? {});
+    if (quiz) navigate(`/play/${upsertGeneratedQuiz(quiz)}`);
+  };
+  // Grile noi pe subiect, de la AI: apare doar cu o cheie; fără ea rămâne exersarea din întrebările proprii.
+  const hasAIKey = useAIStore((s) => s.hasKey);
+  const addToast = useToastStore((s) => s.addToast);
+  const [generatingTopic, setGeneratingTopic] = useState<string | null>(null);
+  const generateTopic = async (topic: string) => {
+    if (generatingTopic) return;
+    const profileAtStart = activeProfileId;
+    setGeneratingTopic(topic);
+    try {
+      const quiz = await generateAiPracticeQuiz(topic, profileAtStart);
+      // Un profil schimbat în timpul generării nu primește grilele altuia.
+      if (useUserStore.getState().activeProfileId !== profileAtStart) return;
+      navigate(`/play/${upsertGeneratedQuiz(quiz)}`);
+    } catch (error) {
+      addToast(friendlyAIError(error) || 'Generarea a eșuat.', 'error');
+    } finally {
+      setGeneratingTopic(null);
+    }
+  };
+
   // What the tip strip is allowed to talk about: no chapter tips without a
   // library, no mistake tips before anything was answered wrong.
   const tipContext = useMemo(() => ({
@@ -204,6 +239,7 @@ export default function Dashboard() {
           <PageHeader eyebrow="Panou" title={title} subtitle={subtitle} tour={{ id: 'dashboard', label: 'Vezi turul Panoului' }} />
           <DashboardTipStrip context={tipContext} />
           <div data-tutorial="dashboard-today" className="empty:hidden"><DashboardTodayCard dueCount={dueCount} plan={studyPlan} today={now} /></div>
+          <div data-tutorial="dashboard-focus" className="empty:hidden"><DashboardFocusCard items={focus} onPractice={practiceTopic} onGenerate={hasAIKey ? generateTopic : undefined} generatingTopic={generatingTopic} /></div>
           <DashboardCrunchCard />
           <div data-tutorial="dashboard-coach"><DashboardHeroCard /></div>
           <div data-tutorial="dashboard-stats"><DashboardStatStrip stats={stats} /></div>
