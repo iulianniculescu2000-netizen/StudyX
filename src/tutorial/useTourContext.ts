@@ -1,3 +1,4 @@
+import { isTopicPracticeQuiz } from '../lib/topicMastery';
 import { useEffect, useMemo, useState } from 'react';
 import { useFolderStore } from '../store/folderStore';
 import { useStatsStore } from '../store/statsStore';
@@ -31,7 +32,7 @@ export function buildTourContext(
   plan: ProfilePlan | undefined, pathname: string, search = '', now = Date.now(),
 ): TourContext {
   const aiProviders = savedProviders(ai.providerKeys, ai.provider, ai.apiKey);
-  const active = quizzes.filter((quiz) => !quiz.archived && !isFolderSessionQuiz(quiz));
+  const active = quizzes.filter((quiz) => !quiz.archived && !isFolderSessionQuiz(quiz) && !isTopicPracticeQuiz(quiz));
   const decks = buildDeckSummaries(active, stats, now);
   const residency = buildResidencyContext(folders);
   const residencyDecks = decks.filter((deck) => classifyResidencyDeck(deck.quiz, residency) !== null);

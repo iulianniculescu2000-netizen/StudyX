@@ -31,7 +31,7 @@ import { isRezidentiatQuiz } from '../lib/rezidentiatBank';
 import { isFlashcardDeck } from '../lib/deckKind';
 import { isChapterDeck } from '../lib/chapterDecks';
 import { buildDueItems } from '../lib/dueItems';
-import { computeTopicMastery, pickStudyFocus } from '../lib/topicMastery';
+import { computeTopicMastery, isTopicPracticeQuiz, pickStudyFocus } from '../lib/topicMastery';
 import { buildTopicPracticeQuiz } from '../lib/topicPractice';
 import { upsertGeneratedQuiz } from '../lib/generatedQuiz';
 import { generateAiPracticeQuiz } from '../lib/topicAiPractice';
@@ -148,7 +148,7 @@ export default function Dashboard() {
   const trends = useMemo(() => computeDashboardTrends(quizzes, sessions), [quizzes, sessions]);
 
   // Toate grilele jucabile, inclusiv cele de Rezidențiat: după o sesiune doar în Rezidențiat panoul nu mai spune „0 grile”.
-  const quizOnlyCount = useMemo(() => quizzes.filter((q) => !q.archived && !isFlashcardDeck(q)).length, [quizzes]);
+  const quizOnlyCount = useMemo(() => quizzes.filter((q) => !q.archived && !isFlashcardDeck(q) && !isTopicPracticeQuiz(q)).length, [quizzes]);
   const animatedQuizzes = useCountUp(quizOnlyCount);
   // currentStreak is only recalculated when a session is recorded: after a skipped day it stays stale.
   const liveStreak = effectiveStreak(streak, localDateStr());
@@ -205,7 +205,7 @@ export default function Dashboard() {
   const recentQuizzes = useMemo(
     // Pachetul-sursă arhivat după împărțirea pe capitole și pachetele de capitol nu inundă lista de recente.
     () => quizzes
-      .filter((quiz) => !quiz.archived && !isChapterDeck(quiz) && !isRezidentiatQuiz(quiz))
+      .filter((quiz) => !quiz.archived && !isChapterDeck(quiz) && !isRezidentiatQuiz(quiz) && !isTopicPracticeQuiz(quiz))
       .sort((left, right) => (right.updatedAt ?? right.createdAt) - (left.updatedAt ?? left.createdAt))
       .slice(0, 4),
     [quizzes],

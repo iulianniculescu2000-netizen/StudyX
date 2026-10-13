@@ -1,3 +1,4 @@
+import { isTopicPracticeQuiz } from '../lib/topicMastery';
 import { plural } from '../lib/plural';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useMemo, useRef, useCallback } from 'react';
@@ -64,7 +65,7 @@ export default function QuizList() {
   // packs from Rezidențiat book chapters) lives only in the Rezidențiat page —
   // "Toate grilele" is exclusively the year's coursework materii, so it stays
   // a clean, undiluted subject list instead of a mix of the two.
-  const activeQuizzes = quizzes.filter(q => !q.archived && !isRezidentiatQuiz(q));
+  const activeQuizzes = quizzes.filter(q => !q.archived && !isRezidentiatQuiz(q) && !isTopicPracticeQuiz(q));
   const archivedQuizzes = quizzes.filter(q => q.archived && !isRezidentiatQuiz(q));
 
   const categories = useMemo(() => 

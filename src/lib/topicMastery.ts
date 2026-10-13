@@ -25,6 +25,12 @@ export interface StudyFocusItem {
 const GENERATED_TAGS = ['recovery', 'adaptive-exam', 'mistake-bank', 'exam-simulation'];
 /** Excepție: „Exersarea țintită” are răspunsuri proprii, care trebuie să miște scorul subiectului. */
 export const TOPIC_PRACTICE_TAG = 'topic-practice';
+
+/**
+ * „Exersare: …” și „Grile noi: …” sunt mijloace de a exersa un subiect, nu grile ale studentului: se ascund din listele
+ * de grile și din contoare, dar răspunsurile lor rămân în stăpânirea subiectului.
+ */
+export const isTopicPracticeQuiz = (quiz: Pick<Quiz, 'tags'>): boolean => (quiz.tags ?? []).includes(TOPIC_PRACTICE_TAG);
 const STRUCTURE_TAG = /^(chapter|book):/;
 const DAY_MS = 86_400_000;
 

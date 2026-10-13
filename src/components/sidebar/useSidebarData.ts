@@ -1,3 +1,4 @@
+import { isTopicPracticeQuiz } from '../../lib/topicMastery';
 import { useEffect, useMemo, useState } from 'react';
 import { useFolderStore } from '../../store/folderStore';
 import { useQuizStore } from '../../store/quizStore';
@@ -30,7 +31,7 @@ export function useSidebarData() {
   // Rezidențiat content (real bank + exam-style AI packs) is browsed only from
   // the Rezidențiat page — every sidebar count for "Toate grilele"/folders
   // stays scoped to the year's coursework, matching what QuizList itself shows.
-  const activeQuizCount = useMemo(() => quizzes.filter(q => !q.archived && !isFlashcardDeck(q) && !isRezidentiatQuiz(q)).length, [quizzes]);
+  const activeQuizCount = useMemo(() => quizzes.filter(q => !q.archived && !isFlashcardDeck(q) && !isRezidentiatQuiz(q) && !isTopicPracticeQuiz(q)).length, [quizzes]);
   const newQuizCount = useMemo(() => quizzes.filter(q => now - q.createdAt < 86400000 * 2 && !isRezidentiatQuiz(q)).length, [quizzes, now]);
   const uncategorizedCount = useMemo(() => quizzes.filter(q => !q.folderId && !isRezidentiatQuiz(q)).length, [quizzes]);
   const folderQuizCount = useMemo(() => {

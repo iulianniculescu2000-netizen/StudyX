@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeTopicMastery, pickStudyFocus, type TopicMastery } from './topicMastery';
+import { computeTopicMastery, isTopicPracticeQuiz, pickStudyFocus, TOPIC_PRACTICE_TAG, type TopicMastery } from './topicMastery';
 import type { QuestionStat, Quiz } from '../types';
 
 const DAY = 86_400_000;
@@ -86,5 +86,13 @@ describe('pickStudyFocus', () => {
 
   it('un subiect stăpânit și proaspăt nu apare deloc', () => {
     expect(pickStudyFocus([topic('Bun', { mastery: 90, wrong: 0, daysSince: 1 })])).toEqual([]);
+  });
+});
+
+describe('isTopicPracticeQuiz', () => {
+  it('recunoaște doar seturile de exersare pe subiect', () => {
+    expect(isTopicPracticeQuiz({ tags: ['recovery', TOPIC_PRACTICE_TAG] })).toBe(true);
+    expect(isTopicPracticeQuiz({ tags: ['recovery'] })).toBe(false);
+    expect(isTopicPracticeQuiz({})).toBe(false);
   });
 });
