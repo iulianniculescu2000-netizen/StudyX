@@ -38,6 +38,7 @@ const MODELS: Record<AIProvider, { id: AIModel; name: string; desc: string; spee
   google: [
     { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash', desc: 'Cel mai nou, rapid și inteligent', speed: 'Rapid' },
     { id: 'gemini-3.6-flash', name: 'Gemini 3.6 Flash', desc: 'Echilibrat, foarte stabil', speed: 'Rapid' },
+    { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash-Lite', desc: 'Cel mai economic: folosește mai puțin din limita gratuită', speed: 'Instant' },
     { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro', desc: 'Cel mai bun pentru raționament', speed: 'Smart' },
   ],
   mistral: [

@@ -29,6 +29,8 @@ export type AIModel =
   | 'gemini-3.7-flash'
   | 'gemini-3.6-flash'
   | 'gemini-3.5-flash'
+  | 'gemini-3.5-flash-lite'
+  | 'gemini-3.1-flash-lite'
   | 'gemini-3.1-pro-preview'
   // Mistral AI (La Plateforme) — 4th free provider, added 2026-09-08 after
   // NVIDIA NIM turned out to reject browser CORS entirely (reverted). Verified
@@ -242,7 +244,7 @@ export interface AIActions {
 const DEFAULT_MODEL: AIModel = 'openai/gpt-oss-120b';
 const PROVIDER_MODELS: Record<AIProvider, AIModel[]> = {
   groq: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'],
-  google: ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.1-pro-preview'],
+  google: ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-pro-preview'],
   mistral: ['mistral-small-latest', 'mistral-large-latest'],
 };
 
