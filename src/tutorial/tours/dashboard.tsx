@@ -1,5 +1,5 @@
 import { plural } from '../../lib/plural';
-import { BarChart3, CalendarCheck, Grid3x3, LayoutDashboard, Library, Plus, Sparkles } from 'lucide-react';
+import { BarChart3, CalendarCheck, Grid3x3, LayoutDashboard, Library, Plus, Sparkles, Target } from 'lucide-react';
 import type { TourDefinition } from '../types';
 
 export const dashboardTour: TourDefinition = {
@@ -25,6 +25,18 @@ export const dashboardTour: TourDefinition = {
       placement: 'bottom',
       route: '/',
       accent: '#30D158',
+      optional: true,
+    },
+    {
+      id: 'dash-focus',
+      title: 'Subiecte pentru tine',
+      body: (ctx) => `Subiectele cu cele mai multe greșeli sau lăsate în urmă, calculate local din răspunsurile tale. „Exersează” pornește o sesiune din întrebările tale. ${ctx.aiReady ? '„Grile noi” generează altele cu AI, doar pe același subiect.' : 'Cu o cheie AI în Setări apare și „Grile noi”, care generează grile pe același subiect.'} Apar după câteva răspunsuri la un subiect.`,
+      icon: <Target size={22} />,
+      target: '[data-tutorial="dashboard-focus"]',
+      targetPadding: 6,
+      placement: 'bottom',
+      route: '/',
+      accent: '#FF453A',
       optional: true,
     },
     {
