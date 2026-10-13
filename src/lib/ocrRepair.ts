@@ -26,6 +26,8 @@ function matchCase(original: string, fixed: string): string {
 export function repairOcr(text: string): string {
   if (!text) return text;
   return text
+    // „vitamina 8 12” (B citit ca 8), doar după cuvântul „vitamina”.
+    .replace(/(vitamin[aăei]i?\s+)8(\s?(?:12|6|1|2)(?!\d))/giu, '$1B$2')
     .replace(/(?<=\p{Ll})[01]+(?=\p{Ll})/gu, (digits) => Array.from(digits, (digit) => OCR_DIGITS[digit]).join(''))
     .replace(LETTERS, (word) => {
       const fixed = FIXES.get(lookupKey(word));

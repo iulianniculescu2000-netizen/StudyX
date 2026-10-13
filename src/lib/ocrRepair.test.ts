@@ -18,6 +18,11 @@ describe('repairOcr', () => {
     expect(repairOcr('vitamina B12, H1N1, 10 mg')).toBe('vitamina B12, H1N1, 10 mg');
   });
 
+  it('repară „vitamina 8 12” în „vitamina B 12”, dar nu alte cifre', () => {
+    expect(repairOcr('vitamina 8 12 intramuscular')).toBe('vitamina B 12 intramuscular');
+    expect(repairOcr('vitamina 8 mg zilnic')).toBe('vitamina 8 mg zilnic');
+  });
+
   it('nu atinge cuvinte valide și e idempotent', () => {
     const valid = 'istorie arteriole marca anemic cancerul infecția';
     expect(repairOcr(valid)).toBe(valid);

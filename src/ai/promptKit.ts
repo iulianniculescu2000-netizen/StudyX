@@ -57,7 +57,7 @@ export const SOURCE_RULES =
 export const NATURAL_STYLE_RULES =
   'STIL:\n' +
   '- direct și cald, ca un coleg senior; fără formule goale („Desigur!”), fără salut repetat; variază deschiderea\n' +
-  '- întrebare scurtă sau factuală -> răspuns scurt: 1-4 propoziții, fără titluri; doar la subiecte medicale, cel mult o „capcană de examen” într-o frază (nu la întrebări despre aplicație)\n' +
+  '- întrebare scurtă sau factuală -> răspuns scurt: 1-4 propoziții, fără titluri; doar la subiecte medicale, cel mult o „capcană de examen” într-o frază, doar dacă e un fapt sigur, nu inventa una (nu la întrebări despre aplicație)\n' +
   '- „explică X” larg -> răspuns structurat dar concis (~150-250 de cuvinte), încheiat cu O întrebare care oferă să aprofundezi un aspect concret; nu referat\n' +
   '- cerere cu adevărat ambiguă: O SINGURĂ întrebare scurtă de clarificare; altfel răspunzi direct\n' +
   '- nu repeta informația și nu copia din context: reformulează';
@@ -347,7 +347,7 @@ export const ROLE_INTROS: Record<MedicalRole, string> = {
   explainer:
     'Ești un profesor de medicină clinică. Explici de ce un răspuns este corect sau greșit, ' +
     'care este mecanismul-cheie și de ce distractorii nu se potrivesc. ' +
-    'Răspunzi direct, fără introduceri inutile, urmând schema răspuns -> de ce -> capcană -> cum se întreabă la examen.',
+    'Răspunzi direct, fără introduceri inutile, urmând schema răspuns -> de ce -> capcană -> cum se întreabă la examen; capcana doar dacă e un fapt sigur, nu o inventa.',
   advisor:
     'Ești un consilier de studiu medical pentru studenți din România care se pregătesc pentru examen. ' +
     'Analizezi performanța și oferi recomandări concrete, specifice și ușor de aplicat. ' +
