@@ -1312,6 +1312,8 @@ button.press-feedback:not(:disabled):active {
 .ai-md { --md-line: var(--hairline); --md-soft: var(--fill-subtle, rgba(128, 128, 128, 0.1)); line-height: 1.6; }
 .ai-md > * + * { margin-top: 0.55em; }
 .ai-md p { margin: 0; line-height: 1.62; }
+/* Un rând care e doar text îngroșat e un titlu de bloc (raport, plan): aer înaintea lui, nu lipit de paragraful de dinainte. */
+.ai-md p:has(> strong:only-child):not(:first-child) { margin-top: 0.85em; }
 .ai-md h1, .ai-md h2, .ai-md h3, .ai-md h4, .ai-md h5, .ai-md h6 { margin: 0.9em 0 0.2em; font-weight: 800; letter-spacing: 0.005em; line-height: 1.3; }
 .ai-md h1 { font-size: 1.14em; }
 .ai-md h2 { font-size: 1.07em; }

@@ -1,3 +1,4 @@
+import { weakCategoriesFrom } from '../lib/weakCategories';
 import { plural } from '../lib/plural';
 import { formatStudyTime } from '../lib/formatStudyTime';
 import { motion } from 'framer-motion';
@@ -89,6 +90,8 @@ export default function Stats() {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- getWeakQuestions citește din store; recalculăm când se schimbă statisticile
   const weakQuestions = useMemo(() => getWeakQuestions(5, existingStatKeys(useQuizStore.getState().quizzes)), [getWeakQuestions, questionStats]);
   const quizAccuracy = useMemo(() => accuracyByQuiz(questionStats), [questionStats]);
+  // Aceleași cifre pentru chip-urile arătate și pentru raportul AI.
+  const weakCategories = useMemo(() => weakCategoriesFrom(quizzes, sessions, quizAccuracy), [quizzes, sessions, quizAccuracy]);
   const studyTimeLabel = formatStudyTime(totalStudyTime);
 
   // "Ce nu știu?" AI report
@@ -109,18 +112,6 @@ export default function Stats() {
     aiAbortRef.current = ctrl;
     try {
       const { generateWeakSpotReport } = await import('../lib/groq');
-      // Compute weak categories merged by category name
-      const weakCategories = quizzes
-        .map(q => ({ name: q.category || 'Altele', accuracy: quizAccuracy.get(q.id) ?? 0, quizCount: sessions.filter(s => s.quizId === q.id).length }))
-        .filter(c => c.quizCount > 0)
-        .reduce((acc: { name: string; accuracy: number; quizCount: number }[], cur) => {
-          const existing = acc.find(a => a.name === cur.name);
-          if (existing) { existing.accuracy = Math.round((existing.accuracy + cur.accuracy) / 2); existing.quizCount += cur.quizCount; }
-          else acc.push({ ...cur });
-          return acc;
-        }, [])
-        .sort((a, b) => a.accuracy - b.accuracy)
-        .slice(0, 6);
       const totalAnswered = Object.values(questionStats).reduce((s, q) => (q.retired ? s : s + q.timesCorrect + q.timesWrong), 0);
       // Load AI profile from localStorage for recentMistakes
       const aiProfile = activeProfileId ? loadUserProfile(activeProfileId) : null;
@@ -311,6 +302,24 @@ export default function Stats() {
                 )}
               </div>
             </div>
+
+            {weakCategories.length > 0 && (
+              <div className="mb-3">
+                <p className="mb-1.5 text-[11px] font-medium" style={{ color: theme.text3 }}>Categorii cu cea mai mică acuratețe</p>
+                <ul className="flex flex-wrap gap-1.5" aria-label="Categorii cu cea mai mică acuratețe">
+                  {weakCategories.slice(0, 4).map((category) => {
+                    const tone = category.accuracy < 50 ? theme.danger : category.accuracy < 70 ? theme.warning : theme.success;
+                    return (
+                      <li key={category.name} className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-medium" style={{ background: theme.fillSubtle, color: theme.text2 }}>
+                        <span className="h-1.5 w-1.5 rounded-full" style={{ background: tone }} aria-hidden="true" />
+                        <span className="min-w-0 truncate">{category.name}</span>
+                        <span className="tabular-nums" style={{ color: theme.text3 }}>{category.accuracy}%</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
 
             {aiReport && (
               <motion.div

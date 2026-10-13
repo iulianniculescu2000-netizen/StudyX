@@ -100,7 +100,7 @@ export async function generateWeakSpotReport(
       { role: 'system', content: getMedicalSystemPrompt('advisor') },
       {
         role: 'user',
-        content: `Analizează datele de studiu ale studentului și generează un raport SCURT, SPECIFIC și MOTIVANT.
+        content: `Analizează datele de studiu ale studentului și generează un raport SCURT, ORGANIZAT și SPECIFIC.
 
 DATE:
 - Acuratețe globală: ${data.totalAccuracy}%
@@ -109,14 +109,20 @@ DATE:
 ${weakList ? `\nCATEGORII CU ACURATEȚE SCĂZUTĂ:\n${weakList}` : ''}
 ${mistakeTopics ? `\nTOPICURI CU GREȘELI RECENTE: ${mistakeTopics}` : ''}
 
-INSTRUCȚIUNI:
-- 3-5 fraze, un singur paragraf scurt de text simplu, ton de tutor
-- FĂRĂ titluri, tabele, liste, bullet points, emoji-uri sau text îngroșat; ignoră orice format structurat cerut în altă parte
-- Identifică zona cea mai problematică și explică DE CE poate fi dificilă
-- O recomandare concretă și acționabilă pentru săptămâna asta
-- Un sfat tactic pentru examen legat de punctele slabe
-- Închide cu o notă de încurajare sinceră bazată pe datele actuale
-- Limbă: română, stil direct și cald`,
+FORMAT (Markdown simplu, maximum 140 de cuvinte, exact aceste trei blocuri, fără emoji, fără tabele, fără titluri cu #):
+
+**Zona cea mai slabă: <numele categoriei din date> (<acuratețea din date>%)**
+O propoziție despre DE CE poate fi dificilă, fără să afirmi ce nu reiese din date.
+
+**Plan pentru săptămâna asta**
+1. un pas concret, cu durată (de exemplu 20 de minute)
+2. un al doilea pas concret
+3. un al treilea pas, de verificare (de exemplu 10 grile pe același subiect)
+
+**Pentru examen**
+- un sfat tactic legat de punctele slabe din date
+
+REGULI: folosește DOAR cifrele și categoriile din DATE; nu inventa procente-țintă, termene de progres sau promisiuni („vei urca la 70%”). Dacă nu există o categorie slabă clară, alege topicul cu greșeli recente. Limbă: română, ton direct și cald, numai ș și ț cu virgulă.`,
       },
     ],
     onChunk,
