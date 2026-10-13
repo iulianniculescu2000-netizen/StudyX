@@ -37,7 +37,25 @@ function isMetaExplanation(text?: string | null) {
  * leaked into older AI-generated sets, so the UI shows nothing instead of junk.
  */
 export function cleanQuestionExplanation(text?: string | null): string {
-  return isMetaExplanation(text) ? '' : normalizeInlineText(text);
+  return isMetaExplanation(text) ? '' : withoutSemicolons(normalizeInlineText(text));
+}
+
+/**
+ * Explicațiile scrise de AI leagă ideile cu „;” („… fier intravenos; celelalte situații …”), ceea ce se citește greoi.
+ * O propoziție întreagă după „;” devine propoziție nouă (cu majusculă); o enumerare scurtă („oral; intravenos”) devine virgulă.
+ */
+export function withoutSemicolons(text: string): string {
+  if (!text.includes(';')) return text;
+  const [first, ...rest] = text.split(/\s*;\s*/);
+  let out = first;
+  for (const part of rest) {
+    if (!part) continue;
+    const clauseWords = part.split(/[.!?]/)[0].trim().split(/\s+/).length;
+    out = clauseWords >= 4
+      ? `${out.replace(/[.,:]*$/, '')}. ${part.charAt(0).toLocaleUpperCase('ro-RO')}${part.slice(1)}`
+      : `${out.replace(/[.,]*$/, '')}, ${part}`;
+  }
+  return out;
 }
 
 // Common short Romanian function words (interrogatives, articles, prepositions,

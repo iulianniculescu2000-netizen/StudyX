@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import type { Question } from '../../types';
 import type { Theme } from '../../theme/themes';
+import { withoutSemicolons } from '../../helpers/quizAi';
 
 interface QuestionPreviewModalProps {
   previewQ: Question | null;
@@ -104,7 +105,7 @@ export function QuestionPreviewModal({ previewQ, theme, onClose }: QuestionPrevi
                 <div className="mt-4 p-3 rounded-xl" style={{ background: `${theme.accent}0C`, border: `1px solid ${theme.accent}20` }}>
                   <p className="text-xs" style={{ color: theme.text2 }}>
                     <span className="font-semibold" style={{ color: theme.accentText }}>Explicație: </span>
-                    {previewQ.explanation}
+                    {withoutSemicolons(previewQ.explanation)}
                   </p>
                 </div>
               )}

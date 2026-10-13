@@ -24,6 +24,7 @@ import {
 import CrossCheckCard from '../components/ai-chat/CrossCheckCard';
 import FxPage from '../components/fx/FxPage';
 import { askAiAboutError } from '../lib/errorNotebookActions';
+import { withoutSemicolons } from '../helpers/quizAi';
 
 const SORTS: ReadonlyArray<{ id: ErrorSort; label: string }> = [
   { id: 'wrong', label: 'Cele mai greșite' },
@@ -82,7 +83,7 @@ function EntryRow({ entry, open, onToggle, anchor }: { entry: ErrorEntry; open: 
             ))}
           </ul>
           {entry.question.explanation && (
-            <p className="text-[13px] leading-relaxed" style={{ color: theme.text2 }}>{entry.question.explanation}</p>
+            <p className="text-[13px] leading-relaxed" style={{ color: theme.text2 }}>{withoutSemicolons(entry.question.explanation)}</p>
           )}
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => askAiAboutError(entry, 'explain')} className="fine-chip press-feedback focus-ring flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold" style={{ color: theme.accentText }}>
