@@ -1,3 +1,4 @@
+import { useUserStore } from '../../store/userStore';
 import { plural } from '../../lib/plural';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -21,7 +22,8 @@ import { logDiagnosticEvent } from '../../store/diagnosticsStore';
 import GlassCard from '../ui/GlassCard';
 import AIRichText from '../ai-chat/AIRichText';
 
-const AI_REC_KEY = 'studyx-ai-recommendation';
+/** Recomandarea zilei e per profil: o cheie comună i-ar arăta unui profil topicurile slabe și seria altuia. */
+const aiRecKeyFor = (profileId: string | null) => `studyx-ai-recommendation:${profileId ?? 'implicit'}`;
 const EXPANDED_KEY = 'studyx-coach-expanded';
 
 function readExpanded(): boolean {
@@ -66,6 +68,8 @@ export default function DashboardHeroCard() {
   const [text, setText] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { calmMotion, t } = useAdaptiveMotion();
+  const activeProfileId = useUserStore((state) => state.activeProfileId);
+  const aiRecKey = aiRecKeyFor(activeProfileId);
   const today = localDateStr();
   const latestRecommendationRunner = useMemo(() => createLatestOnlyRunner(), []);
 
@@ -97,7 +101,7 @@ export default function DashboardHeroCard() {
         );
       });
       if (!recommendation) return;
-      localStorage.setItem(AI_REC_KEY, JSON.stringify({ date: today, text: recommendation }));
+      localStorage.setItem(aiRecKey, JSON.stringify({ date: today, text: recommendation }));
       setText(recommendation);
     } catch (err) {
       console.error('[Dashboard] AI recommendation error:', err);
@@ -111,11 +115,11 @@ export default function DashboardHeroCard() {
     } finally {
       setLoading(false);
     }
-  }, [hasKey, latestRecommendationRunner, summary.dueCount, summary.weakTopics, today, userContext]);
+  }, [aiRecKey, hasKey, latestRecommendationRunner, summary.dueCount, summary.weakTopics, today, userContext]);
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(AI_REC_KEY);
+      const raw = localStorage.getItem(aiRecKey);
       if (raw) {
         const entry = JSON.parse(raw);
         if (entry.date === today && entry.text) {
@@ -134,7 +138,7 @@ export default function DashboardHeroCard() {
     }, { timeoutMs: 1500, dedupeKey: 'dashboard-ai-recommendation' });
 
     return () => cancelIdleTask(id);
-  }, [generate, hasKey, today]);
+  }, [aiRecKey, generate, hasKey, today]);
 
   const displayText = text ?? (
     !hasKey
