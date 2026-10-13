@@ -179,7 +179,6 @@ export default function DashboardHeroCard() {
           type="button"
           onClick={toggleExpanded}
           aria-expanded={expanded}
-          aria-label={expanded ? 'Restrânge Study Coach' : 'Extinde Study Coach'}
           className="min-w-0 flex-1 basis-[220px] rounded-[var(--r-sm)] text-left focus-ring"
         >
           <span className="flex items-center gap-2">

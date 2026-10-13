@@ -22,6 +22,7 @@
     "security:scan": "node scripts/scan-secrets.cjs",
     "verify:runtime": "node scripts/verify-runtime.cjs",
     "release:guard": "node scripts/release-guard.cjs",
+    "qa:features": "node scripts/qa-features.cjs",
     "verify:all": "npm.cmd run security:scan && npm.cmd run lint && npm.cmd run build && npm.cmd run test:run && npm.cmd run verify:runtime",
     "preview": "vite preview",
     "dist": "npm.cmd run electron:build",
