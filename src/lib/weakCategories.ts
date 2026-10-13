@@ -1,4 +1,5 @@
 import type { Quiz, QuizSession } from '../types';
+import { MIN_ANSWERS, type TopicMastery } from './topicMastery';
 
 export interface WeakCategory {
   name: string;
@@ -37,4 +38,26 @@ export function weakCategoriesFrom(
     }))
     .sort((a, b) => a.accuracy - b.accuracy || a.name.localeCompare(b.name, 'ro'))
     .slice(0, limit);
+}
+
+/**
+ * Subiectele de reluat, pe aceleași răspunsuri ca „Pentru tine” din panou. Pe date reale, categoriile seturilor sunt prea
+ * largi („AI Studio”, „Altele”), iar subiectul întrebării (anemie feriprivă, cardiologie) spune ce are de recitit studentul.
+ * Fără destule răspunsuri pe subiecte, revine la categorii. `quizCount` e numărul de răspunsuri.
+ */
+export function weakTopicsFrom(
+  topics: readonly TopicMastery[],
+  fallback: readonly WeakCategory[],
+  limit = 6,
+): WeakCategory[] {
+  const rows = topics
+    .filter((topic) => topic.answered >= MIN_ANSWERS && topic.wrong > 0)
+    .map((topic) => ({
+      name: topic.topic,
+      accuracy: Math.round((100 * (topic.answered - topic.wrong)) / topic.answered),
+      quizCount: topic.answered,
+    }))
+    .sort((a, b) => a.accuracy - b.accuracy || b.quizCount - a.quizCount || a.name.localeCompare(b.name, 'ro'))
+    .slice(0, limit);
+  return rows.length > 0 ? rows : [...fallback];
 }

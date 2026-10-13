@@ -92,7 +92,7 @@ export async function generateWeakSpotReport(
   }
   const weakList = data.weakCategories
     .slice(0, 6)
-    .map(c => `• ${c.name}: ${c.accuracy}% (${c.quizCount} grile)`)
+    .map(c => `• ${c.name}: ${c.accuracy}% (${c.quizCount} răspunsuri)`)
     .join('\n');
   const mistakeTopics = data.recentMistakeTopics.slice(0, 6).join(', ');
   await groqStream(
@@ -106,7 +106,7 @@ DATE:
 - Acuratețe globală: ${data.totalAccuracy}%
 - Streak actual: ${data.streak} zile
 - Total răspunsuri date: ${data.totalAnswered}
-${weakList ? `\nCATEGORII CU ACURATEȚE SCĂZUTĂ:\n${weakList}` : ''}
+${weakList ? `\nSUBIECTE SAU CATEGORII CU ACURATEȚE SCĂZUTĂ:\n${weakList}` : ''}
 ${mistakeTopics ? `\nTOPICURI CU GREȘELI RECENTE: ${mistakeTopics}` : ''}
 
 FORMAT (Markdown simplu, maximum 140 de cuvinte, exact aceste trei blocuri, fără emoji, fără tabele, fără titluri cu #):

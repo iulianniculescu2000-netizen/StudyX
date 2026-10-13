@@ -1,4 +1,6 @@
-import { weakCategoriesFrom } from '../lib/weakCategories';
+import { weakCategoriesFrom, weakTopicsFrom } from '../lib/weakCategories';
+import { computeTopicMastery, folderNamesOf } from '../lib/topicMastery';
+import { useFolderStore } from '../store/folderStore';
 import { plural } from '../lib/plural';
 import { formatStudyTime } from '../lib/formatStudyTime';
 import { motion } from 'framer-motion';
@@ -90,8 +92,12 @@ export default function Stats() {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- getWeakQuestions citește din store; recalculăm când se schimbă statisticile
   const weakQuestions = useMemo(() => getWeakQuestions(5, existingStatKeys(useQuizStore.getState().quizzes)), [getWeakQuestions, questionStats]);
   const quizAccuracy = useMemo(() => accuracyByQuiz(questionStats), [questionStats]);
-  // Aceleași cifre pentru chip-urile arătate și pentru raportul AI.
-  const weakCategories = useMemo(() => weakCategoriesFrom(quizzes, sessions, quizAccuracy), [quizzes, sessions, quizAccuracy]);
+  const folders = useFolderStore((s) => s.folders);
+  // Aceleași cifre pentru chip-urile arătate și pentru raportul AI: subiectele slabe, cu categoriile ca rezervă.
+  const weakCategories = useMemo(
+    () => weakTopicsFrom(computeTopicMastery(quizzes, questionStats ?? {}, Date.now(), folderNamesOf(folders)), weakCategoriesFrom(quizzes, sessions, quizAccuracy)),
+    [quizzes, sessions, quizAccuracy, questionStats, folders],
+  );
   const studyTimeLabel = formatStudyTime(totalStudyTime);
 
   // "Ce nu știu?" AI report
@@ -305,8 +311,8 @@ export default function Stats() {
 
             {weakCategories.length > 0 && (
               <div className="mb-3">
-                <p className="mb-1.5 text-[11px] font-medium" style={{ color: theme.text3 }}>Categorii cu cea mai mică acuratețe</p>
-                <ul className="flex flex-wrap gap-1.5" aria-label="Categorii cu cea mai mică acuratețe">
+                <p className="mb-1.5 text-[11px] font-medium" style={{ color: theme.text3 }}>Subiecte de reluat</p>
+                <ul className="flex flex-wrap gap-1.5" aria-label="Subiecte de reluat">
                   {weakCategories.slice(0, 4).map((category) => {
                     const tone = category.accuracy < 50 ? theme.danger : category.accuracy < 70 ? theme.warning : theme.success;
                     return (
