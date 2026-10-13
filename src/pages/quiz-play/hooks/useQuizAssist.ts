@@ -15,6 +15,10 @@ import { pickRelevantDoc } from '../relevantDocPick';
 
 const loadAIEngine = () => import('../../../ai/AIEngine');
 
+/** Ce susține grila: răspunsul corect și explicația. Fragmentul din carte trebuie să aibă legătură cu ele, nu doar cu enunțul. */
+const answerTextOf = (question: Question) =>
+  `${question.options.filter((option) => option.isCorrect).map((option) => option.text).join(' ')} ${question.explanation ?? ''}`;
+
 interface Options {
   question: Question | undefined;
   revealed: boolean;
@@ -222,7 +226,7 @@ export function useQuizAssist({ question, revealed, examMode, currentIdx, answer
         const hits = await retrieveRelevantChunks(questionText, null, 6);
         if (cancelled) return;
         // Primul rezultat putea fi doar un titlu: se alege primul fragment cu text de citit și cuvinte-cheie comune cu întrebarea.
-        const top = pickRelevantDoc(questionText, hits);
+        const top = pickRelevantDoc(questionText, hits, answerTextOf(question));
         if (!top) return;
         setRelevantDocChunk(top);
         setRelevantDocQuestionId(questionId);
@@ -255,7 +259,7 @@ export function useQuizAssist({ question, revealed, examMode, currentIdx, answer
     try {
       const { retrieveRelevantChunks } = await import('../../../ai/retriever');
       const hits = await retrieveRelevantChunks(question.text, null, 6);
-      const top = pickRelevantDoc(`${question.text} ${question.explanation ?? ''}`, hits);
+      const top = pickRelevantDoc(question.text, hits, answerTextOf(question));
       if (!top) {
         setSourceLookup({ questionId, status: 'none' });
         return;

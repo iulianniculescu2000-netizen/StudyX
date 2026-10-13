@@ -35,6 +35,25 @@ describe('pickRelevantDoc', () => {
   });
 });
 
+describe('pickRelevantDoc: legătura cu răspunsul corect', () => {
+  const question = 'Un pacient cu anemie feriprivă are Hb = 7,5 g/dL. Care este intervenția corectă?';
+  const answer = 'Transfuzii de hematii urgent, apoi tratament oral cu fier';
+  const ALERTA = 'Toți pacienții cu semne și simptome de alarmă necesită evaluare endoscopică: anemie feriprivă, pierdere involuntară din greutate, anorexie, hemateméză sau melenă, vărsături persistente. Pacienții cu ulcer gastric trebuie biopsiați pentru a exclude un proces malign și reevaluați endoscopic pentru a verifica vindecarea completă.';
+  const TRATAMENT = 'Tratamentul anemiei feriprive: fier oral, iar transfuziile de hematii sunt rezervate pacienților cu instabilitate hemodinamică sau anemie severă simptomatică. Pacienții cu anemie feriprivă primesc fier intravenos când nu tolerează tratamentul oral.';
+
+  it('respinge fragmentul care vorbește despre același subiect, dar nu susține răspunsul (lista de alarmă pentru endoscopie)', () => {
+    expect(pickRelevantDoc(question, [chunk('alarma', ALERTA)], answer)).toBeNull();
+  });
+
+  it('acceptă fragmentul care vorbește despre tratament și transfuzii', () => {
+    expect(pickRelevantDoc(question, [chunk('alarma', ALERTA), chunk('tratament', TRATAMENT)], answer)?.id).toBe('tratament');
+  });
+
+  it('fără text de răspuns, rămâne regula veche (doar întrebarea)', () => {
+    expect(pickRelevantDoc(question, [chunk('alarma', ALERTA)])?.id).toBe('alarma');
+  });
+});
+
 describe('tidyBookText', () => {
   it('repară cifrele puse de OCR în locul literelor, doar în mijlocul cuvintelor', () => {
     expect(tidyBookText('distrucție a1ticulară, hipe1trofia, rap01t de 3:1, titrul 1idicat'))
