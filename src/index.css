@@ -370,6 +370,7 @@
   [aria-hidden="true"],
   .lucide,
   .citation-pill,
+  .citation-source,
   .fine-chip,
   .premium-chip,
   .composer-chip,
@@ -696,6 +697,70 @@
 }
 
 button.citation-pill:hover {
+  border-color: var(--accent-glow);
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: var(--glow-1), inset 0 1px 0 var(--glass-highlight);
+  transform: translateY(-1px);
+}
+
+/* Sursă citată sub un răspuns: o singură linie (număr, titlul cărții, pagina), nu un oval care se rupe pe mai multe rânduri. */
+.citation-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border2) 70%, transparent);
+  background: color-mix(in srgb, var(--surface2) 94%, transparent);
+  color: var(--text2);
+  padding: 4px 10px 4px 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: left;
+  box-shadow: var(--elev-1), inset 0 1px 0 var(--glass-highlight);
+  transition: border-color var(--dur-fast) ease, background-color var(--dur-fast) ease, color var(--dur-fast) ease, box-shadow var(--dur-fast) ease, transform var(--dur-fast) var(--ease-standard);
+}
+
+.citation-source[data-active="true"] {
+  border-color: var(--accent-glow);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.citation-source-n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.citation-source-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.citation-source-page {
+  flex-shrink: 0;
+  color: var(--text3);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+button.citation-source:hover {
   border-color: var(--accent-glow);
   background: var(--accent-soft);
   color: var(--accent);

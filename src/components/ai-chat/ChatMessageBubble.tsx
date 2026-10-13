@@ -8,7 +8,7 @@ import AIMarkdown from './AIMarkdown';
 import Mascot from '../Mascot';
 import AIThinkingIndicator from './AIThinkingIndicator';
 import CrossCheckCard from './CrossCheckCard';
-import { citationLabel, citationOpenLabel } from './citations';
+import { citationChipParts, citationLabel, citationOpenLabel } from './citations';
 import { CHAT_MODES, getContextState, type ChatMessage, type ChatMode, type Citation, type OptionCard } from './shared';
 import OptionCardView from './OptionCardView';
 import { servedBadgeText } from './servedBadge';
@@ -85,7 +85,7 @@ function ChatMessageBubble({
       >
         {message.role === 'assistant' && message.autoMode && message.mode && (
           <div
-            className="mb-2 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]"
+            className="mb-2 flex w-fit items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]"
             style={{ background: `${theme.accent}14`, color: theme.accentText }}
             title="Mod ales automat din mesajul tău"
           >
@@ -171,18 +171,19 @@ function ChatMessageBubble({
               {message.citations.map((citation) => {
                 const citationKey = citationKeyOf(index, citation);
                 const isActiveCitation = activeCitationKey === citationKey;
+                const chip = citationChipParts(citation);
                 return (
                   <button
                     key={citationKey}
                     onClick={() => actions.toggleCitation(isActiveCitation ? null : citationKey)}
-                    className="citation-pill transition-colors"
-                    style={{
-                      background: isActiveCitation ? `${theme.accent}18` : undefined,
-                      borderColor: isActiveCitation ? `${theme.accent}30` : undefined,
-                      color: isActiveCitation ? theme.accentText : undefined,
-                    }}
+                    className="citation-source"
+                    data-active={isActiveCitation}
+                    title={chip.full}
+                    aria-label={`${citation.n ? `Sursa ${citation.n}: ` : ''}${chip.full}`}
                   >
-                    {citation.n ? `[${citation.n}] ` : ''}{citationLabel(citation)}
+                    {citation.n ? <span className="citation-source-n" aria-hidden="true">{citation.n}</span> : null}
+                    <span className="citation-source-title">{chip.title}</span>
+                    {chip.where && <span className="citation-source-page">{chip.where}</span>}
                   </button>
                 );
               })}

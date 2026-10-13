@@ -1,4 +1,4 @@
-import { formatCitationLabel, type ContextSource } from '../../ai/contextBuilder';
+import { cleanSourceName, formatCitationLabel, formatPageRange, type ContextSource } from '../../ai/contextBuilder';
 import { bookOfSourceName, type BookCode } from '../../lib/curriculum';
 import type { Citation } from './shared';
 
@@ -33,6 +33,26 @@ export function citationFromSource(source: ContextSource, fallbackTopic = ''): C
 /** „Kumar, p. 1136 (Hipertensiunea arterială)". */
 export function citationLabel(citation: Pick<Citation, 'source' | 'page' | 'pageEnd' | 'printedPage' | 'heading'>): string {
   return formatCitationLabel(citation.source, citation.page, citation.pageEnd, citation.printedPage, citation.heading);
+}
+
+export interface CitationChipParts {
+  /** Numele cărții sau al documentului, fără extensie. */
+  title: string;
+  /** „p. 1136” (pagina tipărită, apoi cea din PDF), sau gol când nu se știe. */
+  where: string;
+  /** Eticheta completă („Kumar, p. 1136 (Hipertensiunea arterială)”), pentru sugestia la trecerea cu mouse-ul. */
+  full: string;
+}
+
+/**
+ * Chip-ul unei surse sub un răspuns arată doar titlul și pagina, pe o singură linie; capitolul (adesea cu MAJUSCULE din
+ * carte) rămâne în eticheta completă, la trecerea cu mouse-ul și pentru cititoarele de ecran.
+ */
+export function citationChipParts(citation: Pick<Citation, 'source' | 'page' | 'pageEnd' | 'printedPage' | 'heading'>): CitationChipParts {
+  const range = typeof citation.printedPage === 'number' && citation.printedPage > 0
+    ? String(citation.printedPage)
+    : formatPageRange(citation.page, citation.pageEnd);
+  return { title: cleanSourceName(citation.source), where: range ? `p. ${range}` : '', full: citationLabel(citation) };
 }
 
 /** Cere cititorului să deschidă pagina citată. Nu face nimic dacă nu există `window`. */
