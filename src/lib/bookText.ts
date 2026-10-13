@@ -6,6 +6,7 @@
 import { basePlan } from './curriculum';
 import { parsePageRange, type BookCode, type PageRange } from './bookPages';
 import type { Topic } from './organizare/types';
+import { extractPageMap, pageMarker, rememberPageMap } from '../ai/pageMarkers';
 
 const LOADERS: Record<BookCode, () => Promise<{ default: string[] }>> = {
   K: () => import('../data/rezidentiat/library/kumar.pages.json'),
@@ -53,4 +54,20 @@ export async function bookText(book: BookCode, range: PageRange): Promise<string
 export function bookTextFor(book: BookCode, topic: Pick<Topic, 'group' | 'pdf'> | null | undefined, pdfPage: number): Promise<string> {
   const range = (topic && chapterPageRange(topic)) ?? { first: Math.max(1, pdfPage - 1), last: pdfPage + 1 };
   return bookText(book, range);
+}
+
+/**
+ * Textul curat al unei cărți incluse, pentru indexarea în biblioteca AI (chat, citări). În locul textului OCR, fragmentele vin din
+ * paginile extrase din PDF (diacritice, titluri și liste corecte) și primesc numărul paginii din PDF, la fel ca la un PDF importat:
+ * citările din chat arată „p. N” și deschid cartea la pagina potrivită. Harta paginilor e predată indexării prin canalul lateral
+ * din `pageMarkers` (legată de text prin amprentă), deci textul întors trebuie folosit exact așa, după `trim()`.
+ */
+export async function bundledBookText(book: BookCode): Promise<string> {
+  const pages = await loadBookPages(book);
+  const marked = pages.map((text, index) => `${pageMarker(index + 1)}${text.trim()}`).join('\n\n');
+  const { text, pages: starts } = extractPageMap(marked);
+  const lead = text.length - text.trimStart().length;
+  const clean = text.trim();
+  rememberPageMap(clean, starts.map((start) => ({ ...start, offset: Math.max(0, start.offset - lead) })));
+  return clean;
 }

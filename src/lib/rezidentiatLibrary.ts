@@ -22,21 +22,21 @@ export const REZIDENTIAT_LIBRARY_BOOKS: RezidentiatLibraryBook[] = [
     name: 'Kumar și Clark – Medicină Clinică.pdf',
     label: 'Kumar și Clark — Medicină Clinică',
     description: 'Capitolele de rezidențiat, ~2200 de pagini de text',
-    load: async () => (await import('../data/rezidentiat/library/kumar.txt?raw')).default,
+    load: async () => (await import('./bookText')).bundledBookText('K'),
   },
   {
     id: 'lawrence',
     name: 'Lawrence – Chirurgie generală și specialități chirurgicale.pdf',
     label: 'Lawrence — Chirurgie generală',
     description: 'Chirurgie generală și specialități chirurgicale',
-    load: async () => (await import('../data/rezidentiat/library/lawrence.txt?raw')).default,
+    load: async () => (await import('./bookText')).bundledBookText('L'),
   },
   {
     id: 'sinopsis',
     name: 'Sinopsis de medicină.pdf',
     label: 'Sinopsis de medicină',
     description: 'Dermatologie, pediatrie, obstetrică-ginecologie și altele',
-    load: async () => (await import('../data/rezidentiat/library/sinopsis.txt?raw')).default,
+    load: async () => (await import('./bookText')).bundledBookText('S'),
   },
 ];
 
