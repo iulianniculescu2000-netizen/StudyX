@@ -162,6 +162,12 @@ async function main() {
   }
   console.log(`✓ Installer: ${installer.name} (${(installer.size / 1024 / 1024).toFixed(1)} MB)`);
 
+  // Garda: versiuni coerente, latest.yml pentru acest installer, fără secrete. O eroare oprește lansarea înainte să se șteargă sau să se creeze ceva.
+  if (!require('./release-guard.cjs').runGuard()) {
+    console.error('ERROR: Garda de lansare a găsit probleme (mai sus). Nu public nimic.');
+    process.exit(1);
+  }
+
   // 1. Check if release already exists — delete and recreate
   let existingRelease = null;
   try {

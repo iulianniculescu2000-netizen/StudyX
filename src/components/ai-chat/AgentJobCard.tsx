@@ -58,6 +58,7 @@ function StepParamEditor({
         <button
           type="button"
           onClick={() => onChange({ [countKey]: Math.max(countStep, countValue - countStep) } as Partial<AgentJobStepParams>)}
+          aria-label={isFlashcards ? 'Mai puține carduri' : 'Mai puține întrebări'}
           className="flex h-5 w-5 items-center justify-center rounded"
           style={{ color: theme.text3 }}
         >
@@ -69,6 +70,7 @@ function StepParamEditor({
         <button
           type="button"
           onClick={() => onChange({ [countKey]: Math.min(countMax, countValue + countStep) } as Partial<AgentJobStepParams>)}
+          aria-label={isFlashcards ? 'Mai multe carduri' : 'Mai multe întrebări'}
           className="flex h-5 w-5 items-center justify-center rounded"
           style={{ color: theme.text3 }}
         >

@@ -25,7 +25,7 @@ export default function NavItem({
     <NavLink
       to={to}
       end={end}
-      aria-label={collapsed ? label : undefined}
+      aria-label={collapsed ? (typeof badge === 'number' || (typeof badge === 'string' && badge.trim()) ? `${label}, ${badge}` : label) : undefined}
       className="rounded-[var(--r-md)] focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
       style={{ textDecoration: 'none', display: 'block' }}
     >

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useId, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, X, ExternalLink, Bookmark, Check } from 'lucide-react';
 import type { RetrievedChunk } from '../../ai/types';
@@ -24,6 +24,7 @@ function detectCurriculumBook(sourceName: string): BookCode | null {
 
 export default function RelevantDocModal({ open, chunk, onClose }: Props) {
   const theme = useTheme();
+  const titleId = useId();
   const textBlocks = useMemo(() => formatRelevantDoc(chunk?.text ?? ''), [chunk?.text]);
 
   useEffect(() => {
@@ -75,6 +76,7 @@ export default function RelevantDocModal({ open, chunk, onClose }: Props) {
           transition={{ duration: dur.base, ease: ease.emphasized }}
           role="dialog"
           aria-modal="true"
+          aria-labelledby={titleId}
           className="relative z-10 w-full max-w-2xl max-h-[85vh] flex flex-col rounded-[var(--r-xl)] glass-panel overflow-hidden shadow-2xl"
           style={{
             background: theme.modalBg,
@@ -96,7 +98,7 @@ export default function RelevantDocModal({ open, chunk, onClose }: Props) {
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-[16px] font-bold truncate" style={{ color: theme.text }}>
+                  <h3 id={titleId} className="text-[16px] font-bold truncate" style={{ color: theme.text }}>
                     {chunk.source}
                   </h3>
                   <span

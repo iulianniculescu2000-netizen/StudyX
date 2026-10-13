@@ -4,6 +4,7 @@ import RelevantDocModal from '../pages/quiz-play/RelevantDocModal';
 import type { RetrievedChunk } from '../ai/types';
 import { ThemeProvider } from '../theme/ThemeContext';
 import { formatRelevantDoc } from '../pages/quiz-play/relevantDocFormatting';
+import { expectNoA11yViolations } from './a11y';
 
 const mockChunk: RetrievedChunk = {
   id: 'chunk-123',
@@ -85,4 +86,13 @@ describe('RelevantDocModal', () => {
     expect(blocks.map((block) => block.kind === 'list' ? block.items.join(' ') : block.text).join(' ').replace(/\s+/g, ' '))
       .toBe(text.replace(/\s+/g, ' '));
   });
+
+  it('nu are probleme de accesibilitate (axe)', async () => {
+    const { baseElement } = render(
+      <ThemeProvider>
+        <RelevantDocModal open={true} chunk={mockChunk} onClose={vi.fn()} />
+      </ThemeProvider>
+    );
+    await expectNoA11yViolations(baseElement);
+  }, 30_000);
 });

@@ -128,6 +128,7 @@ export default function ChatMemoryPanel({ profileId }: { profileId: string | nul
               </div>
               {editingId === item.id ? (
                 <textarea
+                  aria-label="Editează amintirea"
                   value={editText}
                   onChange={(e) => setEditText(e.target.value)}
                   maxLength={220}
@@ -153,6 +154,7 @@ export default function ChatMemoryPanel({ profileId }: { profileId: string | nul
           />
         </div>
         <input
+          aria-label="Adaugă o amintire nouă"
           value={newText}
           onChange={(e) => setNewText(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') addNew(); }}
