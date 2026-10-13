@@ -47,8 +47,9 @@ function findInstaller() {
   const exact = files.find(f => f.name.includes(VERSION));
   if (exact) return exact;
 
-  // Fallback (no exact-version match found): largest, as before.
-  return files.sort((a, b) => b.size - a.size)[0] ?? null;
+  // No installer for THIS version: never fall back to another file. v1.0.0 was once published with the old 2.3.2
+  // beta because Windows Defender had removed the fresh build from release/ and the largest leftover was picked.
+  return null;
 }
 
 function sha256file(fp) {
