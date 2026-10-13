@@ -7,6 +7,7 @@
  */
 
 import { contextDuplicateKey, contextLimit, normalizeContextProse } from './contextBudget';
+import { repairOcr } from '../lib/ocrRepair';
 
 /** Strictul necesar dintr-un rezultat de retrieval; `RetrievedChunk` și `ChunkRecord` se potrivesc. */
 export interface ContextChunkInput {
@@ -163,7 +164,7 @@ export function buildNumberedContext(chunks: ContextChunkInput[], maxChars: numb
 
   for (const chunk of chunks) {
     if (picked.length >= maxChunks) break;
-    const body = normalizeContextProse(chunk.text);
+    const body = normalizeContextProse(repairOcr(chunk.text));
     if (!body) continue;
     const pages = pagesOf(chunk);
     const key = contextDuplicateKey(body, [chunk.sourceId, chunk.source, pages.page, pages.pageEnd,
@@ -182,7 +183,7 @@ export function buildNumberedContext(chunks: ContextChunkInput[], maxChars: numb
     if (!first) return { context: '', sources: [] };
     const head = headerFor(1, first);
     const room = budget - head.length - 3;
-    const body = truncateAtBoundary(normalizeContextProse(first.text), room);
+    const body = truncateAtBoundary(normalizeContextProse(repairOcr(first.text)), room);
     if (!body) return { context: '', sources: [] };
     picked.push({ chunk: first, body });
   }

@@ -1,22 +1,23 @@
+import { repairOcr } from '../../lib/ocrRepair';
+
 export type RelevantDocBlock =
   | { kind: 'heading' | 'paragraph'; text: string }
   | { kind: 'list'; items: string[] };
 
 const CEDILLA: Record<string, string> = { 'ş': 'ș', 'Ş': 'Ș', 'ţ': 'ț', 'Ţ': 'Ț' };
-const OCR_DIGITS: Record<string, string> = { '0': 'o', '1': 'r' };
 
 /**
  * Curățenie tipografică pentru textul extras din PDF, fără să schimbe sensul: diacritice cu sedilă → virgulă, cratime
  * de capăt de rând lipite, și cifrele care în OCR țin loc de litere în mijlocul cuvintelor („a1ticulară” → „articulară”,
  * „rap01t” → „raport”). Cifrele se corectează doar când au litere mici de ambele părți, ca „B12”, „H1N1” sau „10 mg” să rămână.
- * Greșelile de OCR de alt fel („pentrn”) nu se ating: nu se ghicesc cuvinte medicale.
+ * Greșelile sistematice de OCR („pentrn”, „funeție”) se repară din dicționarul din `ocrRepair`; alte cuvinte nu se ghicesc.
  */
 export function tidyBookText(text: string): string {
-  return text
+  const joined = text
     .replace(/­/g, '')
     .replace(/[şŞţŢ]/g, (char) => CEDILLA[char])
-    .replace(/(\p{Ll})-\n[ \t]*(\p{Ll})/gu, '$1$2')
-    .replace(/(?<=\p{Ll})[01]+(?=\p{Ll})/gu, (digits) => Array.from(digits, (digit) => OCR_DIGITS[digit]).join(''));
+    .replace(/(\p{Ll})-\n[ \t]*(\p{Ll})/gu, '$1$2');
+  return repairOcr(joined);
 }
 
 /** Present extracted PDF text. Only visual line wraps become spaces; see `tidyBookText` for the typographic cleanup. */
