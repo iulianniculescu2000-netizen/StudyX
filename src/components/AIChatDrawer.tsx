@@ -1,7 +1,7 @@
 import { flashcardDestinationFor, quizDestinationFor } from '../lib/ai/chatSaveDestination';
 import { filterRelevantChunks, resolveRetrievalText } from './ai-chat/retrievalQuery';
 import { suggestsDiagram } from '../ai/promptKit';
-import { buildAnswerQuizRequest } from '../lib/ai/answerQuizRequest';
+import { buildAnswerQuizRequest, chatQuizTitle } from '../lib/ai/answerQuizRequest';
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -1153,8 +1153,8 @@ export default function AIChatDrawer() {
       const where = quizDestinationFor(sourceScope, subject);
       addQuiz({
         id: quizId,
-        title: `Test din chat · ${new Date().toLocaleDateString('ro-RO')}`,
-        description: `${result.questions.length} grile generate din conversația cu StudyX AI.`,
+        title: chatQuizTitle(subject),
+        description: `${result.questions.length} grile generate din conversația cu StudyX AI · ${new Date().toLocaleDateString('ro-RO')}.`,
         emoji: '🧪',
         color: 'blue',
         category: where.category ?? 'AI Studio',

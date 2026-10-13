@@ -395,6 +395,23 @@ export function formatMessage(content: string) {
 }
 
 
+const foldWords = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().split(/[^a-z0-9]+/).filter((word) => word.length >= 5);
+
+/**
+ * Tema pentru sugestiile de după răspuns: titlul unei surse citate DOAR dacă are legătură cu ce a întrebat studentul. Titlul
+ * unui pasaj regăsit e adesea capitolul din care vine (la „tratamentul anemiei feriprive”, sursa putea fi „TERAPIE INTENSIVĂ”),
+ * iar sugestia „Explică-mi mai simplu tema TERAPIE INTENSIVĂ” nu are sens.
+ */
+export function relatedCitationTopic(prompt: string, citations: readonly Citation[]): string | null {
+  const asked = new Set(foldWords(prompt).map((word) => word.slice(0, 5)));
+  for (const citation of citations) {
+    const topic = citation.topic?.trim();
+    if (!topic) continue;
+    if (foldWords(topic).some((word) => asked.has(word.slice(0, 5)))) return topic;
+  }
+  return null;
+}
+
 export function buildFollowUpSuggestions(
   prompt: string,
   citations: Citation[],
@@ -450,12 +467,20 @@ export function buildFollowUpSuggestions(
     ];
   }
 
-  const topTopic = citations[0]?.topic;
+  const topTopic = relatedCitationTopic(prompt, citations);
   if (topTopic) {
     return [
       `Explică-mi mai simplu tema "${topTopic}".`,
       `Care sunt capcanele frecvente la "${topTopic}"?`,
       `Generează 3 întrebări de verificare pentru "${topTopic}".`,
+    ];
+  }
+  if (citations.length > 0) {
+    // Sursa citată nu are legătură clară cu întrebarea: sugestii despre răspunsul dat, fără o „temă” inventată.
+    return [
+      'Explică-mi mai simplu răspunsul de mai sus.',
+      'Care sunt capcanele frecvente la acest subiect?',
+      'Generează 3 întrebări de verificare pe subiectul acesta.',
     ];
   }
 

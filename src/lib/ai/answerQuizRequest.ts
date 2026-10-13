@@ -42,3 +42,19 @@ export function buildAnswerQuizRequest(userPrompt: string, answer: string): Answ
     },
   };
 }
+
+const MAX_TITLE_CHARS = 52;
+
+/**
+ * Titlul setului făcut din chat: subiectul, nu „Test din chat · data” (zeci de seturi cu același nume nu se mai deosebeau).
+ * Fără subiect rămâne titlul vechi cu data.
+ */
+export function chatQuizTitle(subject: string, now: Date = new Date()): string {
+  const cleaned = clean(subject).replace(/[?!.:;,\s]+$/u, '');
+  if (cleaned.length < 3) return `Test din chat · ${now.toLocaleDateString('ro-RO')}`;
+  const capitalised = cleaned.charAt(0).toLocaleUpperCase('ro-RO') + cleaned.slice(1);
+  if (capitalised.length <= MAX_TITLE_CHARS) return capitalised;
+  const cut = capitalised.slice(0, MAX_TITLE_CHARS);
+  const atWord = cut.lastIndexOf(' ');
+  return `${(atWord > 24 ? cut.slice(0, atWord) : cut).replace(/[,;:\s]+$/u, '')}…`;
+}

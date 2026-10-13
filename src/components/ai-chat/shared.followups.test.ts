@@ -56,3 +56,23 @@ describe('buildFollowUpSuggestions: rezumat', () => {
     expect(again).toHaveLength(3);
   });
 });
+
+describe('sugestiile de după răspuns folosesc o temă doar dacă are legătură cu întrebarea', () => {
+  const cite = (topic: string) => [{ n: 1, source: 'Kumar și Clark', topic }] as unknown as Parameters<typeof buildFollowUpSuggestions>[1];
+
+  it('titlul sursei care se potrivește cu întrebarea devine tema', () => {
+    const out = buildFollowUpSuggestions('Care este tratamentul anemiei feriprive?', cite('Anemia feriprivă'), 'auto' as never);
+    expect(out[0]).toBe('Explică-mi mai simplu tema "Anemia feriprivă".');
+  });
+
+  it('un titlu fără legătură („TERAPIE INTENSIVĂ” la o întrebare despre anemie) nu se mai propune ca temă', () => {
+    const out = buildFollowUpSuggestions('Care este tratamentul anemiei feriprive?', cite('TERAPIE INTENSIVĂ'), 'auto' as never);
+    expect(out.join(' ')).not.toMatch(/TERAPIE INTENSIV/i);
+    expect(out[0]).toBe('Explică-mi mai simplu răspunsul de mai sus.');
+  });
+
+  it('se alege prima sursă potrivită, nu neapărat prima citată', () => {
+    const out = buildFollowUpSuggestions('Ce este anemia feriprivă?', [...cite('TERAPIE INTENSIVĂ'), ...cite('Anemia feriprivă')], 'auto' as never);
+    expect(out[0]).toContain('Anemia feriprivă');
+  });
+});

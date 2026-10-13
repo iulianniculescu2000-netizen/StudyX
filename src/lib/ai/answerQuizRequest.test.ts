@@ -39,3 +39,24 @@ describe('buildAnswerQuizRequest', () => {
     expect(prefetchedContext.summary.length).toBeLessThan(6300);
   });
 });
+
+describe('chatQuizTitle', () => {
+  it('numește setul după subiect, cu majusculă și fără punctuația de la sfârșit', async () => {
+    const { chatQuizTitle } = await import('./answerQuizRequest');
+    expect(chatQuizTitle('tratamentul AR')).toBe('Tratamentul AR');
+    expect(chatQuizTitle('Care este tratamentul anemiei feriprive?')).toBe('Care este tratamentul anemiei feriprive');
+  });
+
+  it('scurtează subiectele lungi la limită de cuvânt, cu „…”', async () => {
+    const { chatQuizTitle } = await import('./answerQuizRequest');
+    const title = chatQuizTitle('Explică-mi în detaliu fiziopatologia insuficienței cardiace congestive și tratamentul ei complet');
+    expect(title.length).toBeLessThanOrEqual(53);
+    expect(title.endsWith('…')).toBe(true);
+    expect(title).not.toMatch(/\s…$/);
+  });
+
+  it('fără subiect rămâne titlul vechi, cu data', async () => {
+    const { chatQuizTitle } = await import('./answerQuizRequest');
+    expect(chatQuizTitle('  ', new Date(2026, 9, 13))).toMatch(/^Test din chat · /);
+  });
+});
