@@ -76,9 +76,14 @@ export function isModelUnavailableError(message: string): boolean {
   return /\bmodel\b/i.test(message) && UNAVAILABLE_PHRASE_RE.test(message);
 }
 
+/** Modelele cunoscute ca funcționale ale unui furnizor, în ordinea preferinței (rezerve când cota unuia e epuizată). */
+export function candidateModels(provider: ProviderId): readonly AIModel[] {
+  return MODEL_CANDIDATES[provider];
+}
+
 /** First candidate for this provider that isn't the one that just failed, or null if there's nothing left to try. */
-export function nextCandidateModel(provider: ProviderId, failedModel: string): AIModel | null {
-  return MODEL_CANDIDATES[provider].find((candidate) => candidate !== failedModel) ?? null;
+export function nextCandidateModel(provider: ProviderId, failedModel: string, skip?: (model: AIModel) => boolean): AIModel | null {
+  return MODEL_CANDIDATES[provider].find((candidate) => candidate !== failedModel && !skip?.(candidate)) ?? null;
 }
 
 /**
@@ -139,7 +144,8 @@ export async function checkModelAvailability(): Promise<void> {
     });
     if (!res.ok) return; // key issues etc. — the reactive layer + existing key validation cover that
     const body = await res.json() as ModelListResponse;
-    const liveIds = new Set((body.data ?? []).map((entry) => entry.id).filter((id): id is string => !!id));
+    // Google listează modelele cu prefix („models/gemini-3.8-flash”): fără normalizare orice model ar părea retras.
+    const liveIds = new Set((body.data ?? []).map((entry) => entry.id?.replace(/^models\//, '')).filter((id): id is string => !!id));
     if (liveIds.size === 0) return; // an empty/malformed list is more likely a parsing miss than a truth
 
     localStorage.setItem(throttleKey, String(Date.now()));
@@ -147,6 +153,7 @@ export async function checkModelAvailability(): Promise<void> {
 
     const replacement = MODEL_CANDIDATES[provider].find((candidate) => liveIds.has(candidate))
       ?? MODEL_CANDIDATES[provider][0];
+    if (replacement === model) return; // nu există un alt model de propus: nu se schimbă nimic și nu se anunță nimic
     healPrimaryModelChoice(provider, provider, model, replacement, providerDisplayName(provider));
   } catch {
     // Offline, timeout, CORS, whatever — silently skip. The reactive layer

@@ -43,6 +43,9 @@ function fail(status: number, message: string, headers: Record<string, string> =
 /** Long enough (> 5200 chars) to be split into several chunks. */
 const LONG_TEXT = Array.from({ length: 40 }, (_, i) => `Capitolul ${i}. ${'Balneofizioterapia studiază factorii naturali în tratamentul afecțiunilor reumatismale. '.repeat(3)}`).join('\n\n');
 
+/** Modelele Groq din lanț (gpt-oss-120b, gpt-oss-20b): fiecare are cota lui, deci un 429 le trece pe rând înainte de orice așteptare. */
+const MODELS_IN_CHAIN = 2;
+
 /**
  * The test setup runs on fake timers, so the request limiter's spacing and any
  * countdown only elapse when time is advanced. Resolves to the value or the error.
@@ -134,9 +137,11 @@ describe('notesToFlashcards — interruption and pacing', () => {
   });
 
   it('waits out a short rate limit by itself when the caller opts in with onWait', async () => {
-    fetchMock
-      .mockImplementationOnce(() => Promise.resolve(fail(429, 'Rate limit reached for model. Please try again in 20s.', { 'retry-after': '20' })))
-      .mockImplementation(() => Promise.resolve(ok(cardsJson(5, 3))));
+    // Cota e pe model: toate modelele lanțului dau 429 la prima rundă (altfel s-ar încerca alt model, nu s-ar mai aștepta).
+    let rateLimited = 0;
+    fetchMock.mockImplementation(() => (rateLimited++ < MODELS_IN_CHAIN
+      ? Promise.resolve(fail(429, 'Rate limit reached for model. Please try again in 20s.', { 'retry-after': '20' }))
+      : Promise.resolve(ok(cardsJson(5, 3)))));
     const ticks: number[] = [];
 
     const cards = await drive(
@@ -145,7 +150,7 @@ describe('notesToFlashcards — interruption and pacing', () => {
     ) as { front: string; back: string }[];
 
     expect(cards).toHaveLength(5);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(MODELS_IN_CHAIN + 1);
     expect(ticks[0]).toBe(21);
     expect(ticks[ticks.length - 1]).toBe(1);
   });
@@ -154,7 +159,7 @@ describe('notesToFlashcards — interruption and pacing', () => {
     fetchMock.mockImplementation(() => Promise.resolve(fail(429, 'Rate limit reached for model. Please try again in 20s.', { 'retry-after': '20' })));
     const withoutOptIn = await drive(notesToFlashcards(LONG_TEXT.slice(0, 3000), { count: 5 }));
     expect((withoutOptIn as Error).message).toMatch(/rate limit/i);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(MODELS_IN_CHAIN);
 
     fetchMock.mockReset();
     fetchMock.mockImplementation(() => Promise.resolve(fail(429, 'Rate limit reached for model. Please try again in 10m.', { 'retry-after': '600' })));

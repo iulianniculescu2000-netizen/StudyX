@@ -1,6 +1,8 @@
 import type { useAIStore } from '../../store/aiStore';
 import { useToastStore } from '../../store/toastStore';
 import { sanitizeKey } from './keys';
+import { isModelCoolingDown } from './quotaGuard';
+import { candidateModels } from '../ai/modelHealing';
 import type { CloudProviderId, ProviderId } from './types';
 
 export function getProviderConfig(provider: ReturnType<typeof useAIStore.getState>['provider']) {
@@ -82,7 +84,12 @@ export function buildProviderChain(
   const chain: Array<{ provider: ProviderId; key: string; model: string; endpoint?: string }> = [];
   for (const p of ordered) {
     const k = sanitizeKey(providerKeys[p] ?? '');
-    if (k) chain.push({ provider: p, key: k, model: modelFor(p) });
+    if (!k) continue;
+    // Cota gratuită e pe model: după modelul ales vin celelalte modele ale aceluiași furnizor, apoi următorul furnizor.
+    // Modelele care și-au epuizat cota (încă nereset) se sar; dacă toate sunt epuizate, rămâne modelul ales, ca eroarea să se vadă.
+    const models = [modelFor(p), ...candidateModels(p).filter((m) => m !== modelFor(p))];
+    const usable = models.filter((m) => !isModelCoolingDown(p, m));
+    for (const model of usable.length > 0 ? usable : [models[0]]) chain.push({ provider: p, key: k, model });
   }
   return chain;
 }
@@ -94,7 +101,18 @@ export function buildProviderChain(
  * automat pe Google Gemini." Clears the sticky state once the primary answers
  * again (it recovered on its own).
  */
-export function trackProviderOutcome(provider: ProviderId, primaryProvider: ProviderId, providerName: string, armSticky = true) {
+/** Motivul scurt, în română, pentru care furnizorul ales nu a răspuns (apare în notificarea de trecere pe altul). */
+export function shortProviderReason(error: string | undefined): string {
+  const text = (error ?? '').trim();
+  if (!text) return '';
+  if (/rate limit|429|quota|resource[ _]exhausted|too many requests/i.test(text)) return 'limita gratuită a cheii a fost atinsă';
+  if (/(?:^|\D)(?:401|403)(?:\D|$)|api key|unauthorized|forbidden|invalid.*key/i.test(text)) return 'cheia API nu este acceptată';
+  if (/(?:^|\D)404(?:\D|$)|model.*(?:not found|unavailable)|decommission/i.test(text)) return 'modelul ales nu mai există';
+  if (/timeout|nu a răspuns/i.test(text)) return 'nu a răspuns la timp';
+  return text.length > 70 ? `${text.slice(0, 67)}…` : text;
+}
+
+export function trackProviderOutcome(provider: ProviderId, primaryProvider: ProviderId, providerName: string, armSticky = true, primaryError?: string) {
   if (provider === primaryProvider) {
     stickyFallback = null;
     return;
@@ -105,8 +123,9 @@ export function trackProviderOutcome(provider: ProviderId, primaryProvider: Prov
   // Armed once per switch: extending it on every success would keep the app on the fallback forever.
   if (isNewSwitch) {
     stickyFallback = { provider, primary: primaryProvider, until: Date.now() + FALLBACK_STICKY_MS };
+    const reason = shortProviderReason(primaryError);
     useToastStore.getState().addToast(
-      `Furnizorul curent nu a răspuns (limită sau eroare) — am trecut automat pe ${providerName}.`,
+      `Furnizorul ales nu a răspuns${reason ? ` (${reason})` : ' (limită sau eroare)'} — am trecut automat pe ${providerName}.`,
       'info',
       6000,
     );

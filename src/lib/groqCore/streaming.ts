@@ -10,6 +10,8 @@ import { extractApiErrorMessage, isRequestSpecificError } from './errors';
 import { groqGovernor } from './governors';
 import { sanitizeKey } from './keys';
 import { buildProviderChain, getProviderConfig, markServed, trackProviderOutcome } from './providers';
+import { paceProvider } from './providerPacing';
+import { isModelSpecificFailure, noteModelFailure } from './quotaGuard';
 import { TASK_MAX_TOKENS, buildKnowledgeQuery, estimateMessagesTokens } from './requestConfig';
 import { MAX_RATE_LIMIT_WAIT_MS, sleepMs } from './retry';
 import type { GroqMessage, LocalCallOptions, ProviderId } from './types';
@@ -92,6 +94,7 @@ export async function groqStream(
       let timedOut = false;
       const startTimer = setTimeout(() => { timedOut = true; controller.abort(new DOMException('timeout', 'TimeoutError')); }, 60_000);
       try {
+        await paceProvider(link.provider, abortSignal);
         const usageKey = `${link.provider}:${link.model}`;
         const openStream = (withUsage: boolean) => fetch(cfg.endpoint, {
           method: 'POST',
@@ -134,19 +137,25 @@ export async function groqStream(
           markServed(link.provider, link.model);
           options.onServed?.({ provider: link.provider, model: link.model });
           providerName = cfg.name;
-          trackProviderOutcome(link.provider, primaryProvider, cfg.name, !isRequestSpecificError(lastError));
+          trackProviderOutcome(link.provider, primaryProvider, cfg.name, !isRequestSpecificError(lastError), lastError);
           break;
         }
         const failure = await extractApiErrorMessage(attempt);
         lastError = failure;
+        noteModelFailure(link.provider, link.model, failure);
+        const nextLink = chain[ci + 1];
+        const sameProvider = nextLink?.provider === link.provider;
         logDiagnosticEvent({
           area: 'ai',
           level: 'warning',
-          title: chain[ci + 1] ? 'Trec pe alt provider AI' : 'Stream AI oprit',
-          detail: chain[ci + 1]
-            ? `${cfg.name} indisponibil (${lastError}). Continui automat pe ${getProviderConfig(chain[ci + 1].provider).name}.`
+          title: nextLink ? (sameProvider ? 'Trec pe alt model AI' : 'Trec pe alt provider AI') : 'Stream AI oprit',
+          detail: nextLink
+            ? (sameProvider
+              ? `${link.model} indisponibil (${lastError}). Încerc ${nextLink.model}, din aceeași cheie ${cfg.name}.`
+              : `${cfg.name} indisponibil (${lastError}). Continui automat pe ${getProviderConfig(nextLink.provider).name}.`)
             : lastError,
         });
+        if (!isModelSpecificFailure(failure, attempt.status)) while (chain[ci + 1]?.provider === link.provider) ci += 1;
       } catch (error) {
         clearTimeout(startTimer);
         if (abortSignal?.aborted || (error instanceof Error && error.name === 'AbortError')) {

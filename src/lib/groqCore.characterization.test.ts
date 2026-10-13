@@ -63,11 +63,12 @@ describe('groq core characterization', () => {
     await expect(g.groqRequest({ task: 'chat', messages: msgs, skipLibraryContext: true })).rejects.toThrow(/Google Gemini nu este configurată/);
   });
 
-  it('retries a 429 on the last provider (4 attempts) and then reports the error', async () => {
+  it('retries a 429 on each model (2 attempts, the last model 4) and then reports the error', async () => {
     await setKeys({ groq: KEY });
     fetchMock.mockImplementation(() => Promise.resolve(err(429, 'slow down')));
     await expect(drive(g.groqRequest({ task: 'chat', messages: msgs, skipLibraryContext: true }))).rejects.toThrow('Eroare AI: slow down');
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    // Cota e pe model: modelul ales și gpt-oss-120b se încearcă de câte 2 ori și cedează locul următorului (cota lui), iar ultimul, gpt-oss-20b, se încearcă de 4 ori.
+    expect(fetchMock).toHaveBeenCalledTimes(8);
   });
 
   it('fails fast (2 attempts) and falls back to the next keyed provider, with its fallback model', async () => {

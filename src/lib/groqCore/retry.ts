@@ -14,6 +14,8 @@ export function sleepMs(ms: number, abortSignal?: AbortSignal): Promise<void> {
 export const MAX_RATE_LIMIT_WAIT_MS = 8000;
 /** A request with no answer after this long is dropped, so a stalled connection cannot spin the UI forever. */
 export const REQUEST_TIMEOUT_MS = 90_000;
+/** Cererile scurte de analiză (alegerea pasajului din carte, localizarea): un model care tace 30 s e sărit, nu așteptat 90 s. */
+export const ANALYSIS_TIMEOUT_MS = 30_000;
 export const NON_RETRYABLE_STATUSES = new Set([400, 401, 402, 403, 404, 405, 410, 413, 422]);
 
 export function getRetryDelayMs(attempt: number, retryAfterHeader: string | null) {

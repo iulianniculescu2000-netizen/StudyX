@@ -10,9 +10,11 @@ import { NonRetryableError, extractApiErrorMessage, isRequestSpecificError } fro
 import { backgroundGovernor, generationGovernor, groqGovernor } from './governors';
 import { sanitizeKey } from './keys';
 import { buildProviderChain, getProviderConfig, markServed, trackProviderOutcome } from './providers';
+import { paceProvider } from './providerPacing';
+import { isDailyQuotaError, isModelCoolingDown, isModelSpecificFailure, noteModelFailure } from './quotaGuard';
 import { lightModelFor, logPromptBreakdown } from '../ai/tokenBudget';
 import { TASK_MAX_TOKENS, TASK_TEMPERATURE, buildKnowledgeQuery, estimateMessagesTokens } from './requestConfig';
-import { MAX_RATE_LIMIT_WAIT_MS, NON_RETRYABLE_STATUSES, REQUEST_TIMEOUT_MS, getRetryDelayMs, sleepMs } from './retry';
+import { MAX_RATE_LIMIT_WAIT_MS, NON_RETRYABLE_STATUSES, REQUEST_TIMEOUT_MS, ANALYSIS_TIMEOUT_MS, getRetryDelayMs, sleepMs } from './retry';
 import { GROQ_VISION_MODEL, supportsVision, type CloudProviderId, type GroqMessage, type LocalCallOptions, type ProviderId } from './types';
 
 /**
@@ -32,17 +34,20 @@ async function attemptOnProvider(
   requestedJsonMode = false,
 ): Promise<string> {
   const maxAttempts = hasFallback ? 2 : 4;
+  const requestTimeoutMs = task === 'analysis' ? ANALYSIS_TIMEOUT_MS : REQUEST_TIMEOUT_MS;
   const maxTokens = requestedMaxTokens;
   const finalMessages = messages;
   const finalTemperature = temperature;
   const jsonMode = requestedJsonMode;
   let lastError = 'Eroare necunoscută';
+  let lastStatus: number | undefined;
   const modeKey = `${link.provider ?? cfg.name}:${link.model}`;
   let useJsonMode = jsonMode && !JSON_MODE_UNSUPPORTED.has(modeKey);
   let jsonModeDropped = false;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
-      const timeoutSignal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+      await paceProvider(link.provider, abortSignal);
+      const timeoutSignal = AbortSignal.timeout(requestTimeoutMs);
       const response = await fetch(cfg.endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(link.key ? { Authorization: `Bearer ${link.key}` } : {}) },
@@ -68,24 +73,27 @@ async function attemptOnProvider(
           continue;
         }
         const msg = await extractApiErrorMessage(response);
+        lastStatus = response.status;
         if (link.provider) {
           const window = parseRateHeaders(response.headers);
           if (window) useAIUsageStore.getState().noteWindow(link.provider, window);
         }
+        // Cota zilnică epuizată nu se reface în câteva secunde: nu se mai reîncearcă, trece pe alt model sau furnizor.
+        if (response.status === 429 && isDailyQuotaError(msg)) throw Object.assign(new NonRetryableError(msg), { status: 429 });
         if (response.status === 429 && attempt < maxAttempts - 1) {
           const retryAfter = response.headers.get('retry-after');
           const retryAfterSeconds = retryAfter ? Number(retryAfter) : 0;
           // A daily/minute quota that resets in minutes would otherwise hold the request queue
           // (and the Stop button) hostage; fail fast so the fallback provider or the user can act.
           // Only the provider's own wait counts here: the backoff we add on top must not trigger it.
-          if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds * 1000 > MAX_RATE_LIMIT_WAIT_MS) throw new NonRetryableError(msg);
+          if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds * 1000 > MAX_RATE_LIMIT_WAIT_MS) throw Object.assign(new NonRetryableError(msg), { status: 429 });
           const delayMs = Math.min(getRetryDelayMs(attempt, retryAfter), MAX_RATE_LIMIT_WAIT_MS);
           logAIDebug('groq:ratelimit', { task, provider: cfg.name, retryAfter, delayMs });
           await sleepMs(delayMs, abortSignal);
           continue;
         }
-        if (NON_RETRYABLE_STATUSES.has(response.status)) throw new NonRetryableError(msg);
-        throw new Error(msg);
+        if (NON_RETRYABLE_STATUSES.has(response.status)) throw Object.assign(new NonRetryableError(msg), { status: response.status });
+        throw Object.assign(new Error(msg), { status: response.status });
       }
 
       const data = await response.json();
@@ -110,7 +118,7 @@ async function attemptOnProvider(
       // No answer within the limit: retrying the same stalled provider would only repeat the wait,
       // so fail this one now and let the provider chain (or the user) move on.
       if (error instanceof Error && error.name === 'TimeoutError') {
-        throw new NonRetryableError(`${cfg.name} nu a răspuns în ${REQUEST_TIMEOUT_MS / 1000} de secunde. Încearcă din nou.`);
+        throw new NonRetryableError(`${cfg.name} nu a răspuns în ${requestTimeoutMs / 1000} de secunde. Încearcă din nou.`);
       }
       lastError = error instanceof Error ? error.message : String(error);
       logAIDebug('groq:error', { task, provider: cfg.name, attempt, error: lastError });
@@ -119,7 +127,7 @@ async function attemptOnProvider(
       }
     }
   }
-  throw new Error(lastError);
+  throw Object.assign(new Error(lastError), { status: lastStatus });
 }
 
 // ── Core API ──────────────────────────────────────────────────────────────────
@@ -193,10 +201,13 @@ export async function groqRequest({
     }
 
     if (light && !only) {
-      chain = chain.map((entry) => {
-        const small = lightModelFor(entry.provider, entry.model);
-        return small ? { ...entry, model: small } : entry;
-      });
+      chain = chain
+        .map((entry) => {
+          const small = lightModelFor(entry.provider, entry.model);
+          return small ? { ...entry, model: small } : entry;
+        })
+        // Modelele de rezervă ale aceluiași furnizor se reduc la același model mic: o singură încercare, nu trei identice.
+        .filter((entry, index, all) => all.findIndex((other) => other.provider === entry.provider && other.model === entry.model) === index);
     }
 
     let lastError = 'Eroare necunoscută';
@@ -215,7 +226,7 @@ export async function groqRequest({
       try {
         const result = await attemptOnProvider(cfg, link, finalMessages, finalTemperature, finalMaxTokens, task, !!next, abortSignal, jsonMode);
         if (!only) {
-          trackProviderOutcome(link.provider, primaryProvider, cfg.name, !isRequestSpecificError(lastError));
+          trackProviderOutcome(link.provider, primaryProvider, cfg.name, !isRequestSpecificError(lastError), lastError);
           markServed(link.provider, link.model);
         }
         onServed?.({ provider: link.provider, model: link.model });
@@ -226,6 +237,10 @@ export async function groqRequest({
         const failure = error instanceof Error ? error.message : String(error);
         lastError = failure;
         logAIDebug('groq:providerFailed', { provider: link.provider, error: lastError });
+        // Cota epuizată a modelului: următoarele cereri îl sar până la resetare. Cheie greșită: restul modelelor aceluiași furnizor ar eșua la fel.
+        const failureStatus = (error as { status?: number }).status;
+        noteModelFailure(link.provider, link.model, failure);
+        const skipProviderModels = !isModelSpecificFailure(failure, failureStatus);
 
         // The model itself is gone (provider deprecated/decommissioned it), not
         // just rate-limited or down — retry immediately on a known-good model
@@ -233,13 +248,13 @@ export async function groqRequest({
         // provider in the chain. A dead model would otherwise fail every future
         // request forever, indistinguishable from the whole provider being down.
         if (!only && isModelUnavailableError(lastError)) {
-          const altModel = nextCandidateModel(link.provider, link.model);
+          const altModel = nextCandidateModel(link.provider, link.model, (candidate) => isModelCoolingDown(link.provider, candidate));
           if (altModel) {
             try {
               const healedResult = await attemptOnProvider(
                 cfg, { ...link, model: altModel }, finalMessages, finalTemperature, finalMaxTokens, task, !!next, abortSignal, jsonMode,
               );
-              trackProviderOutcome(link.provider, primaryProvider, cfg.name, !isRequestSpecificError(lastError));
+              trackProviderOutcome(link.provider, primaryProvider, cfg.name, !isRequestSpecificError(lastError), lastError);
               healPrimaryModelChoice(link.provider, primaryProvider, link.model, altModel, cfg.name);
               return healedResult;
             } catch (healError: unknown) {
@@ -253,10 +268,13 @@ export async function groqRequest({
           logDiagnosticEvent({
             area: 'ai',
             level: 'warning',
-            title: 'Trec pe alt provider AI',
-            detail: `${cfg.name} indisponibil (${lastError}). Continui automat pe ${getProviderConfig(next.provider).name}.`,
+            title: next.provider === link.provider ? 'Trec pe alt model AI' : 'Trec pe alt provider AI',
+            detail: next.provider === link.provider
+              ? `${link.model} indisponibil (${lastError}). Încerc ${next.model}, din aceeași cheie ${cfg.name}.`
+              : `${cfg.name} indisponibil (${lastError}). Continui automat pe ${getProviderConfig(next.provider).name}.`,
           });
         }
+        if (skipProviderModels) while (chain[ci + 1]?.provider === link.provider) ci += 1;
       }
     }
 

@@ -156,7 +156,7 @@ export async function generateQuestionsFromText(
 REGULI:
 - Un singur răspuns corect (isCorrect: true), 3 distractori plauzibili
 - Distractori: din ACEEAȘI categorie, lungime similară cu răspunsul corect, plauzibili medical dar greșiți; NU folosi "toate de mai sus", "niciunul", "ambele A și B"
-- Câmp "explanation": justificare medicală (2-3 fraze): de ce varianta corectă e corectă + de ce fiecare distractor e greșit
+- Câmp "explanation": justificare medicală (2-3 fraze scurte, separate prin punct, fără „;”): de ce varianta corectă e corectă + de ce fiecare distractor e greșit
 - Câmp "tags": 3-5 cuvinte cheie ex: ["cardiologie","fibrilație"]
 - Câmp "reference": referință Harrison/Gomella sau "" dacă nu există
 - NU genera întrebări despre JSON/format
@@ -268,7 +268,7 @@ STRUCTURA OBLIGATORIE:
 - "text": istoricul pacientului detaliat (sex, vârstă, simptome, analize) + întrebarea clinică
   Ex: "Pacient 45 ani, bărbat, dispnee 3 săptămâni, edeme gambiere. FCC=110. Rx: cardiomegalie. Diagnostic?"
 - "options": 5 opțiuni (A-E), un singur răspuns corect — formatul de la rezidențiat
-- "explanation": argumentare medicală (3-4 fraze)
+- "explanation": argumentare medicală (3-4 fraze scurte, separate prin punct, fără „;”)
 - "tags": 3-5 cuvinte cheie
 - "reference": Harrison/Gomella sau ""
 

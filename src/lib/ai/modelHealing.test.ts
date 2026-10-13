@@ -115,6 +115,31 @@ describe('checkModelAvailability', () => {
     expect(useAIStore.getState().setModel).not.toHaveBeenCalled();
   });
 
+  it('Google listează modelele cu prefixul „models/”: un model valid nu se schimbă degeaba', async () => {
+    const state = useAIStore.getState() as unknown as { provider: string; model: string };
+    state.provider = 'google';
+    state.model = 'gemini-3.8-flash';
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [{ id: 'models/gemini-3.8-flash' }, { id: 'models/gemini-3.6-flash' }] }),
+    }));
+    await checkModelAvailability();
+    expect(useAIStore.getState().setModel).not.toHaveBeenCalled();
+    expect(useToastStore.getState().addToast).not.toHaveBeenCalled();
+    state.provider = 'groq';
+  });
+
+  it('când nu există alt model de propus, nu schimbă și nu anunță nimic', async () => {
+    const state = useAIStore.getState() as unknown as { provider: string; model: string };
+    state.provider = 'google';
+    state.model = 'gemini-3.8-flash';
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: [{ id: 'models/ceva-nerecunoscut' }] }) }));
+    await checkModelAvailability();
+    expect(useAIStore.getState().setModel).not.toHaveBeenCalled();
+    expect(useToastStore.getState().addToast).not.toHaveBeenCalled();
+    state.provider = 'groq';
+  });
+
   it('is throttled to once per day per provider', async () => {
     useAIStore.getState().model = 'llama-3.3-70b-versatile';
     const fetchSpy = vi.fn().mockResolvedValue({

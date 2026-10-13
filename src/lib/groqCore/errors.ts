@@ -9,13 +9,17 @@
  * every shape API providers actually use.
  */
 export async function extractApiErrorMessage(res: Response): Promise<string> {
-  const body = await res.json().catch(() => null) as
-    | { error?: { message?: string } | string; detail?: string | Array<{ msg?: string }>; message?: string }
-    | null;
+  const parsed = await res.json().catch(() => null) as unknown;
+  // Google (compatibilitatea OpenAI) întoarce uneori erorile ca listă: [{"error":{"code":429,"status":"RESOURCE_EXHAUSTED",...}}].
+  const body = (Array.isArray(parsed) ? parsed[0] : parsed) as
+    | { error?: { message?: string; status?: string; details?: unknown } | string; detail?: string | Array<{ msg?: string }>; message?: string }
+    | null
+    | undefined;
   let message: string | null = null;
   if (body) {
     if (typeof body.error === 'string') message = body.error;
-    else if (body.error?.message) message = body.error.message;
+    else if (body.error?.message) message = quotaHint(body.error.status, body.error.details, body.error.message);
+    else if (typeof body.error === 'object' && body.error?.status) message = `${body.error.status} (HTTP ${res.status})`;
     else if (typeof body.detail === 'string') message = body.detail;
     else if (Array.isArray(body.detail) && body.detail.length > 0) {
       message = body.detail.map((d) => d.msg).filter(Boolean).join('; ') || JSON.stringify(body.detail);
@@ -33,6 +37,20 @@ export async function extractApiErrorMessage(res: Response): Promise<string> {
     return `${message} — cheia API a atins limita gratuită și necesită activarea facturării la provider, sau schimbă providerul din Setări AI.`;
   }
   return message;
+}
+
+/**
+ * Gemini descrie cota depășită în `details` (QuotaFailure): „limit: 0” pe nivelul gratuit înseamnă că modelul nu are deloc
+ * cotă gratuită pentru cheia respectivă, nu că cererile sunt prea dese. Se adaugă metrica și limita ca să se vadă motivul real.
+ */
+function quotaHint(status: string | undefined, details: unknown, message: string): string {
+  const violations = Array.isArray(details)
+    ? details.flatMap((detail) => (detail && typeof detail === 'object' && Array.isArray((detail as { violations?: unknown }).violations) ? (detail as { violations: unknown[] }).violations : []))
+    : [];
+  const first = violations.find((violation): violation is { quotaMetric?: string; quotaId?: string } => !!violation && typeof violation === 'object');
+  const metric = first?.quotaId ?? first?.quotaMetric;
+  const suffix = [status, metric].filter(Boolean).join(', ');
+  return suffix && !message.includes(suffix) ? `${message} [${suffix}]` : message;
 }
 
 /** An error another attempt cannot fix (bad key, oversized request, a limit that resets in minutes). */
