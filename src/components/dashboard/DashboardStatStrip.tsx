@@ -20,8 +20,6 @@ export type DashboardStat = {
  * competing 28px-radius cards from UI 1.0. Same numbers, same real
  * week-over-week deltas, just not fighting the hero for attention.
  */
-const DIVIDER = '0.5px solid color-mix(in srgb, var(--hairline) 60%, transparent)';
-
 const DashboardStatStrip = memo(function DashboardStatStrip({ stats }: { stats: DashboardStat[] }) {
   const theme = useTheme();
   const { calmMotion } = useAdaptiveMotion();
@@ -31,20 +29,16 @@ const DashboardStatStrip = memo(function DashboardStatStrip({ stats }: { stats: 
       animate
       padding="0"
       radius="var(--r-lg)"
-      className="fx-spot mb-8 grid grid-cols-2 md:grid-cols-4"
+      className="mb-8 grid grid-cols-2 md:grid-cols-4"
       style={{ borderColor: theme.border }}
     >
       {stats.map((stat, index) => (
         <motion.div
           key={stat.label}
-          initial={calmMotion ? { opacity: 0 } : { opacity: 0, y: 10 }}
-          animate={calmMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
-          transition={calmMotion ? { duration: dur.instant } : { delay: Math.min(index, 8) * staggerStep, duration: dur.base, ease: ease.emphasized }}
-          className="flex items-center justify-between gap-3 px-5 py-4 transition-colors hover:bg-[var(--hover-fill)]"
-          style={{
-            borderLeft: index % 2 === 1 ? DIVIDER : undefined,
-            borderTop: index >= 2 ? DIVIDER : undefined,
-          }}
+          initial={calmMotion ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={calmMotion ? { duration: 0 } : { delay: Math.min(index, 8) * staggerStep, duration: dur.base, ease: ease.emphasized }}
+          className={`flex items-center justify-between gap-3 px-5 py-4 border-[var(--hairline)] ${index % 2 === 1 ? 'border-l' : ''} ${index >= 2 ? 'border-t md:border-t-0' : ''} ${index === 2 ? 'md:border-l' : ''}`}
         >
           <div>
             <div className="secondary-label mb-1 font-black tracking-widest" style={{ color: theme.text3 }}>{stat.label}</div>

@@ -1,5 +1,6 @@
 import { Sparkles } from 'lucide-react';
 import EmptyState from '../../components/ui/EmptyState';
+import TourHelpButton from '../../tutorial/TourHelpButton';
 import { DUE_NEW_DEFAULT } from '../../lib/flashcardDueQueue';
 
 
@@ -12,6 +13,7 @@ export function SessionEmptyState({ isDue, dueEmptyNew, includeNew, toggleNewCar
   return (
     <div className="h-full overflow-y-auto px-4 py-8 sm:px-6">
       <div className="mx-auto w-full max-w-xl">
+        <div className="mb-2 flex justify-end"><TourHelpButton tour="flashcardSession" label="Ghid pentru sesiunea de flashcarduri" /></div>
         {isDue ? (
           <EmptyState
             icon={Sparkles}

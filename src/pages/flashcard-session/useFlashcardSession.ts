@@ -4,11 +4,13 @@ import { useBack } from '../../hooks/useBack';
 import { useQuizStore } from '../../store/quizStore';
 import { useStatsStore } from '../../store/statsStore';
 import { useFolderStore } from '../../store/folderStore';
+import { useTutorialStore } from '../../store/tutorialStore';
 import type { QuestionStat, Quiz } from '../../types';
 import { useAdaptiveMotion } from '../../hooks/useAdaptiveMotion';
 import { buildClarificationFallback, getCorrectAnswerText } from '../../helpers/quizAi';
 import { explainWrongAnswer } from '../../lib/groq';
 import { isFlashcardDeck } from '../../lib/deckKind';
+import { playableQuestions } from '../../lib/bankDedup';
 import { buildDueQueue, isDueSessionId, parseDueSelection, DUE_NEW_DEFAULT } from '../../lib/flashcardDueQueue';
 import type { CardItem, SessionMeta, Rating } from './sessionTypes';
 import { shuffleArr } from './sessionUtils';
@@ -65,7 +67,7 @@ export function useFlashcardSession() {
       quizzes
         .filter((quiz) => !quiz.archived && quiz.questions.length > 0 && isFlashcardDeck(quiz))
         .forEach((quiz) => {
-        quiz.questions.forEach((question) => {
+        playableQuestions(quiz).forEach((question) => {
           const stat = questionStats[`${quiz.id}:${question.id}`];
           if (!stat || (stat.nextReview > 0 && stat.nextReview <= sessionNow)) {
             items.push({ question, quiz });
@@ -78,7 +80,7 @@ export function useFlashcardSession() {
     const quiz = quizzes.find((item) => item.id === id);
     if (!quiz) return { items: [], meta: null };
 
-    const items: CardItem[] = quiz.questions
+    const items: CardItem[] = playableQuestions(quiz)
       .filter((question) => {
         if (modeAll) return true;
         const stat = questionStats[`${quiz.id}:${question.id}`];
@@ -114,7 +116,7 @@ export function useFlashcardSession() {
    * the question's stat right before rating it and restores that exact
    * snapshot on undo, then lets the real rating flow run again cleanly.
    */
-  const lastRatingSnapshotRef = useRef<{ key: string; prevStat: QuestionStat | undefined } | null>(null);
+  const lastRatingSnapshotRef = useRef<{ key: string; prevStat: QuestionStat | undefined; requeued: boolean } | null>(null);
   const [canUndoRating, setCanUndoRating] = useState(false);
 
   useEffect(() => {
@@ -170,15 +172,18 @@ export function useFlashcardSession() {
     const { question, quiz } = cards[currentIdx];
 
     const key = `${quiz.id}:${question.id}`;
-    lastRatingSnapshotRef.current = { key, prevStat: useStatsStore.getState().questionStats[key] };
+    // „Greu” se reia o dată, la finalul aceleiași sesiuni (cardul revine scadent și în 10 minute).
+    const requeue = rating === 'hard' && !cards[currentIdx].isRetry;
+    lastRatingSnapshotRef.current = { key, prevStat: useStatsStore.getState().questionStats[key], requeued: requeue };
     setCanUndoRating(true);
 
     const isCorrect = rating !== 'hard';
     // „Ușor" = siguranță deplină → quality 5 (interval SM-2 mai lung), „Bine" → quality 4, „Greu" → greșit.
-    recordAnswer(quiz.id, question.id, isCorrect, rating === 'easy' ? 'confident' : undefined);
+    recordAnswer(quiz.id, question.id, isCorrect, rating === 'easy' ? 'confident' : undefined, { flashcard: true });
     setRatings((prev) => [...prev, rating]);
+    if (requeue) setCards((prev) => [...prev, { ...cards[currentIdx], isRetry: true }]);
 
-    if (currentIdx + 1 < cards.length) {
+    if (currentIdx + 1 < cards.length + (requeue ? 1 : 0)) {
       setFlipped(false);
       setAiExplanation(null);
       setCurrentIdx((index) => index + 1);
@@ -205,6 +210,7 @@ export function useFlashcardSession() {
     });
     lastRatingSnapshotRef.current = null;
     setCanUndoRating(false);
+    if (snapshot.requeued) setCards((prev) => prev.slice(0, -1));
     setRatings((prev) => prev.slice(0, -1));
     setAiExplanation(null);
     setCurrentIdx((index) => index - 1);
@@ -240,6 +246,7 @@ export function useFlashcardSession() {
 
   useEffect(() => {
     const handleKeys = (event: KeyboardEvent) => {
+      if (useTutorialStore.getState().active || (event.target instanceof Element && event.target.closest('[role="dialog"]'))) return;
       if (sessionDone) return;
       if (event.ctrlKey || event.metaKey || event.altKey) return;
       // A focused button/field keeps its own Enter/Space.

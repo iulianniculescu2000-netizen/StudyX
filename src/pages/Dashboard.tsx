@@ -1,3 +1,4 @@
+import { formatStudyTime } from '../lib/formatStudyTime';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpen, Plus } from 'lucide-react';
@@ -48,7 +49,7 @@ function DashboardActions({ compact }: { compact: boolean }) {
         <MagneticButton
           to="/create"
           className={`press-feedback flex items-center gap-2.5 rounded-[var(--r-lg)] ${compact ? 'px-6 py-3.5' : 'px-8 py-4'} text-[11px] font-black uppercase tracking-wider text-white`}
-          style={{ background: theme.accent, boxShadow: 'var(--elev-1)' }}
+          style={{ background: theme.isDark ? '#0062CC' : theme.accentText, boxShadow: 'var(--elev-1)' }}
         >
           <Plus size={18} strokeWidth={3} /> Creează grilă
         </MagneticButton>
@@ -68,9 +69,12 @@ function DashboardActions({ compact }: { compact: boolean }) {
 function RecentQuizzesSection({
   recentQuizzes,
   onStartTutorial,
+  hasActivity,
 }: {
   recentQuizzes: ReturnType<typeof useQuizStore.getState>['quizzes'];
   onStartTutorial: () => void;
+  /** Există grile (și de Rezidențiat) sau răspunsuri: starea „prima grilă” ar contrazice restul panoului. */
+  hasActivity: boolean;
 }) {
   const theme = useTheme();
   const { calmMotion } = useAdaptiveMotion();
@@ -79,7 +83,7 @@ function RecentQuizzesSection({
     <section data-tutorial="dashboard-recent" className={calmMotion ? '' : 'fx-rise'} style={{ '--i': 5 } as React.CSSProperties}>
       <div className="mb-3 flex items-center justify-between">
         <SectionLabel>Grile recente</SectionLabel>
-        <Link to="/quizzes" className="press-feedback text-xs font-bold uppercase tracking-widest hover:underline" style={{ color: theme.accentText }}>
+        <Link to="/quizzes" className="press-feedback -my-2 py-2 text-xs font-bold uppercase tracking-widest hover:underline underline-offset-4" style={{ color: theme.accentText }}>
           Vezi tot
         </Link>
       </div>
@@ -87,6 +91,14 @@ function RecentQuizzesSection({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {recentQuizzes.map((quiz, index) => <QuizCard key={quiz.id} quiz={quiz} index={index} />)}
         </div>
+      ) : hasActivity ? (
+        <EmptyState
+          icon={BookOpen}
+          title="Nicio grilă recentă aici"
+          body="Grilele din Rezidențiat se deschid din pagina lor; aici apar seturile tale proprii."
+          primary={{ label: 'Deschide Rezidențiat', to: '/rezidentiat' }}
+          secondary={{ label: 'Creează o grilă', to: '/create' }}
+        />
       ) : (
         <div className="space-y-3">
           <EmptyState
@@ -122,20 +134,18 @@ export default function Dashboard() {
   const startTutorial = useTutorialStore((state) => state.startTutorial);
 
   const accuracy = useStatsStore((s) => s.getAccuracy());
-  const studyHours = Math.floor(totalStudyTime / 3600);
-  const studyMinutes = Math.floor(totalStudyTime / 60);
+  const hasAnswers = useStatsStore((s) => Object.values(s.questionStats).some((stat) => !stat.retired && stat.timesCorrect + stat.timesWrong > 0));
 
   // Real week-over-week deltas. Every stat card used to show a fixed "▲ 2%".
   const trends = useMemo(() => computeDashboardTrends(quizzes, sessions), [quizzes, sessions]);
 
-  const quizOnlyCount = useMemo(() => quizzes.filter((q) => !q.archived && !isFlashcardDeck(q) && !isRezidentiatQuiz(q)).length, [quizzes]);
+  // Toate grilele jucabile, inclusiv cele de Rezidențiat: după o sesiune doar în Rezidențiat panoul nu mai spune „0 grile”.
+  const quizOnlyCount = useMemo(() => quizzes.filter((q) => !q.archived && !isFlashcardDeck(q)).length, [quizzes]);
   const animatedQuizzes = useCountUp(quizOnlyCount);
   // currentStreak is only recalculated when a session is recorded: after a skipped day it stays stale.
   const liveStreak = effectiveStreak(streak, localDateStr());
   const animatedStreak = useCountUp(liveStreak);
   const animatedAccuracy = useCountUp(accuracy);
-  const animatedStudyHours = useCountUp(studyHours);
-  const animatedStudyMinutes = useCountUp(studyMinutes);
 
   useEffect(() => {
     const intervalId = setInterval(() => setNow(new Date()), 60000);
@@ -172,8 +182,8 @@ export default function Dashboard() {
     // A streak has no meaningful week-over-week percentage — the number itself
     // already says everything, so it carries no badge.
     { label: 'Serie', numeric: liveStreak, display: `${animatedStreak} ${animatedStreak === 1 ? 'zi' : 'zile'}`, suffix: '', color: theme.warning },
-    { label: 'Acuratețe', numeric: accuracy, display: accuracy > 0 ? `${animatedAccuracy}%` : '-', suffix: '%', color: theme.success, delta: trends.accuracy, deltaUnit: 'pp' },
-    { label: 'Timp studiu', numeric: studyHours, display: studyHours > 0 ? `${animatedStudyHours}h` : `${animatedStudyMinutes}m`, suffix: 'h', color: theme.accent2, delta: trends.studyTime },
+    { label: 'Acuratețe', numeric: accuracy, display: hasAnswers ? `${animatedAccuracy}%` : '-', suffix: '%', color: theme.success, delta: trends.accuracy, deltaUnit: 'pp' },
+    { label: 'Timp studiu', numeric: totalStudyTime / 3600, display: formatStudyTime(totalStudyTime), suffix: 'h', color: theme.accent2, delta: trends.studyTime },
   ];
 
   if (!_hasHydrated) {
@@ -199,7 +209,7 @@ export default function Dashboard() {
           <div data-tutorial="dashboard-stats"><DashboardStatStrip stats={stats} /></div>
           <div data-tutorial="dashboard-consistency"><StudyConsistencyMap compact={compact} /></div>
           <DashboardActions compact={compact} />
-          <RecentQuizzesSection recentQuizzes={recentQuizzes} onStartTutorial={startTutorial} />
+          <RecentQuizzesSection recentQuizzes={recentQuizzes} onStartTutorial={startTutorial} hasActivity={quizOnlyCount > 0 || hasAnswers} />
         </div>
       </FxPage>
     </DashboardErrorBoundary>

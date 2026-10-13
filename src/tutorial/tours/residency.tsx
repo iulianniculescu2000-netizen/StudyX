@@ -1,15 +1,15 @@
-import { BookOpen, Download, FolderOpen, Layers, Plus, Stethoscope } from 'lucide-react';
-import type { TourDefinition } from '../types';
+import { plural } from '../../lib/plural';
+import { BookOpen, Download, FolderOpen, Layers, Plus, Stethoscope, SlidersHorizontal } from 'lucide-react';
+import type { TourContext, TourDefinition, TourStep } from '../types';
 
-export const residencyTour: TourDefinition = {
-  id: 'residency',
-  title: 'Rezidențiat',
-  autoStartRoute: '/rezidentiat',
-  steps: [
+const aiDialogOpen = () => !!document.querySelector('[data-tutorial="rez-ai-level"]');
+const importDialogOpen = () => !!document.querySelector('[data-tutorial="rez-import-folder"]');
+
+const overviewSteps: TourStep[] = [
     {
       id: 'residency-intro',
       title: 'Rezidențiat, într-un singur loc',
-      body: 'Grile, cărți și carduri, aranjate pe discipline și specialități. Poți face și tu grile și pachete, în folderele tale. Un tur scurt, ca să știi unde e fiecare lucru.',
+      body: (ctx) => ctx.residencyQuizCount === 0 ? 'Nu ai grile de Rezidențiat încă, chiar dacă ai alte grile în profil. Adaugă o bancă din lista de import sau folosește + pentru material propriu.' : `Ai ${plural(ctx.residencyQuizCount, 'set', 'seturi')} de grile pentru Rezidențiat și ${plural(ctx.residencyDeckCount, 'pachet', 'pachete')}. Deschide disciplina dorită pentru progres și teste.`,
       icon: <Stethoscope size={22} />,
       placement: 'center',
       route: '/rezidentiat',
@@ -25,7 +25,8 @@ export const residencyTour: TourDefinition = {
       placement: 'bottom',
       route: '/rezidentiat',
       // No disciplines to point at until some grile are in the profile.
-      when: (ctx) => ctx.quizCount > 0,
+      when: (ctx) => ctx.residencyQuizCount > 0,
+      optional: true,
     },
     {
       id: 'residency-add',
@@ -66,15 +67,42 @@ export const residencyTour: TourDefinition = {
     {
       id: 'residency-import',
       title: 'Adaugă banca de grile',
-      body: 'Ce mai ai de adăugat apare aici: apeși „Adaugă” o dată și grilele se așază singure pe specialități.',
+      body: (ctx) => ctx.residencyQuizCount === 0 ? 'Alege o bancă disponibilă și apasă Adaugă când vrei să o imporți. Grilele se așază pe specialități.' : 'Lista arată băncile care mai pot fi adăugate. Poți importa materiale suplimentare chiar dacă ai deja grile.',
       icon: <Download size={22} />,
       target: '[data-tutorial="residency-import"]',
       targetPadding: 8,
       placement: 'top',
       route: '/rezidentiat',
       accent: '#30D158',
-      // The list of what can still be added only shows while there is something to add, i.e. on an empty profile.
-      when: (ctx) => ctx.quizCount === 0,
+      // Remaining imports can exist in populated profiles too.
+      optional: true,
     },
+];
+
+export const residencyTour: TourDefinition = {
+  id: 'residency', title: 'Rezidențiat', autoStartRoute: '/rezidentiat',
+  steps: [
+    ...overviewSteps.map((step) => ({ ...step, when: (ctx: TourContext) => !aiDialogOpen() && !importDialogOpen() && (!step.when || step.when(ctx)) })),
+    { id: 'rez-ai-intro', title: 'Grile cu AI, în acest dialog',
+      body: 'Completezi un subiect, apoi alegi nivelul, tipul și destinația. Ai nevoie de o cheie AI configurată. Ghidul păstrează dialogul deschis și nu pornește generarea.',
+      icon: <BookOpen size={22} />, placement: 'center', when: aiDialogOpen },
+    { id: 'rez-ai-level-guide', title: 'Nivelul întrebărilor',
+      body: 'Alege nivelul potrivit pentru ce exersezi. Alegerea ghidează cererea AI, dar nu garantează dificultatea fiecărei întrebări; verifică materialul generat înainte de studiu.',
+      icon: <SlidersHorizontal size={22} />, target: '[data-tutorial="rez-ai-level"]', placement: 'bottom', optional: true, when: aiDialogOpen },
+    { id: 'rez-ai-type-guide', title: 'Complement simplu sau multiplu',
+      body: 'Complement simplu cere un singur răspuns corect. Complement multiplu permite mai multe răspunsuri corecte. Numărul de grile se alege separat, în același dialog.',
+      icon: <Layers size={22} />, target: '[data-tutorial="rez-ai-type"]', placement: 'bottom', optional: true, when: aiDialogOpen },
+    { id: 'rez-ai-folder-guide', title: 'Unde ajung grilele',
+      body: 'Câmpul „Se salvează în” stabilește destinația: un folder existent, unul nou sau opțiunea automată disponibilă. Verifică selecția înainte să apeși Generează. Închide ghidul pentru a continua în dialog.',
+      icon: <FolderOpen size={22} />, target: '[data-tutorial="rez-ai-folder"]', placement: 'top', optional: true, when: aiDialogOpen },
+    { id: 'rez-import-intro', title: 'Importul începe cu destinația',
+      body: 'Acest dialog pregătește folderul în care vor intra grilele. Ghidul nu selectează fișiere și nu importă materiale.',
+      icon: <Download size={22} />, placement: 'center', when: importDialogOpen },
+    { id: 'rez-import-folder-guide', title: 'Alege folderul pentru import',
+      body: 'Poți selecta un folder existent sau pregăti unul nou. Dacă alegi un folder nou, completează numele înainte să continui. Verifică destinația pentru a găsi materialele după import.',
+      icon: <FolderOpen size={22} />, target: '[data-tutorial="rez-import-folder"]', placement: 'bottom', optional: true, when: importDialogOpen },
+    { id: 'rez-import-file-guide', title: 'Apoi alegi fișierul',
+      body: 'Închide ghidul și apasă Continuă când destinația este pregătită. Pasul următor deschide alegerea fișierului pentru import; consultă explicația Ce pot importa? pentru formatul acceptat.',
+      icon: <Download size={22} />, placement: 'center', when: importDialogOpen },
   ],
 };

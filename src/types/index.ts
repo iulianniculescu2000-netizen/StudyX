@@ -114,6 +114,8 @@ export interface QuizImportData {
   color?: QuizColor;
   shuffleQuestions?: boolean;
   shuffleAnswers?: boolean;
+  /** Rezidențiat scoring (+1 correct, −0.25 per wrong option); kept through import/export. */
+  penaltyMode?: boolean;
   questions: {
     text: string;
     imageUrl?: string;

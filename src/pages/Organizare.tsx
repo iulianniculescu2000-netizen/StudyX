@@ -20,6 +20,7 @@ import type { Plan, RawPlan } from '../lib/organizare/types';
 import { useRezidentiatOverview } from '../components/residency/useResidencyData';
 import PageHeader from '../components/ui/PageHeader';
 import FxPage from '../components/fx/FxPage';
+import { useScrollFade } from '../components/ui/useScrollFade';
 import TourHelpButton from '../tutorial/TourHelpButton';
 import { OrganizareContext, type OrganizareApi } from '../components/organizare/context';
 import { Card, GhostButton } from '../components/organizare/ui';
@@ -92,6 +93,7 @@ export default function Organizare() {
   const sentinel = useRef<HTMLDivElement>(null);
   const importer = useRef<HTMLInputElement>(null);
   const [stuck, setStuck] = useState(false);
+  const [tabRef, tabFade] = useScrollFade<HTMLDivElement>();
 
   const state = useMemo(() => (plan ? readState(plan, stored) : null), [plan, stored]);
   const win = useMemo(() => (plan && state ? computeWindows(plan, state, today) : null), [plan, state, today]);
@@ -243,7 +245,7 @@ export default function Organizare() {
           className="pointer-events-none sticky top-2 z-20 mb-5"
           aria-label="Secțiunile planului"
         >
-          <div role="tablist" className={`${stuck ? '' : 'glass-panel '}pointer-events-auto flex items-center gap-1 overflow-x-auto rounded-2xl p-1.5`} style={{ scrollbarWidth: 'none', transition: 'box-shadow 0.2s', ...(stuck ? { background: 'color-mix(in srgb, var(--bg) 94%, transparent)', backdropFilter: 'blur(22px) saturate(1.2)', WebkitBackdropFilter: 'blur(22px) saturate(1.2)', boxShadow: 'var(--hairline-ring), var(--elev-3)' } : {}) }}>
+          <div ref={tabRef} role="tablist" className={`${stuck ? '' : 'glass-panel '}pointer-events-auto flex items-center gap-1 overflow-x-auto rounded-2xl p-1.5`} style={{ scrollbarWidth: 'none', transition: 'box-shadow 0.2s', ...tabFade, ...(stuck ? { background: 'color-mix(in srgb, var(--bg) 94%, transparent)', backdropFilter: 'blur(22px) saturate(1.2)', WebkitBackdropFilter: 'blur(22px) saturate(1.2)', boxShadow: 'var(--hairline-ring), var(--elev-3)' } : {}) }}>
             <AnimatePresence initial={false}>
               {stuck && (
                 <motion.span

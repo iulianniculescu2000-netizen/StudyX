@@ -1,3 +1,4 @@
+import { plural } from '../lib/plural';
 import { motion } from 'framer-motion';
 import { useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams, Link, Navigate } from 'react-router-dom';
@@ -5,9 +6,10 @@ import { rezidentiatHrefForFolder } from '../lib/rezidentiatRoutes';
 import { startQuizMix } from '../lib/quizMixSession';
 import { isFolderSessionQuiz } from '../lib/rezidentiatOverview';
 import { QUIZ_COLOR_HEX } from '../theme/colorMaps';
+import { onFillText } from '../theme/contrastText';
 import { Check, CalendarDays, FolderPlus, Inbox, Pencil, Plus, Search, Shuffle, Trash2, X } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
-import { useFolderStore } from '../store/folderStore';
+import { hasSiblingFolderNamed, useFolderStore } from '../store/folderStore';
 import { useQuizStore } from '../store/quizStore';
 import QuizCard from '../components/QuizCard';
 import ImportQuizButton from '../components/ImportQuizButton';
@@ -63,7 +65,7 @@ export default function FolderView() {
   // Căutarea în folder trăiește în URL (?q=), alături de ?plain=1 pe care îl păstrăm.
   const folderQuery = folderSearchParams.get('q') ?? '';
   const visibleQuizzes = folderQuery
-    ? folderQuizzes.filter((q) => matchesQuery(`${q.title} ${q.description} ${q.category}`, folderQuery))
+    ? folderQuizzes.filter((q) => matchesQuery(`${q.title} ${q.description ?? ''} ${q.category ?? ''} ${(q.tags ?? []).join(' ')}`, folderQuery))
     : folderQuizzes;
   const setFolderQuery = (value: string) => setFolderSearchParams((current) => {
     const next = new URLSearchParams(current);
@@ -137,9 +139,11 @@ export default function FolderView() {
     setSubfolderColor(folder?.color ?? 'blue');
   };
 
+  const subfolderDuplicate = !!folder && hasSiblingFolderNamed(folders, subfolderName, folder.id);
+
   const handleCreateSubfolder = () => {
     const name = subfolderName.trim();
-    if (!folder || !name) return;
+    if (!folder || !name || subfolderDuplicate) return;
     addFolder(name, subfolderEmoji.trim() || '📁', subfolderColor, folder.id);
     closeSubfolderForm();
   };
@@ -184,7 +188,7 @@ export default function FolderView() {
 
   if (rezidentiatHref) return <Navigate to={rezidentiatHref} replace />;
   if (!hydrated) return <PageSkeleton blocks={3} />;
-  const countLabel = `${totalQuizCount} ${totalQuizCount === 1 ? 'set' : 'seturi'}${childFolders.length > 0 && totalQuizCount !== folderQuizzes.length ? ' în total' : ''}${childFolders.length > 0 ? ` · ${childFolders.length} ${childFolders.length === 1 ? 'subfolder' : 'subfoldere'}` : ''}`;
+  const countLabel = `${plural(totalQuizCount, 'set', 'seturi')}${childFolders.length > 0 && totalQuizCount !== folderQuizzes.length ? ' în total' : ''}${childFolders.length > 0 ? ` · ${plural(childFolders.length, 'subfolder', 'subfoldere')}` : ''}`;
 
   return (
     <div className="h-full overflow-y-auto px-8 py-8">
@@ -223,14 +227,14 @@ export default function FolderView() {
                   type="button"
                   onClick={() => setConfirmPlayAll(true)}
                   className="press-feedback focus-ring flex items-center gap-2 px-4 py-2.5 rounded-[var(--r-md)] text-sm font-semibold text-white"
-                  style={{ background: theme.success }}
+                  style={{ background: theme.successFill }}
                 >
                   <Shuffle size={15} />Joacă tot folderul
                 </button>
               )}
               <Link to={`/create?folder=${id}`}
-                className="press-feedback focus-ring flex items-center gap-2 px-4 py-2.5 rounded-[var(--r-md)] text-sm font-medium text-white"
-                style={{ background: `linear-gradient(135deg, ${accentColor}, ${theme.accent2})` }}>
+                className="press-feedback focus-ring flex items-center gap-2 px-4 py-2.5 rounded-[var(--r-md)] text-sm font-medium"
+                style={{ background: accentColor, color: onFillText(accentColor) }}>
                 <Plus size={15} />Grilă nouă
               </Link>
             </>
@@ -261,6 +265,7 @@ export default function FolderView() {
                 }}
                 autoFocus
                 placeholder="Nume subfolder"
+                aria-invalid={subfolderDuplicate || undefined}
                 className="focus-ring elev-1 h-11 min-w-0 flex-1 rounded-xl px-4 text-sm font-semibold outline-none"
                 style={{ background: theme.surface2, border: `1px solid ${theme.border}`, color: theme.text }}
               />
@@ -284,9 +289,9 @@ export default function FolderView() {
                 <button
                   type="button"
                   onClick={handleCreateSubfolder}
-                  disabled={!subfolderName.trim()}
-                  className="press-feedback focus-ring inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl px-4 text-sm font-black text-white disabled:opacity-50 sm:flex-none"
-                  style={{ background: accentColor }}
+                  disabled={!subfolderName.trim() || subfolderDuplicate}
+                  className="press-feedback focus-ring inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl px-4 text-sm font-black disabled:opacity-50 sm:flex-none"
+                  style={{ background: accentColor, color: onFillText(accentColor) }}
                 >
                   <Check size={15} />Creează
                 </button>
@@ -301,6 +306,11 @@ export default function FolderView() {
                 </button>
               </div>
             </div>
+            {subfolderDuplicate && (
+              <div role="alert" className="mt-2 text-xs font-semibold" style={{ color: theme.danger }}>
+                Există deja un folder cu acest nume aici. Alege alt nume.
+              </div>
+            )}
           </motion.div>
         )}
 
@@ -360,7 +370,7 @@ export default function FolderView() {
                             onClick={saveEditChild}
                             disabled={!editChildName.trim()}
                             className="press-feedback focus-ring flex h-8 w-8 items-center justify-center rounded-lg disabled:opacity-40"
-                            style={{ background: theme.success, color: '#fff' }}
+                            style={{ background: theme.successFill, color: '#fff' }}
                             aria-label="Salvează"
                           >
                             <Check size={14} />
@@ -400,7 +410,7 @@ export default function FolderView() {
                             className="mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold"
                             style={{ background: theme.surface2, color: theme.text3 }}
                           >
-                            {count} {count === 1 ? 'set' : 'seturi'}{hasSubfolders ? ' în total' : ''}
+                            {plural(count, 'set', 'seturi')}{hasSubfolders ? ' în total' : ''}
                           </span>
                         </div>
                         <div className="h-8 w-1 flex-shrink-0 rounded-full" style={{ background: childColor }} />
@@ -452,7 +462,7 @@ export default function FolderView() {
                 Seturi
               </h2>
             )}
-            {folderQuizzes.length > 6 && (
+            {(folderQuizzes.length > 6 || !!folderQuery) && (
               <div className="mb-4 flex items-center gap-3 rounded-[var(--r-md)] border border-[var(--hairline)] bg-[var(--fill-subtle)] px-4 py-2.5 focus-within:border-[var(--accent)] focus-within:shadow-[var(--ring-focus)]">
                 <Search size={16} className="opacity-40" style={{ color: theme.text }} aria-hidden="true" />
                 <input
@@ -461,7 +471,7 @@ export default function FolderView() {
                   onChange={(event) => setFolderQuery(event.target.value)}
                   placeholder="Caută în folder..."
                   aria-label="Caută în folder"
-                  className="flex-1 border-none bg-transparent text-sm font-semibold outline-none"
+                  className="input-bare min-w-0 flex-1 text-sm font-semibold"
                   style={{ color: theme.text }}
                 />
               </div>
@@ -499,7 +509,7 @@ export default function FolderView() {
         open={confirmPlayAll}
         variant="default"
         title={`Joci tot folderul „${folder?.name ?? ''}"?`}
-        description={`Se combină ${playableSets.length} seturi într-o singură sesiune amestecată, cu ${playableQuestionCount} întrebări în total.`}
+        description={`Se combină ${plural(playableSets.length, 'set', 'seturi')} într-o singură sesiune amestecată, cu ${plural(playableQuestionCount, 'întrebare', 'întrebări')} în total.`}
         confirmLabel="Începe sesiunea"
         onConfirm={handlePlayFolder}
         onCancel={() => setConfirmPlayAll(false)}

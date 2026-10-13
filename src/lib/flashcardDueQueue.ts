@@ -8,6 +8,7 @@ import { chapterOfDeck } from './chapterDecks';
 import { curriculumChapters } from './curriculum';
 import { isFlashcardDeck } from './deckKind';
 import { folderSubtreeIds } from './flashcardGroups';
+import { playableQuestions } from './bankDedup';
 
 /** Id-urile speciale ale rutei /flashcards/session/:id care pornesc o sesiune peste mai multe pachete. */
 export const isDueSessionId = (id: string | undefined): boolean => id === 'due' || id === 'due-group';
@@ -85,7 +86,7 @@ export function buildDueQueue(options: DueQueueOptions): DueQueue {
     if (wanted && !wanted.has(quiz.id)) continue;
     if (folderScope && !(quiz.folderId && folderScope.has(quiz.folderId))) continue;
     const { key: groupKey, label: groupLabel } = groupOfDeck(quiz);
-    for (const question of quiz.questions) {
+    for (const question of playableQuestions(quiz)) {
       const statKey = `${quiz.id}:${question.id}`;
       const stat = stats[statKey];
       if (stat?.retired) continue;

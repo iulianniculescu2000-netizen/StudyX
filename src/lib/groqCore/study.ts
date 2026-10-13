@@ -1,6 +1,7 @@
 import { getMedicalSystemPrompt } from '../aiContext';
 import { groqChat } from './requests';
 import { groqStream } from './streaming';
+import { buildInlineExplanationPrompt, buildWrongAnswerPrompt } from './studyPrompts';
 
 export async function explainWrongAnswer(
   questionText: string,
@@ -8,29 +9,11 @@ export async function explainWrongAnswer(
   correctAnswer: string,
   userContext?: string
 ): Promise<string> {
-  const forgotContext = /am uitat contextul/i.test(userAnswer);
-  const studentAnswerLine = forgotContext
-    ? 'Studentul foloseste flashcardul pentru active recall si nu a formulat raspunsul din memorie.'
-    : `Raspunsul studentului: "${userAnswer}".`;
-
   return groqChat([
     { role: 'system', content: getMedicalSystemPrompt('explainer', userContext) },
     {
       role: 'user',
-      content: `Explică SCURT și DIRECT. Maxim 4-5 propoziții totale, fără eseuri.
-
-Întâi verifică medical dacă "${correctAnswer}" este chiar răspunsul corect (grila poate fi generată automat și greșită). Dacă e greșit, începe cu „⚠️ Grila pare greșită — corect este de fapt «...»" și explică; nu apăra o cheie eronată. Dacă nu ești sigur, spune-o în loc să alegi la întâmplare.
-
-Dacă e corect, FORMAT:
-1. De ce "${correctAnswer}" e corect — 1-2 propoziții cu mecanismul cheie.
-2. De ce răspunsul ales cade — 1 propoziție, direct, cu confuzia clasică din spate.
-3. Cum se întreabă la examen / regula de reținut — 1 propoziție memorabilă.
-
-Nu repeta întrebarea. Nu enumera toate variantele. Răspunde în română.
-
-Întrebare: ${questionText}
-${studentAnswerLine}
-Răspuns marcat ca corect în grilă: "${correctAnswer}"`,
+      content: buildWrongAnswerPrompt(questionText, userAnswer, correctAnswer),
     },
   ], 0.3);
 }
@@ -49,29 +32,11 @@ export async function explainAnswerInline(
   signal?: AbortSignal,
   userContext?: string
 ): Promise<void> {
-  const correct = options.find(o => o.isCorrect)?.text ?? '';
-  const wrong = options.filter(o => !o.isCorrect).map(o => `"${o.text}"`).join(', ');
-
   await groqStream([
     { role: 'system', content: getMedicalSystemPrompt('explainer', userContext) },
     {
       role: 'user',
-      content: `Întrebare: "${questionText}"
-Răspuns marcat ca CORECT în grilă: "${correct}"
-Variante marcate ca greșite: ${wrong}
-
-Această grilă a putut fi generată automat, deci cheia poate conține erori.
-PASUL 0 — VERIFICĂ medical dacă "${correct}" este chiar răspunsul corect:
-- Dacă este corect: explică normal.
-- Dacă este GREȘIT (altă variantă e corectă sau enunțul/cheia au o eroare): spune răspicat din prima propoziție, ex: "⚠️ Atenție: grila pare greșită — răspunsul corect real este «...», nu «${correct}»", apoi explică de ce. NU justifica o cheie greșită. Dacă nu ești sigur, spune-o deschis.
-
-Dacă cheia este corectă, explică pentru un student la medicină, în această ordine:
-- răspunsul direct și de ce e bun (mecanismul fiziologic sau fiziopatologic decisiv),
-- de ce fiecare variantă greșită pică și când ar putea deveni corectă,
-- capcana de examen și cum se întreabă de obicei,
-- regula scurtă de reținut.
-
-Răspunde în română, concis, dar fără superficialitate.`,
+      content: buildInlineExplanationPrompt(questionText, options),
     },
   ], onChunk, 0.3, signal);
 }

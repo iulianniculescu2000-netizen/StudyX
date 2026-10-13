@@ -17,10 +17,10 @@ interface StatsStore {
   /** Realizări câștigate definitiv + reperele nivelului; se salvează odată cu statisticile (câmp opțional în snapshot). */
   achievements: AchievementsState;
   setAchievements: (next: AchievementsState) => void;
-  recordAnswer: (quizId: string, questionId: string, correct: boolean, confidence?: Confidence) => void;
+  recordAnswer: (quizId: string, questionId: string, correct: boolean, confidence?: Confidence, opts?: { flashcard?: boolean }) => void;
   recordStudySession: (durationSeconds: number) => void;
   getDueQuestions: () => QuestionStat[];
-  getWeakQuestions: (limit?: number) => QuestionStat[];
+  getWeakQuestions: (limit?: number, validKeys?: ReadonlySet<string>) => QuestionStat[];
   getAccuracy: (quizId?: string) => number;
   getStatsByTag: (quizzes: import('../types').Quiz[]) => Record<string, { correct: number; total: number }>;
   /** `achievements` lipsește din profilurile salvate înainte de realizările definitive: se citește ca „nimic înregistrat”. */
@@ -58,10 +58,14 @@ function qualityFromOutcome(correct: boolean, confidence?: Confidence): SM2Quali
  * SuperMemo-2 (SM-2) algorithm, quality-driven (Anki/professional SRS).
  * `consecutiveCorrect` plays the role of SM-2 "repetitions".
  */
+/** „Greu” la un flashcard: se reia în aceeași sesiune și rămâne scadent după atât. */
+export const FLASHCARD_RELEARN_MS = 10 * 60 * 1000;
+
 export function calcNextReview(
   stat: QuestionStat,
   correct: boolean,
   confidence?: Confidence,
+  opts?: { flashcard?: boolean },
 ): { nextReview: number; interval: number; eFactor: number; consecutiveCorrect: number } {
   const quality = qualityFromOutcome(correct, confidence);
   const eFactor = stat.eFactor ?? 2.5;
@@ -73,7 +77,8 @@ export function calcNextReview(
     // factor on every lapse so that genuinely hard cards stay at short intervals
     // after relearning instead of jumping back to months straight away.
     return {
-      nextReview: Date.now() + 86400000, // 1 zi
+      // O grilă greșită revine mâine; un flashcard „Greu” se reia în câteva minute.
+      nextReview: Date.now() + (opts?.flashcard ? FLASHCARD_RELEARN_MS : 86400000),
       interval: 1,
       eFactor: Math.max(1.3, eFactor - 0.2),
       consecutiveCorrect: 0,
@@ -84,7 +89,8 @@ export function calcNextReview(
   const newEF = Math.max(1.3, eFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)));
 
   let newInterval: number;
-  if (n === 0) newInterval = 1;
+  // Prima trecere: „Bine” = 1 zi, „Ușor” (siguranță deplină) = 4 zile, ca să difere de la început.
+  if (n === 0) newInterval = quality >= 5 ? 4 : 1;
   else if (n === 1) newInterval = 6;
   // A stat carrying interval 0 (legacy or partially hydrated data) would stay at
   // 0 forever here, since 0 * eFactor is still 0 — leaving the card due on every
@@ -100,6 +106,37 @@ export function calcNextReview(
     eFactor: newEF,
     consecutiveCorrect: n + 1,
   };
+}
+
+/** Scadentă: programată și ajunsă la termen; intrările retrase nu mai contează. */
+export function isDueStat(stat: QuestionStat, now: number = Date.now()): boolean {
+  return !stat.retired && stat.nextReview > 0 && stat.nextReview <= now;
+}
+
+/**
+ * „Slabă” = greșită cel puțin o dată și încă nestabilizată (ease scăzut sau sub 2 răspunsuri corecte la rând).
+ * O întrebare la care ai răspuns doar corect nu e slabă, chiar dacă încă nu s-a stabilizat.
+ */
+export function isWeakStat(stat: QuestionStat): boolean {
+  if (stat.retired || stat.timesWrong <= 0) return false;
+  return (stat.eFactor ?? 2.5) < 2.0 || (stat.consecutiveCorrect ?? 0) < 2;
+}
+
+/** Cheia `${quizId}:${questionId}` pentru fiecare întrebare existentă; statisticile fără cheie (set șters) sunt orfane. */
+export function existingStatKeys(quizzes: ReadonlyArray<Pick<import('../types').Quiz, 'id' | 'questions'>>): Set<string> {
+  const keys = new Set<string>();
+  for (const quiz of quizzes) for (const q of quiz.questions) keys.add(`${quiz.id}:${q.id}`);
+  return keys;
+}
+
+/** Numără exact întrebările slabe (fără limită); `validKeys` exclude statisticile orfane. */
+export function countWeakStats(stats: Record<string, QuestionStat>, validKeys?: ReadonlySet<string>): number {
+  let count = 0;
+  for (const [key, stat] of Object.entries(stats)) {
+    if (validKeys && !validKeys.has(key)) continue;
+    if (isWeakStat(stat)) count += 1;
+  }
+  return count;
 }
 
 /** Acuratețea (0–100) pe fiecare set, dintr-o singură trecere prin statistici; istoricul retras nu se numără. */
@@ -126,7 +163,7 @@ export const useStatsStore = create<StatsStore>()(
 
     setAchievements: (next) => set({ achievements: next }),
 
-    recordAnswer: (quizId, questionId, correct, confidence) => {
+    recordAnswer: (quizId, questionId, correct, confidence, opts) => {
       const key = `${quizId}:${questionId}`;
       set((s) => {
         const existing: QuestionStat = s.questionStats[key] ?? {
@@ -136,7 +173,7 @@ export const useStatsStore = create<StatsStore>()(
           consecutiveCorrect: 0,
         };
 
-        const review = calcNextReview(existing, correct, confidence);
+        const review = calcNextReview(existing, correct, confidence, opts);
 
         const updated: QuestionStat = {
           ...existing,
@@ -192,16 +229,14 @@ export const useStatsStore = create<StatsStore>()(
 
     getDueQuestions: () => {
       const now = Date.now();
-      return Object.values(get().questionStats).filter(
-        (s) => s.nextReview > 0 && s.nextReview <= now
-      );
+      return Object.values(get().questionStats).filter((s) => isDueStat(s, now));
     },
 
-    getWeakQuestions: (limit = 10) => {
-      const seen = Object.values(get().questionStats).filter((s) => !s.retired && s.timesCorrect + s.timesWrong > 0);
-      // SM-2 weakness: low ease factor or not yet stabilized (repetitions < 2).
-      const weak = seen.filter((s) => (s.eFactor ?? 2.5) < 2.0 || (s.consecutiveCorrect ?? 0) < 2);
-      const pool = weak.length > 0 ? weak : seen;
+    getWeakQuestions: (limit = 10, validKeys) => {
+      // Slabă = greșită măcar o dată și nestabilizată (vezi `isWeakStat`); fără întrebări slabe, lista e goală.
+      const pool = Object.entries(get().questionStats)
+        .filter(([key, s]) => (!validKeys || validKeys.has(key)) && isWeakStat(s))
+        .map(([, s]) => s);
       return pool
         .sort((a, b) => {
           const efA = a.eFactor ?? 2.5;

@@ -40,6 +40,7 @@ import OptionList from './quiz-play/components/OptionList';
 import NoteBox from './quiz-play/components/NoteBox';
 import ChatContinuePanel from './quiz-play/components/ChatContinuePanel';
 import { ActionDock, InlineConfirm } from './quiz-play/components/ActionDock';
+import RelevantDocModal from './quiz-play/RelevantDocModal';
 
 interface PlayRouteState {
   mode?: string;
@@ -56,6 +57,7 @@ export default function QuizPlay() {
   const hydrated = useStoresHydrated('quiz');
   const quiz = useQuizStore((s) => s.quizzes.find((q) => q.id === id));
   const state = location.state as PlayRouteState | null;
+  const targetQuestionId = new URLSearchParams(location.search).get('question');
   const examMode = state?.mode === 'exam';
   const timedMode = state?.mode === 'timed';
   /** Simulare completă: timp total, nu per întrebare. La 0 sesiunea se încheie singură. */
@@ -67,6 +69,12 @@ export default function QuizPlay() {
   // Build shuffled question/option order once
   const orderedQuestions = useMemo<Question[]>(() => {
     if (!quiz) return [];
+    // A note points at one exact question, even if duplicate filtering normally hides it.
+    // A stale link must not silently start the entire quiz.
+    if (targetQuestionId !== null) {
+      const target = quiz.questions.find((question) => question.id === targetQuestionId);
+      return target ? [target] : [];
+    }
     // Dublatele ascunse nu se joacă; dacă tot testul e ascuns, îl deschidem întreg (utilizatorul l-a ales explicit).
     const playable = playableQuestions(quiz);
     const pool = playable.length > 0 ? playable : quiz.questions;
@@ -83,7 +91,7 @@ export default function QuizPlay() {
       return qs.map((q) => ({ ...q, options: shuffleArray(q.options) }));
     }
     return qs;
-  }, [quiz, wrongQuestionsOnly, practiceCount, blockStart]);
+  }, [quiz, targetQuestionId, wrongQuestionsOnly, practiceCount, blockStart]);
 
   // A new question set (different quiz, filters or shuffle) restarts the whole session: the
   // session component is remounted instead of resetting a dozen pieces of state by hand.
@@ -102,8 +110,8 @@ export default function QuizPlay() {
         <div className="w-full max-w-md">
           <EmptyState
             icon={BookOpen}
-            title="Grila nu a fost găsită"
-            body="Poate a fost ștearsă sau nu are întrebări."
+            title={quiz && targetQuestionId !== null ? 'Întrebarea nu a fost găsită' : 'Grila nu a fost găsită'}
+            body={quiz && targetQuestionId !== null ? 'Întrebarea a fost ștearsă sau linkul nu mai este valid.' : 'Poate a fost ștearsă sau nu are întrebări.'}
             primary={{ label: 'Toate grilele', to: '/quizzes' }}
             secondary={{ label: 'Înapoi', onClick: goBack }}
           />
@@ -121,6 +129,7 @@ export default function QuizPlay() {
       timedMode={timedMode}
       examMinutes={examMinutes}
       recoveryMode={!!wrongQuestionsOnly && wrongQuestionsOnly.length > 0}
+      standaloneQuestion={targetQuestionId !== null}
     />
   );
 }
@@ -133,9 +142,11 @@ interface QuizPlaySessionProps {
   examMinutes: number;
   /** Replaying only previously-wrong questions (label only). */
   recoveryMode: boolean;
+  /** A direct link from a note is practice for one question, not a full-quiz attempt. */
+  standaloneQuestion: boolean;
 }
 
-function QuizPlaySession({ quiz, orderedQuestions, examMode, timedMode, examMinutes, recoveryMode }: QuizPlaySessionProps) {
+function QuizPlaySession({ quiz, orderedQuestions, examMode, timedMode, examMinutes, recoveryMode, standaloneQuestion }: QuizPlaySessionProps) {
   const navigate = useNavigate();
   const theme = useTheme();
   const { calmMotion, t } = useAdaptiveMotion();
@@ -193,7 +204,13 @@ function QuizPlaySession({ quiz, orderedQuestions, examMode, timedMode, examMinu
     return () => useQuizChatContextStore.getState().clearContext();
   }, [quiz, question, revealed]);
 
+  // Finishing must run once per play: key auto-repeat, a click racing the exam timer or the
+  // last-question timeout can all call it twice, which would save two sessions and double the stats.
+  // The session component is remounted (key) for every new play, so the ref starts fresh each time.
+  const finishedRef = useRef(false);
   const finishQuiz = useCallback((finalAnswers: Record<string, string[]>) => {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
     const { score, partialAnswerIds } = scoreAnswers(questionQueue, finalAnswers);
     questionQueue.forEach((q) => {
       const answer = finalAnswers[q.id];
@@ -248,9 +265,11 @@ function QuizPlaySession({ quiz, orderedQuestions, examMode, timedMode, examMinu
       ...(quiz.penaltyMode ? { penalizedScore: penalizedScore(questionQueue, finalAnswers) } : {}),
       ...(partialAnswerIds.length > 0 ? { partialAnswers: partialAnswerIds } : {}),
     };
-    addSession(session);
-    navigate(`/results/${quiz.id}`, { replace: true, state: { session, orderedQuestions: questionQueue } });
-  }, [questionQueue, quiz, startedAt, addSession, navigate, recordAnswer, recordStudySession, examMode, timedMode, activeProfileId]);
+    // A one-question note review must not become the quiz's best score or a
+    // completed attempt. The result still receives this session via route state.
+    if (!standaloneQuestion) addSession(session);
+    navigate(`/results/${quiz.id}${standaloneQuestion ? '?single=1' : ''}`, { replace: true, state: { session, orderedQuestions: questionQueue } });
+  }, [questionQueue, quiz, startedAt, addSession, navigate, recordAnswer, recordStudySession, examMode, timedMode, activeProfileId, standaloneQuestion]);
 
   const resetAssistiveState = useCallback(() => {
     resetAssist(); // also discards any AI reply still in flight
@@ -272,7 +291,7 @@ function QuizPlaySession({ quiz, orderedQuestions, examMode, timedMode, examMinu
   }, [examMode, timedMode, revealed, questionQueue.length, isLast, currentIdx, resetAssistiveState]);
 
   const handleSelect = useCallback((optId: string) => {
-    if (revealed) return;
+    if (revealed || finishedRef.current) return;
     if (isMultiple) {
       setSelectedNow((prev) =>
         prev.includes(optId) ? prev.filter((id) => id !== optId) : [...prev, optId]
@@ -293,7 +312,7 @@ function QuizPlaySession({ quiz, orderedQuestions, examMode, timedMode, examMinu
   }, [revealed, isMultiple, examMode, answers, question, isLast, finishQuiz]);
 
   const confirmSelection = useCallback(() => {
-    if (selectedNow.length === 0) return;
+    if (selectedNow.length === 0 || finishedRef.current) return;
     const newAnswers = { ...answers, [question.id]: selectedNow };
     setAnswers(newAnswers);
     if (examMode) {
@@ -582,7 +601,7 @@ function QuizPlaySession({ quiz, orderedQuestions, examMode, timedMode, examMinu
                         className="mb-4 p-4 rounded-2xl overflow-hidden"
                         style={{ background: `${theme.accent}0C`, border: `1px solid ${theme.accent}25` }}
                       >
-                        <p className="text-sm" style={{ color: theme.text2 }}>
+                        <p className="explanation-body text-sm" style={{ color: theme.text2 }}>
                           <span className="font-semibold" style={{ color: theme.accentText }}>Explicație: </span>
                           {cleanQuestionExplanation(question.explanation)}
                         </p>
@@ -700,6 +719,12 @@ function QuizPlaySession({ quiz, orderedQuestions, examMode, timedMode, examMinu
           </div>
         </div>
       </div>
+
+      <RelevantDocModal
+        open={assist.relevantDocModalOpen}
+        chunk={assist.relevantDocChunk}
+        onClose={() => assist.setRelevantDocModalOpen(false)}
+      />
     </div>
   );
 }

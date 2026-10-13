@@ -1,3 +1,4 @@
+import { plural } from '../lib/plural';
 import { useId, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Download, Upload, Check, AlertCircle } from 'lucide-react';
@@ -314,9 +315,9 @@ export default function BackupExport({ open, onClose }: BackupExportProps) {
                       Se vor înlocui ireversibil datele curente cu cele din fișier:
                     </p>
                     <ul className="mt-2 space-y-1 text-[11px] font-bold opacity-80" style={{ color: theme.text }}>
-                      {pendingRestore.quizzes && <li>• {pendingRestore.quizzes.length} grile, {pendingRestore.folders?.length ?? 0} foldere</li>}
+                      {pendingRestore.quizzes && <li>• {plural(pendingRestore.quizzes.length, 'grilă', 'grile')}, {plural(pendingRestore.folders?.length ?? 0, 'folder', 'foldere')}</li>}
                       {pendingRestore.stats && <li>• statisticile de studiu</li>}
-                      {pendingRestore.notes && <li>• {Object.keys(pendingRestore.notes).length} notițe</li>}
+                      {pendingRestore.notes && <li>• {plural(Object.keys(pendingRestore.notes).length, 'notiță', 'notițe')}</li>}
                       {pendingRestore.ai && <li>• {pendingRestore.ai.knowledgeSources.length} surse din biblioteca AI</li>}
                     </ul>
                   </div>
@@ -352,7 +353,7 @@ export default function BackupExport({ open, onClose }: BackupExportProps) {
                   className="w-full flex items-center gap-4 p-4 rounded-[var(--r-lg)] text-left transition-colors"
                   style={{ background: `${theme.success}10`, border: `1px solid ${theme.success}30` }}>
                   <div className="elev-1 w-12 h-12 rounded-[var(--r-sm)] flex items-center justify-center"
-                    style={{ background: theme.success, color: '#fff' }}>
+                    style={{ background: theme.successFill, color: '#fff' }}>
                     <Upload size={20} />
                   </div>
                   <div>

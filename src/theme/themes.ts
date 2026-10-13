@@ -13,8 +13,13 @@ export interface Theme {
   text3: string;
   accent: string;
   accent2: string;
-  /** The accent as small text: darker in the light theme, where #007AFF on white is under 4.5:1. */
+  /**
+   * `accent` is the FILL colour: white text on it is >= 4.5:1 in both themes (themeContrast.test.ts).
+   * `accentText` is the accent as small text: darker in the light theme, brighter in the dark one.
+   */
   accentText: string;
+  /** Solid green for filled buttons with white text (>= 4.5:1 in both themes); `success` stays brighter for text and bars. */
+  successFill: string;
   success: string;
   danger: string;
   warning: string;
@@ -69,10 +74,11 @@ export const THEMES = {
     text: '#1D1D1F',
     text2: '#48484A',
     text3: '#6E6E73',
-    accent: '#007AFF',
+    accent: '#0071E3',
     accent2: '#5E5CE6',
     accentText: '#0062CC',
     success: '#238636',
+    successFill: '#238636',
     danger: '#D70015',
     warning: '#B25000',
     navBg: 'rgba(236, 236, 241, 0.86)',
@@ -105,10 +111,11 @@ export const THEMES = {
     text: '#F5F5F7',
     text2: '#C7C7CC',
     text3: '#8E8E93',
-    accent: '#0A84FF',
+    accent: '#0A72E8',
     accent2: '#5E5CE6',
     accentText: '#0A84FF',
     success: '#30D158',
+    successFill: '#238636',
     danger: '#FF453A',
     warning: '#FF9F0A',
     navBg: 'rgba(20, 20, 23, 0.82)',
@@ -123,10 +130,10 @@ export const THEMES = {
     hairline: 'rgba(255, 255, 255, 0.12)',
     overlay: 'rgba(0, 0, 0, 0.55)',
     skeleton: 'rgba(255, 255, 255, 0.08)',
-    glassPanel: 'linear-gradient(180deg, rgba(38, 38, 42, 0.72), rgba(24, 24, 27, 0.66))',
-    glassPanelStrong: 'linear-gradient(180deg, rgba(44, 44, 48, 0.90), rgba(28, 28, 31, 0.86))',
+    glassPanel: 'linear-gradient(180deg, rgba(30, 30, 34, 0.76), rgba(24, 24, 27, 0.72))',
+    glassPanelStrong: 'linear-gradient(180deg, rgba(35, 35, 39, 0.92), rgba(28, 28, 31, 0.88))',
     glassBorder: 'rgba(255, 255, 255, 0.10)',
-    glassHighlight: 'rgba(255, 255, 255, 0.08)',
+    glassHighlight: 'rgba(255, 255, 255, 0.05)',
   },
 } satisfies Record<string, Theme>;
 

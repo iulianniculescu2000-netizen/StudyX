@@ -1,3 +1,4 @@
+import { plural } from '../lib/plural';
 import { motion, AnimatePresence } from 'framer-motion';
 import ProgressBar from '../components/fx/ProgressBar';
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
@@ -10,7 +11,9 @@ import PageHeader from '../components/ui/PageHeader';
 import EmptyState from '../components/ui/EmptyState';
 import QuizImage from '../components/QuizImage';
 import { useQuizStore } from '../store/quizStore';
-import { useStatsStore, calcNextReview } from '../store/statsStore';
+import { upsertGeneratedQuiz } from '../lib/generatedQuiz';
+import { useStatsStore, calcNextReview, countWeakStats, existingStatKeys } from '../store/statsStore';
+import { buildDueItems } from '../lib/dueItems';
 import { useUserStore } from '../store/userStore';
 import { useOrganizareStore } from '../store/organizareStore';
 import { cleanQuestionExplanation } from '../helpers/quizAi';
@@ -27,7 +30,7 @@ interface ReviewItem {
 
 function formatInterval(days: number) {
   if (days === 1) return '1 zi';
-  if (days < 30) return `${days} zile`;
+  if (days < 30) return plural(days, 'zi', 'zile');
   if (days < 365) return `${Math.round(days / 30)} luni`;
   return '1 an';
 }
@@ -64,19 +67,14 @@ export default function ReviewMode() {
   const { t, calmMotion } = useAdaptiveMotion();
   const navigate = useNavigate();
   const quizzes = useQuizStore((state) => state.quizzes);
-  const addQuiz = useQuizStore((state) => state.addQuiz);
   // Contează doar grilele (nu pachetele de flashcarduri) — exact ce pornește și sesiunea de mai jos.
   // Selectorul întoarce statisticile (stabile), nu o listă nouă la fiecare citire: altfel React intră în buclă infinită.
   const questionStats = useStatsStore((state) => state.questionStats);
-  const { dueCount, weakCount } = useMemo(() => {
-    const stats = useStatsStore.getState();
-    const onlyQuizzes = (list: { quizId: string }[]) => list.filter((stat) => {
-      const quiz = quizzes.find((q) => q.id === stat.quizId);
-      return !!quiz && !isFlashcardDeck(quiz);
-    }).length;
-    return { dueCount: onlyQuizzes(stats.getDueQuestions()), weakCount: onlyQuizzes(stats.getWeakQuestions(10)) };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- questionStats e intrarea reală a celor două liste
-  }, [questionStats, quizzes]);
+  // Numere exacte (fără plafon), pe aceleași surse ca bara laterală și /daily-review: doar grile existente, fără intrări retrase.
+  const { dueCount, weakCount } = useMemo(() => ({
+    dueCount: buildDueItems(questionStats, quizzes).length,
+    weakCount: countWeakStats(questionStats, existingStatKeys(quizzes.filter((quiz) => !isFlashcardDeck(quiz)))),
+  }), [questionStats, quizzes]);
   const recordAnswer = useStatsStore((state) => state.recordAnswer);
   const recordStudySession = useStatsStore((state) => state.recordStudySession);
   const activeProfileId = useUserStore((state) => state.activeProfileId);
@@ -91,11 +89,11 @@ export default function ReviewMode() {
       return [question];
     });
     if (items.length === 0) return;
-    const id = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
-    addQuiz({
-      id,
+    // Un singur „Quiz din greșeli" pe profil: se reîmprospătează întrebările, nu se adaugă un set nou la fiecare apăsare.
+    const id = upsertGeneratedQuiz({
+      id: crypto.randomUUID().replace(/-/g, '').slice(0, 12),
       title: 'Quiz din greșeli',
-      description: `${items.length} întrebări la care ai greșit cel mai des`,
+      description: `${plural(items.length, 'întrebare', 'întrebări')} la care ai greșit cel mai des`,
       emoji: '🔥',
       color: 'red',
       category: 'Altele',
@@ -128,7 +126,12 @@ export default function ReviewMode() {
   };
 
   const startDue = () => {
-    const due = useStatsStore.getState().getDueQuestions();
+    // Aceeași listă ca insigna: fără dubluri din sesiuni combinate, întrebări ascunse sau intrări retrase.
+    const live = useStatsStore.getState().questionStats;
+    const due = buildDueItems(live, quizzes).flatMap((item) => {
+      const stat = live[`${item.quizId}:${item.question.id}`];
+      return stat ? [stat] : [];
+    });
     setItems(buildItems(due));
     setMode('review');
   };
@@ -143,16 +146,14 @@ export default function ReviewMode() {
     if (!activeProfileId) return;
     const quiz = buildWeaknessRecoveryQuiz(activeProfileId, quizzes, useStatsStore.getState().questionStats);
     if (!quiz) return;
-    addQuiz(quiz);
-    navigate(`/play/${quiz.id}`);
+    navigate(`/play/${upsertGeneratedQuiz(quiz)}`);
   };
 
   const startAdaptiveExam = () => {
     if (!activeProfileId) return;
     const quiz = buildAdaptiveExamQuiz(activeProfileId, quizzes, useStatsStore.getState().questionStats);
     if (!quiz) return;
-    addQuiz(quiz);
-    navigate(`/play/${quiz.id}`, { state: { mode: 'exam' } });
+    navigate(`/play/${upsertGeneratedQuiz(quiz)}`, { state: { mode: 'exam' } });
   };
 
   const current = items[currentIdx];
@@ -339,12 +340,12 @@ export default function ReviewMode() {
           <PageHeader
             eyebrow="Recapitulare"
             title="Recapitulare inteligentă"
-            help="page-review"
+            tour={{ id: 'review', label: 'Ghid pentru recapitulare' }}
             subtitle="Alege modul potrivit pentru ritmul tău. Totul este orientat spre retenție, claritate și antrenament inteligent."
             actions={(
               <>
                 <span className="fine-chip rounded-full px-3 py-1 text-[11px] font-semibold" style={{ color: theme.text3 }}>
-                  {dueCount} itemi scadenți
+                  {plural(dueCount, 'item scadent', 'itemi scadenți')}
                 </span>
                 <span className="fine-chip rounded-full px-3 py-1 text-[11px] font-semibold" style={{ color: theme.text3 }}>
                   {weakCount} puncte slabe active
@@ -353,10 +354,14 @@ export default function ReviewMode() {
             )}
           />
 
-          <div className="grid gap-4 md:grid-cols-2 xl:gap-5">
+          <div data-tutorial="review-actions" className="grid gap-4 md:grid-cols-2 xl:gap-5">
             {reviewActions.map((action) => (
               <ReviewActionCard
                 key={action.id}
+                {...(action.id === 'due' ? { 'data-tutorial': 'review-due' }
+                  : action.id === 'weak' ? { 'data-tutorial': 'review-weak' }
+                  : action.id === 'adaptive-exam' ? { 'data-tutorial': 'review-adaptive-exam' }
+                  : {})}
                 {...action}
                 theme={theme}
               />

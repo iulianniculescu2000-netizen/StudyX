@@ -16,7 +16,7 @@ Legendă status: ✅ Complet · ⚠️ Parțial / cosmetic · 🛠️ De aliniat
 | Creare grilă manuală (întrebări, opțiuni, explicații, tag-uri) | ✅ | `src/pages/QuizCreate.tsx` |
 | Generare grile din text/AI | ✅ | `src/pages/quiz-create/sections.tsx` |
 | Import grile (JSON/fișier) | ✅ | `src/components/ImportQuizButton.tsx` |
-| Joc grilă (play) cu progres, scor, notițe per întrebare | ✅ | `src/pages/quiz-play/QuizPlayRefactored.tsx` |
+| Joc grilă (play) cu progres, scor, notițe per întrebare | ✅ | `src/pages/QuizPlay.tsx` |
 | Rezultate grilă | ✅ | `src/pages/QuizResults.tsx` |
 | Detalii grilă + căutare în întrebări | ✅ | `src/pages/QuizDetail.tsx` |
 | Pin / Arhivare / Duplicare / Ștergere | ✅ | `src/store/quizStore.ts` |
@@ -39,7 +39,7 @@ Legendă status: ✅ Complet · ⚠️ Parțial / cosmetic · 🛠️ De aliniat
 | Funcție | Status | Locație |
 |---|---|---|
 | Hub flashcarduri | ✅ | `src/pages/FlashcardHub.tsx` |
-| Creare/editare carduri (față/spate) | ✅ | `src/pages/Flashcard.tsx` |
+| Creare/editare carduri (față/spate) | ✅ | `src/pages/flashcard-hub/EditDeckModal.tsx` |
 | Sesiune de studiu flashcard | ✅ | `src/pages/FlashcardSession.tsx` |
 | Imagini în flashcarduri (smart extraction, IndexedDB) | ✅ (v1.0.4/1.0.5) | `src/lib/flashcardImageStore.ts` |
 | Generare flashcarduri din notițe (AI) | ✅ | `src/lib/ai/agent.ts` |
@@ -83,7 +83,7 @@ Legendă status: ✅ Complet · ⚠️ Parțial / cosmetic · 🛠️ De aliniat
 | Funcție | Status | Locație |
 |---|---|---|
 | Stats overview, trend acuratețe, grafic activitate, heatmap, radar categorii | ✅ | `src/components/stats/` |
-| Perspective AI (pregătire: acuratețe pe grilele rezolvate cu interval de nesiguranță, acoperire, ritm, goluri de cunoștințe) — doar din răspunsurile tale, fără scor prezis | ✅ | `src/components/analytics/AIPredictiveRefactored.tsx`, `src/lib/analyticsStats.ts` |
+| Perspective AI (pregătire: acuratețe pe grilele rezolvate cu interval de nesiguranță, acoperire, ritm, goluri de cunoștințe) — doar din răspunsurile tale, fără scor prezis | ✅ | `src/components/analytics/AIPredictiveAnalytics.tsx`, `src/lib/analyticsStats.ts` |
 
 ## 8. 🎮 Gamification
 
@@ -110,7 +110,7 @@ Legendă status: ✅ Complet · ⚠️ Parțial / cosmetic · 🛠️ De aliniat
 | Funcție | Status | Locație |
 |---|---|---|
 | Focus Mode | ✅ | `src/store/focusModeStore.ts` |
-| Tutorial / What's New tour | ✅ | `src/components/Tutorial.tsx`, `src/components/WhatsNewTour.tsx` |
+| Tutorial / What's New tour | ✅ | `src/tutorial/` (motor `TourEngine.tsx`), `src/components/WhatsNewTour.tsx` |
 | Notificări desktop | ✅ | `src/lib/desktopNotify.ts` |
 | Study Coach | ✅ | `src/lib/studyCoach.ts` |
 
@@ -121,7 +121,7 @@ Legendă status: ✅ Complet · ⚠️ Parțial / cosmetic · 🛠️ De aliniat
 | Export / import backup | ✅ | `src/components/BackupExport.tsx` |
 | Auto-backup | ✅ | `src/hooks/useAutoBackup.ts` |
 | Stocare IndexedDB | ✅ | `src/lib/idb.ts` |
-| Mod offline + service worker | ✅ | `src/lib/offline/`, `src/utils/serviceWorker.ts` |
+| Mod offline + service worker | ✅ | `public/sw.js` (înregistrat din `src/main.tsx`) |
 | Health check pornire + rollback + guard sesiune | ✅ | `src/lib/startupHealthCheck.ts`, `src/lib/rollback.ts` |
 | Optimizare performanță (device tier, motion adaptiv, memory profiler) | ✅ | `src/lib/deviceTier.ts`, `src/hooks/usePerformanceOptimizer.ts` |
 | Auto-update (Electron updater, manifest GitHub) | ✅ | `electron/updater.cjs`, `src/components/UpdateModal.tsx` |

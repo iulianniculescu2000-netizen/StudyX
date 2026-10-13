@@ -24,6 +24,7 @@ export default function QuestionCard({ question, theme, layout, focusMode, modeL
   const difficultyColor = { easy: theme.success, medium: theme.warning, hard: theme.danger };
   return (
     <div
+      data-tutorial="quiz-session-question"
       className={`editorial-hero rounded-[var(--r-xl)] mb-5 ${layout.questionCardPaddingClass}`}
       style={{
         background: focus.questionCardSurface,
@@ -51,7 +52,7 @@ export default function QuestionCard({ question, theme, layout, focusMode, modeL
       <p className="text-xs font-black uppercase tracking-[0.22em] mb-2" style={{ color: theme.text3 }}>
         Întrebarea {currentIdx + 1} din {total}
       </p>
-      <p className={layout.questionTextClass} style={{ color: theme.text }}>{question.text}</p>
+      <p className={`question-body ${layout.questionTextClass}`} style={{ color: theme.text }}>{question.text}</p>
 
       {/* Question image */}
       {question.imageUrl && (

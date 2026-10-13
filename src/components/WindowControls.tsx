@@ -14,6 +14,7 @@ interface BtnConfig {
   hoverBg: string;
   hoverColor: string;
   width: number;
+  height: number;
   isClose?: boolean;
 }
 
@@ -23,6 +24,7 @@ function WinBtn({
   hoverBg,
   hoverColor,
   width,
+  height,
   isClose,
   onClick,
 }: BtnConfig & { onClick: () => void }) {
@@ -42,7 +44,7 @@ function WinBtn({
       className="press-feedback focus-visible:shadow-[var(--ring-inset)]"
       style={{
         width,
-        height: 40,
+        height,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -53,7 +55,7 @@ function WinBtn({
         color: hover ? hoverColor : theme.text2,
         transition: 'background-color var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard)',
         flexShrink: 0,
-        borderRadius: isClose ? '0 var(--r-lg) var(--r-lg) 0' : 0,
+        borderRadius: isClose ? '0 var(--r-md) var(--r-md) 0' : 0,
       }}
     >
       <motion.span
@@ -72,6 +74,27 @@ export default function WindowControls() {
   const api = typeof window !== 'undefined' ? window.electronAPI : undefined;
   const theme = useTheme();
 
+  const [dims, setDims] = useState(() => {
+    if (typeof window === 'undefined') return { width: 1440, height: 900 };
+    return { width: window.innerWidth, height: window.innerHeight };
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setDims({ width: window.innerWidth, height: window.innerHeight });
+    };
+    window.addEventListener('resize', handleResize, { passive: true });
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const compact = dims.height < 860 || dims.width < 1260;
+  const ultraCompact = dims.height < 760 || dims.width < 1080;
+
+  const controlHeight = ultraCompact ? 28 : compact ? 32 : 34;
+  const controlTop = ultraCompact ? 3 : compact ? 3 : 4;
+  const btnWidth = ultraCompact ? 40 : compact ? 42 : 44;
+  const capsuleWidth = btnWidth * 3;
+
   useEffect(() => {
     if (!api) return;
     api.isMaximized().then(setIsMax).catch(() => {});
@@ -86,16 +109,16 @@ export default function WindowControls() {
       className="premium-window-controls"
       style={{
         position: 'fixed',
-        top: 6,
+        top: controlTop,
         right: 10,
-        zIndex: 9999,
+        zIndex: 10050,
         display: 'flex',
         alignItems: 'center',
         background: `color-mix(in srgb, ${theme.surface} 62%, transparent)`,
         backdropFilter: 'blur(var(--blur-2)) saturate(150%)',
-        width: 136,
-        height: 40,
-        borderRadius: 'var(--r-lg)',
+        width: capsuleWidth,
+        height: controlHeight,
+        borderRadius: 'var(--r-md)',
         border: `1px solid ${theme.border}`,
         boxShadow: 'var(--elev-2), inset 0 1px 0 var(--glass-highlight)',
         WebkitAppRegion: 'no-drag',
@@ -104,26 +127,29 @@ export default function WindowControls() {
     >
       <WinBtn
         label="Minimizează"
-        icon={<Minus size={14} strokeWidth={2.4} />}
+        icon={<Minus size={ultraCompact ? 12 : 14} strokeWidth={2.4} />}
         hoverBg={'var(--hover-fill)'}
         hoverColor={theme.text}
-        width={46}
+        width={btnWidth}
+        height={controlHeight}
         onClick={() => api.minimize()}
       />
       <WinBtn
         label={isMax ? 'Restaurează' : 'Maximizează'}
-        icon={isMax ? <Minimize2 size={13} strokeWidth={2.4} /> : <Maximize2 size={13} strokeWidth={2.4} />}
+        icon={isMax ? <Minimize2 size={ultraCompact ? 11 : 13} strokeWidth={2.4} /> : <Maximize2 size={ultraCompact ? 11 : 13} strokeWidth={2.4} />}
         hoverBg={'var(--hover-fill)'}
         hoverColor={theme.text}
-        width={46}
+        width={btnWidth}
+        height={controlHeight}
         onClick={() => api.maximize()}
       />
       <WinBtn
         label="Închide"
-        icon={<X size={14} strokeWidth={2.5} />}
+        icon={<X size={ultraCompact ? 12 : 14} strokeWidth={2.5} />}
         hoverBg={theme.danger}
         hoverColor="#FFFFFF"
-        width={46}
+        width={btnWidth}
+        height={controlHeight}
         isClose
         onClick={() => api.close()}
       />

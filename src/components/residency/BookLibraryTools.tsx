@@ -6,6 +6,7 @@ import { useUserStore } from '../../store/userStore';
 import { useToastStore } from '../../store/toastStore';
 import { useReindexSources } from '../../hooks/useReindexSources';
 import { isUnderRezidentiatRoot } from '../../lib/rezidentiatRoot';
+import { isBundledLibraryBookName } from '../../lib/rezidentiatLibrary';
 import { findDuplicateSources } from '../../lib/ai/bookAutoReindex';
 import { ensureMaterialsRoot } from '../../lib/organizareRoot';
 import { CAPITOLE_SYNC_EVENT } from '../../lib/capitoleSyncEvent';
@@ -47,7 +48,7 @@ export default function BookLibraryTools() {
   }, [pdfIndexKey, findSourcesWithoutPages]);
 
   const books = useMemo(
-    () => knowledgeSources.filter((source) => withoutPages.has(source.id) && !!source.folderId && isUnderRezidentiatRoot(source.folderId, libraryFolders)),
+    () => knowledgeSources.filter((source) => withoutPages.has(source.id) && !isBundledLibraryBookName(source.name) && !!source.folderId && isUnderRezidentiatRoot(source.folderId, libraryFolders)),
     [knowledgeSources, withoutPages, libraryFolders],
   );
   const manualBooks = useMemo(() => leftover.filter((source) => books.some((b) => b.id === source.id)), [leftover, books]);

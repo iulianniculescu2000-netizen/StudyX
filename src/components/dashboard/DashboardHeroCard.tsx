@@ -1,3 +1,4 @@
+import { plural } from '../../lib/plural';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -138,7 +139,7 @@ export default function DashboardHeroCard() {
   const displayText = text ?? (
     !hasKey
       ? (summary.dueCount > 0
-          ? `Ai ${summary.dueCount} întrebări de recapitulat azi. Menține ritmul activ.`
+          ? `Ai ${plural(summary.dueCount, 'întrebare', 'întrebări')} de recapitulat azi. Menține ritmul activ.`
           : 'Configurează AI în Setări pentru recomandări personalizate.')
       : null
   );
@@ -165,7 +166,7 @@ export default function DashboardHeroCard() {
   };
 
   return (
-    <GlassCard animate padding="0" radius="var(--r-lg)" className="fx-spot relative mb-5">
+    <GlassCard animate padding="0" radius="var(--r-lg)" className="relative mb-5">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3.5 sm:px-5">
         <span
           className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[var(--r-sm)]"

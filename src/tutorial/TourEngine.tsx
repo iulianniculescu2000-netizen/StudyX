@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react';
 import ProgressBar from '../components/fx/ProgressBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, ChevronLeft, ChevronRight, X } from 'lucide-react';
@@ -14,7 +14,9 @@ import { readTourContext, useTourContext } from './useTourContext';
 import { useSpotlight } from './spotlight';
 import { clipToViewport, computeCardLayout } from './placement';
 import TooltipArrow from './TooltipArrow';
+import { onFillText } from '../theme/contrastText';
 import type { TourContext, TourStep } from './types';
+import { isTourRouteCurrent } from './navigation';
 
 const resolveBody = (step: TourStep, ctx: TourContext) => (typeof step.body === 'function' ? step.body(ctx) : step.body);
 
@@ -35,15 +37,15 @@ export default function TourEngine({ profileId }: { profileId: string }) {
   if (!activeTour || !isSpotlightTour(activeTour)) return null;
   // Filmul de bun venit rulează înaintea turului de bun venit; turul începe când filmul se termină sau e sărit.
   if (filmPending) return null;
-  // Keyed by tour so a different tour starts with fresh internal state.
-  return <ActiveTour key={activeTour} tourId={activeTour} profileId={profileId} />;
+  // A different profile or tour starts with fresh filtering and completion state.
+  return <ActiveTour key={`${profileId}:${activeTour}`} tourId={activeTour} profileId={profileId} />;
 }
 
 function ActiveTour({ tourId, profileId }: { tourId: SpotlightTourId; profileId: string }) {
   const theme = useTheme();
   const { t } = useAdaptiveMotion();
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const currentStep = useTutorialStore((state) => state.currentStep);
   const { nextStep, prevStep, finishTour } = useTutorialStore.getState();
   useOverlayFlag(true);
@@ -52,7 +54,7 @@ function ActiveTour({ tourId, profileId }: { tourId: SpotlightTourId; profileId:
   // Which steps apply is decided once, when the tour opens: a step that depended on "no key yet"
   // must not vanish from under the user the moment they save one.
   const [steps] = useState(() => {
-    const initial = readTourContext(pathname);
+    const initial = readTourContext(pathname, search);
     return tour.steps.filter((entry) => !entry.when || entry.when(initial));
   });
   const total = steps.length;
@@ -83,13 +85,15 @@ function ActiveTour({ tourId, profileId }: { tourId: SpotlightTourId; profileId:
     setAtEntry(ctx);
     prevStep();
   }, [ctx, prevStep]);
+  const cardRef = useRef<HTMLDivElement>(null);
 
-  // Open the page a step belongs to.
+  // Only a new step opens its destination. Router updates and manual navigation do not reopen it.
+  const openStepRoute = useEffectEvent((route: string) => {
+    if (!isTourRouteCurrent(route, pathname, search)) navigate(route);
+  });
   useEffect(() => {
-    if (step?.route && pathname !== step.route) navigate(step.route);
-    // Only when the step changes: a later manual navigation must not be undone.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigate, step?.id, step?.route]);
+    if (step?.route) openStepRoute(step.route);
+  }, [step?.id, step?.route]);
 
   // An optional step whose target never shows up is skipped (in the direction the user was going).
   useEffect(() => {
@@ -116,19 +120,36 @@ function ActiveTour({ tourId, profileId }: { tourId: SpotlightTourId; profileId:
   // ← / → move through the tour, Esc closes it. Not while typing in a field.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
+      const target = event.target instanceof Element ? event.target : null;
+      if (event.key === 'Escape') { event.preventDefault(); close(); return; }
+      // Informational steps block the page: keyboard focus must stay in their dialog too.
+      // Action steps keep the highlighted control reachable so the requested task can be done.
+      if (event.key === 'Tab' && !step?.completeWhen) {
+        const card = cardRef.current;
+        if (!card) return;
+        const items = Array.from(card.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'))
+          .filter((item) => !item.closest('[hidden], [aria-hidden="true"]') && getComputedStyle(item).display !== 'none' && getComputedStyle(item).visibility !== 'hidden');
+        const first = items[0];
+        const last = items[items.length - 1];
+        if (!first || !last) { event.preventDefault(); card.focus(); return; }
+        const inside = card.contains(document.activeElement);
+        if (event.shiftKey && (document.activeElement === first || !inside || document.activeElement === card)) {
+          event.preventDefault(); last.focus();
+        } else if (!event.shiftKey && (document.activeElement === last || !inside || document.activeElement === card)) {
+          event.preventDefault(); first.focus();
+        }
+        return;
+      }
       if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
-      if (event.key === 'Escape') { event.preventDefault(); close(); }
-      else if (event.key === 'Enter' && !target?.closest('button, a, [role="button"]')) { event.preventDefault(); advance(); }
+      if (event.key === 'Enter' && !target?.closest('button, a, [role="button"]')) { event.preventDefault(); advance(); }
       else if (event.key === 'ArrowRight') { event.preventDefault(); advance(); }
       else if (event.key === 'ArrowLeft') { event.preventDefault(); back(); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [advance, back, close]);
+  }, [advance, back, close, step?.completeWhen]);
 
   // Focus moves into the card so the keyboard and screen readers follow the tour, and goes back afterwards.
-  const cardRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     return () => { if (previous && document.contains(previous)) previous.focus?.(); };
@@ -243,7 +264,7 @@ function ActiveTour({ tourId, profileId }: { tourId: SpotlightTourId; profileId:
           ref={cardRef}
           key={`tooltip-pos-${step.id}`}
           role="dialog"
-          aria-modal="true"
+          aria-modal={!step.completeWhen} data-tour-keyboard-layer
           aria-label={step.title}
           tabIndex={-1}
           style={{
@@ -340,8 +361,8 @@ function ActiveTour({ tourId, profileId }: { tourId: SpotlightTourId; profileId:
                 <button
                   type="button"
                   onClick={advance}
-                  className="press-feedback flex flex-1 items-center justify-center gap-1.5 rounded-[var(--r-md)] py-2.5 text-[13.5px] font-semibold text-white"
-                  style={{ background: accent }}
+                  className="press-feedback flex flex-1 items-center justify-center gap-1.5 rounded-[var(--r-md)] py-2.5 text-[13.5px] font-semibold"
+                  style={{ background: accent, color: onFillText(accent) }}
                 >
                   {isLast
                     ? <><Check size={15} /> Gata</>

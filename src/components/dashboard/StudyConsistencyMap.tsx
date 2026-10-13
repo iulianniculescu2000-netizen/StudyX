@@ -1,3 +1,4 @@
+import { plural } from '../../lib/plural';
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Flame } from 'lucide-react';
@@ -61,7 +62,7 @@ export default function StudyConsistencyMap({ compact = false }: { compact?: boo
           Harta consistenței
         </span>
         <span className="text-[11px] font-bold" style={{ color: theme.text2 }}>
-          {summary.activeDays} zile studiate · {summary.totalQuestions} întrebări
+          {plural(summary.activeDays, 'zi studiată', 'zile studiate')} · {plural(summary.totalQuestions, 'întrebare', 'întrebări')}
         </span>
         {summary.bestRun >= 2 && (
           <span
@@ -69,24 +70,24 @@ export default function StudyConsistencyMap({ compact = false }: { compact?: boo
             style={{ background: `${theme.warning}18`, color: theme.warning }}
           >
             <Flame size={10} />
-            {summary.bestRun} zile la rând
+            {plural(summary.bestRun, 'zi', 'zile')} la rând
           </span>
         )}
         <span className="ml-auto min-h-[16px] text-[11px] font-semibold" style={{ color: theme.text3 }}>
           {hovered
             ? hovered.questions > 0
-              ? `${formatDay(hovered.date)} · ${hovered.questions} întrebări`
+              ? `${formatDay(hovered.date)} · ${plural(hovered.questions, 'întrebare', 'întrebări')}`
               : `${formatDay(hovered.date)} · pauză`
             : ''}
         </span>
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
-        <div className="flex flex-shrink-0 flex-col gap-[3px] pt-[14px]">
+        <div className="flex flex-shrink-0 flex-col gap-[3px] pt-[13px]">
           {WEEKDAY_LABELS.map((label, index) => (
             <span
               key={index}
-              className="flex h-[11px] items-center text-[8px] font-bold leading-none"
+              className="flex h-4 items-center text-[8px] font-bold leading-none"
               style={{ color: theme.text3, width: 8 }}
             >
               {label}
@@ -94,7 +95,7 @@ export default function StudyConsistencyMap({ compact = false }: { compact?: boo
           ))}
         </div>
 
-        <div className="flex gap-[3px]">
+        <div className="grid min-w-0 flex-1 gap-[3px]" style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(11px, 1fr))` }}>
           {columns.map((column, columnIndex) => (
             <div key={column[0].date} className="flex flex-col gap-[3px]">
               <span className="h-[10px] text-[8px] font-bold leading-none" style={{ color: theme.text3 }}>
@@ -108,8 +109,8 @@ export default function StudyConsistencyMap({ compact = false }: { compact?: boo
                   transition={{ delay: calmMotion ? 0 : Math.min(columnIndex * 0.012, 0.4), duration: calmMotion ? dur.instant : dur.fast, ease: ease.standard }}
                   onMouseEnter={() => setHovered(day)}
                   onMouseLeave={() => setHovered(null)}
-                  title={`${formatDay(day.date)} · ${day.questions} întrebări`}
-                  className="h-[11px] w-[11px] rounded-[3px] transition-opacity hover:opacity-70"
+                  title={`${formatDay(day.date)} · ${plural(day.questions, 'întrebare', 'întrebări')}`}
+                  className="h-4 w-full rounded-[3px] transition-opacity hover:opacity-70"
                   style={levelStyle(day)}
                 />
               ))}

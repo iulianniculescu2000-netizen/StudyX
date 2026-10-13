@@ -7,6 +7,7 @@ import { copyText, extractSvg } from './diagramExport';
 import { isMermaidSource } from './markdown';
 import { DiagramActionsContext } from './markdownContext';
 import { peekRendered, renderMermaid } from './mermaidRuntime';
+import { currentDiagramSvg } from './diagramOutcome';
 
 interface MermaidBlockProps {
   code: string;
@@ -94,7 +95,7 @@ export default function MermaidBlock({ code, lang, incomplete }: MermaidBlockPro
 
   if (incomplete) return <Placeholder label="Se desenează schema…" />;
 
-  const svg = cached ?? (outcome && 'svg' in outcome ? outcome.svg : null);
+  const svg = currentDiagramSvg(key, cached, outcome);
   if (svg) return <DiagramFrame svg={svg} code={code} onCreateFlashcards={onCreateFlashcards} />;
   if (fallbackSvg) return <DiagramFrame svg={fallbackSvg} code={code} onCreateFlashcards={onCreateFlashcards} />;
   if (failedHere || !useMermaid) return <DiagramError code={code} />;

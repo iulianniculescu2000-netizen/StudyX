@@ -23,7 +23,7 @@ import PageHeader from '../components/ui/PageHeader';
 import PageSkeleton from '../components/ui/PageSkeleton';
 import EmptyState from '../components/ui/EmptyState';
 import { cleanQuestionExplanation } from '../helpers/quizAi';
-import { buildDueItems, type DueItem } from '../lib/dueItems';
+import { buildDueItems, planDailySession, type DueItem } from '../lib/dueItems';
 
 export default function DailyReview() {
   const theme = useTheme();
@@ -45,7 +45,9 @@ export default function DailyReview() {
   // Pornește la „Începe” (nu la montare), ca timpul de pe ecranul de start să nu intre în statistici.
   const startedAtRef = useRef(0);
 
-  const items = phase === 'ready' ? dueItems : sessionItems;
+  // Sesiunea zilnică are plafon; restul rămân scadente și apar în sesiunea următoare.
+  const { today: todayItems, remaining: remainingDue } = useMemo(() => planDailySession(dueItems), [dueItems]);
+  const items = phase === 'ready' ? todayItems : sessionItems;
   const current = items[currentIdx];
   const isMultiple = current?.question.multipleCorrect ?? false;
   const correctIds = useMemo(() => current?.question.options.filter(o => o.isCorrect).map(o => o.id) ?? [], [current]);
@@ -91,7 +93,7 @@ export default function DailyReview() {
     return (
       <div className="h-full overflow-y-auto">
         <div className="mx-auto w-full max-w-2xl px-4 pb-8 pt-6 sm:px-6">
-          <PageHeader title="Sesiune zilnică" subtitle="Repetare spațiată SM-2" help="page-daily" />
+          <PageHeader title="Sesiune zilnică" subtitle="Repetare spațiată SM-2" tour={{ id: 'daily', label: 'Ghid pentru sesiunea zilnică' }} />
           {hasQuestions ? (
             <EmptyState
               icon={CalendarCheck}
@@ -122,11 +124,11 @@ export default function DailyReview() {
           <PageHeader
             eyebrow="Repetare spațiată SM-2"
             title="Sesiune zilnică"
-            help="page-daily"
+            tour={{ id: 'daily', label: 'Ghid pentru sesiunea zilnică' }}
             subtitle={`${items.length} ${items.length === 1 ? 'întrebare' : 'întrebări'} de recapitulat azi`}
           />
 
-          <div className="mb-5 grid grid-cols-2 gap-3">
+          <div data-tutorial="daily-summary" className="mb-5 grid grid-cols-2 gap-3">
             <div className={`glass-panel rounded-[var(--r-lg)] p-4 ${calmMotion ? '' : 'fx-rise'}`} style={{ '--i': 1 } as React.CSSProperties}>
               <p className="text-2xl font-bold" style={{ color: theme.accentText }}>{items.length}</p>
               <p className="mt-0.5 text-xs" style={{ color: theme.text3 }}>Întrebări de azi</p>
@@ -140,10 +142,17 @@ export default function DailyReview() {
             </div>
           </div>
 
+          {remainingDue > 0 && (
+            <p className="mb-5 text-center text-xs" style={{ color: theme.text3 }}>
+              Rămân {remainingDue} {remainingDue === 1 ? 'întrebare' : 'întrebări'} pentru mâine. Rămân scadente până le recapitulezi.
+            </p>
+          )}
+
           <motion.button
+            data-tutorial="daily-start"
             {...pressLarge}
             onClick={() => {
-              setSessionItems(dueItems);
+              setSessionItems(todayItems);
               setCurrentIdx(0);
               setSelected([]);
               setRevealed(false);
@@ -315,7 +324,7 @@ export default function DailyReview() {
                           : revealed && isSelected && !isCorrect
                             ? `${theme.danger}20`
                             : isSelected ? `${theme.accent}22` : theme.surface2,
-                        color: revealed && isCorrect ? theme.success : revealed && isSelected && !isCorrect ? theme.danger : isSelected ? theme.accent : theme.text3,
+                        color: revealed && isCorrect ? theme.success : revealed && isSelected && !isCorrect ? theme.danger : isSelected ? theme.accentText : theme.text3,
                       }}>
                       {revealed && isCorrect ? <Check size={12} /> : revealed && isSelected && !isCorrect ? <X size={12} /> : opt.id.toUpperCase()}
                     </span>

@@ -1,4 +1,5 @@
 import { idbGet } from '../lib/idb';
+import { isGenericTag } from '../lib/analyticsStats';
 import { useToastStore } from '../store/toastStore';
 import type { Confidence, Question } from '../types';
 import type {
@@ -122,18 +123,30 @@ function weaknessRank(correct: number, total: number, priorMean = 65, priorWeigh
   return ((correct + (priorWeight * priorMean) / 100) / (total + priorWeight)) * 100;
 }
 
+/** Book/test/chapter markers and system tags say where a deck comes from, not what a question is about. */
+const STRUCTURAL_TAG = /^(book|chapter|cap|folder-session|rezidentiat-bank):|^(test|set|grila|quiz|capitol|chapter)[-_ ]?\d+$|^(kumar|lawrence|sinopsis|schwartz)$/i;
+function isStructuralTag(tag: string): boolean {
+  return isGenericTag(tag) || STRUCTURAL_TAG.test(tag.trim());
+}
+
 /**
  * Single source of truth for "what topic does this question belong to" — used everywhere a
  * question needs a topic label (weak/strong-topic ranking, mistake-bank entries, session
  * pattern tracking) so the same question always buckets the same way.
  */
 function topicsForQuestion(question: { tags?: string[]; category?: string } | undefined): string[] {
-  return question?.tags?.length ? question.tags : [question?.category || 'Topic general'];
+  const own = (question?.tags ?? []).filter((tag) => typeof tag === 'string' && !isStructuralTag(tag));
+  if (own.length > 0) return own;
+  const category = question?.category?.trim();
+  return [category && !isStructuralTag(category) ? category : 'Topic general'];
 }
+
+/** Fewer answers than this is noise, not a trend ("în scădere" after 4 answers misled the AI and the summary). */
+const MIN_TREND_SAMPLES = 10;
 
 /** Trend from a topic's recent outcome window: compare older half vs newer half. */
 function deriveTrend(recent: boolean[]): TopicTrend {
-  if (recent.length < 4) return 'stable';
+  if (recent.length < MIN_TREND_SAMPLES) return 'stable';
   const mid = Math.floor(recent.length / 2);
   const older = recent.slice(0, mid);
   const newer = recent.slice(mid);
@@ -160,6 +173,8 @@ function computeTopicStats({ stats, questions }: WeakTopicInput): TopicStatsMap 
   const topicStats: TopicStatsMap = {};
 
   for (const stat of Object.values(stats)) {
+    // Istoricul copiat pe pachetele de capitol rămâne la sursă, dar nu se mai numără (ca în statsStore).
+    if (stat.retired) continue;
     const question = byId.get(stat.questionId);
     for (const tag of topicsForQuestion(question)) {
       if (!topicStats[tag]) {
@@ -297,7 +312,7 @@ export function recordQuizSession(profileId: string, input: RecordQuizSessionInp
     averageConfidence: Math.round(avg(confidences) * 100) / 100,
   };
 
-  const allStats = Object.values(stats);
+  const allStats = Object.values(stats).filter((stat) => !stat.retired);
   const totalAnswers = allStats.reduce((sum, stat) => sum + stat.timesCorrect + stat.timesWrong, 0);
   const totalCorrect = allStats.reduce((sum, stat) => sum + stat.timesCorrect, 0);
   const globalAccuracy = percent(totalCorrect, totalAnswers);

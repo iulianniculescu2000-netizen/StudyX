@@ -3,6 +3,7 @@
  * a few evenly-sized study sessions spaced across the days remaining until an
  * exam date, so a 300-question bank stops looking like one wall of questions.
  */
+import { plural } from '../lib/plural';
 import { useMemo, useState, useId } from 'react';
 import { motion } from 'framer-motion';
 import { CalendarDays, X, Check } from 'lucide-react';
@@ -65,7 +66,7 @@ export default function ExamSplitModal({ folderName, folderId, color, category, 
     const newQuizzes = planToQuizzes(plan, folderName, { folderId, color, category }, generateId);
     newQuizzes.forEach((q) => addQuiz(q));
     addToast(
-      `${plan.chunkCount} sesiuni create (${totalQuestions} grile) — grilele originale rămân neschimbate.`,
+      `${plural(plan.chunkCount, 'sesiune creată', 'sesiuni create')} (${plural(totalQuestions, 'grilă', 'grile')}) — grilele originale rămân neschimbate.`,
       'success',
       5000,
     );
@@ -140,7 +141,7 @@ export default function ExamSplitModal({ folderName, folderId, color, category, 
                 <p className="mt-1.5 text-[11px] font-semibold" style={{ color: theme.accentText }}>
                   → {new Intl.DateTimeFormat('ro-RO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(examDate)}
                 </p>
-                <p className="mt-0.5 text-[11px]" style={{ color: theme.text3 }}>{days} zile rămase</p>
+                <p className="mt-0.5 text-[11px]" style={{ color: theme.text3 }}>{plural(days, 'zi rămasă', 'zile rămase')}</p>
               </div>
 
               <div>
@@ -168,7 +169,7 @@ export default function ExamSplitModal({ folderName, folderId, color, category, 
                 {plan.sessions.map((s) => (
                   <div key={s.index} className="flex items-center justify-between text-xs">
                     <span style={{ color: theme.text2 }}>Sesiunea {s.index + 1}/{plan.chunkCount}</span>
-                    <span style={{ color: theme.text3 }}>{s.questions.length} grile · {new Intl.DateTimeFormat('ro-RO', { day: 'numeric', month: 'short' }).format(s.date)}</span>
+                    <span style={{ color: theme.text3 }}>{plural(s.questions.length, 'grilă', 'grile')} · {new Intl.DateTimeFormat('ro-RO', { day: 'numeric', month: 'short' }).format(s.date)}</span>
                   </div>
                 ))}
               </div>
@@ -179,7 +180,7 @@ export default function ExamSplitModal({ folderName, folderId, color, category, 
                 className="elev-1 w-full py-2.5 rounded-[var(--r-md)] text-sm font-semibold text-white flex items-center justify-center gap-2"
                 style={{ background: theme.accent }}
               >
-                <Check size={14} /> Creează {plan.chunkCount} sesiuni
+                <Check size={14} /> Creează {plural(plan.chunkCount, 'sesiune', 'sesiuni')}
               </motion.button>
             </div>
           )}

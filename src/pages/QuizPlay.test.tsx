@@ -41,9 +41,9 @@ const getResults = (): ResultsState | null => {
   return node ? (JSON.parse(node.textContent ?? 'null') as ResultsState) : null;
 };
 
-const renderPlay = (state: Record<string, unknown> | null = null) =>
+const renderPlay = (state: Record<string, unknown> | null = null, pathname = '/play/z') =>
   render(
-    <MemoryRouter initialEntries={[{ pathname: '/play/z', state }]}>
+    <MemoryRouter initialEntries={[{ pathname: new URL(pathname, 'http://studyx.local').pathname, search: new URL(pathname, 'http://studyx.local').search, state }]}>
       <Routes>
         <Route path="/play/:id" element={<QuizPlay />} />
         <Route path="/results/:id" element={<ResultsProbe />} />
@@ -71,6 +71,35 @@ describe('QuizPlay (characterization)', () => {
   it('shows the not-found state when the quiz does not exist', async () => {
     renderPlay();
     expect(screen.getByText('Grila nu a fost găsită')).toBeTruthy();
+  });
+
+  it('opens only the exact linked question and records a one-question session', async () => {
+    useQuizStore.setState({ quizzes: [makeQuiz([question('q1'), question('q2'), question('q3')], { shuffleQuestions: true })] });
+    renderPlay(null, '/play/z?question=q2');
+    expect(counter(1, 1)).toBe(true);
+    expect(screen.getAllByText('Întrebarea q2').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Întrebarea q1')).toBeNull();
+    pick('q2 corect');
+    check();
+    await rate('Știam sigur');
+    expect(getResults()!.session).toMatchObject({ score: 1, total: 1, answers: { q2: ['q2a'] } });
+    expect(getResults()!.orderedQuestions.map((q) => q.id)).toEqual(['q2']);
+    expect(useQuizStore.getState().quizzes[0].questions).toHaveLength(3);
+    expect(useQuizStore.getState().sessions).toHaveLength(0);
+    expect(Object.keys(useStatsStore.getState().questionStats)).toEqual(['z:q2']);
+  });
+
+  it('shows an explicit missing-question state for a stale note link', () => {
+    useQuizStore.setState({ quizzes: [makeQuiz([question('q1')])] });
+    renderPlay(null, '/play/z?question=deleted');
+    expect(screen.getByText('Întrebarea nu a fost găsită')).toBeTruthy();
+    expect(screen.queryByText('Întrebarea q1')).toBeNull();
+  });
+
+  it('does not turn an empty question parameter into a full quiz attempt', () => {
+    useQuizStore.setState({ quizzes: [makeQuiz([question('q1')])] });
+    renderPlay(null, '/play/z?question=');
+    expect(screen.getByText('Întrebarea nu a fost găsită')).toBeTruthy();
   });
 
   describe('study flow', () => {
@@ -305,6 +334,35 @@ describe('QuizPlay (characterization)', () => {
       expect(counter(2, 2)).toBe(true);
       key('c');
       expect(getResults()!.session.answers).toEqual({ q1: ['q1b'], q2: ['q2c'] });
+    });
+
+    it('finishing twice in the same tick saves one session and records answers once', async () => {
+      useQuizStore.setState({ quizzes: [makeQuiz([question('q1')])] });
+      renderPlay({ mode: 'exam' });
+      act(() => {
+        // Two events before React commits: the second one still sees the pre-finish handlers.
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
+      });
+      expect(useQuizStore.getState().sessions).toHaveLength(1);
+      expect(useStatsStore.getState().questionStats['z:q1'].timesCorrect).toBe(1);
+    });
+
+    it('a key press followed by Enter on the last exam question saves one session', async () => {
+      useQuizStore.setState({ quizzes: [makeQuiz([question('q1')])] });
+      renderPlay({ mode: 'exam' });
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+      });
+      expect(useQuizStore.getState().sessions).toHaveLength(1);
+    });
+
+    it('ignores auto-repeated keydown events', async () => {
+      useQuizStore.setState({ quizzes: [makeQuiz([question('q1'), question('q2')])] });
+      renderPlay({ mode: 'exam' });
+      fireEvent.keyDown(window, { key: 'a', repeat: true });
+      expect(counter(1, 2)).toBe(true);
     });
   });
 

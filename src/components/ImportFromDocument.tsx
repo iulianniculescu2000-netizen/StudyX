@@ -3,7 +3,8 @@
  * questions with the template engine, review + fix the uncertain ones, then
  * save as a new quiz or append to an existing one.
  */
-import { useMemo, useRef, useState } from 'react';
+import { plural } from '../lib/plural';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Upload, FileText, Loader2, Check, AlertTriangle, X, Sparkles, Camera, Lightbulb, CheckSquare, Square } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
@@ -56,26 +57,51 @@ export default function ImportFromDocument({ targetFolderId, onDone, onImportQue
   const [newFolderName, setNewFolderName] = useState('');
   const [aiRunning, setAiRunning] = useState(false);
   const [progress, setProgress] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [notice, setNotice] = useState('');
+  const lastFiles = useRef<File[]>([]);
+  const operation = useRef(0);
+  useEffect(() => () => { operation.current += 1; }, []);
+
+  const cancelOperation = () => {
+    operation.current += 1;
+    setAiRunning(false);
+    setNotice('Operația a fost anulată. Rezultatele nu vor fi aplicate; cererile deja pornite pot continua în fundal.');
+    if (phase === 'extracting') setPhase('pick');
+  };
+  const close = () => {
+    operation.current += 1;
+    onDone();
+  };
 
   const existingQuizzes = useMemo(
     () => quizzes.filter((q) => !q.archived && !isFlashcardDeck(q)),
     [quizzes],
   );
 
-  const handleFiles = async (fileList: FileList | null) => {
+  const handleFiles = async (fileList: FileList | File[] | null) => {
     if (!fileList || fileList.length === 0) return;
     // Snapshot NOW — the caller resets the <input>, which empties this live
     // FileList; reading it after the await below would blow up.
     const files = Array.from(fileList);
+    const id = ++operation.current;
+    lastFiles.current = files;
+    setErrorMessage('');
+    setNotice('');
     setProgress('');
     setPhase('extracting');
     try {
-      const res = await extractGrileFromFiles(files, setProgress);
+      const res = await extractGrileFromFiles(files, (message) => {
+        if (id === operation.current) setProgress(message);
+      });
+      if (id !== operation.current) return;
       setResult(res);
       setQuestions(res.questions);
       setTitle(files[0].name.replace(/\.[^.]+$/, '').slice(0, 60) || 'Grile importate');
       setPhase('review');
     } catch (error) {
+      if (id !== operation.current) return;
+      setErrorMessage(`Nu am putut procesa fișierele: ${friendlyAIError(error)}`);
       addToast(
         `Nu am putut procesa fișierele: ${friendlyAIError(error)}`,
         'error',
@@ -123,19 +149,36 @@ export default function ImportFromDocument({ targetFolderId, onDone, onImportQue
   };
 
   const importable = questions.filter((q) => q.options.some((o) => o.isCorrect));
-  const unanswered = questions.filter((q) => q.answerSource === 'none' && q.options.length >= 2).length;
+  const unanswered = questions.filter((q) => q.answerSource === 'none' && q.options.length >= 2 && !q.options.some((o) => o.isCorrect)).length;
 
   const runAIFallback = async () => {
     if (aiRunning) return;
+    const id = ++operation.current;
+    setErrorMessage('');
+    setNotice('');
+    setProgress('AI verifică răspunsurile lipsă…');
     setAiRunning(true);
     try {
-      const filled = await inferAnswersWithAI(questions);
+      const targets = questions.filter((q) => q.answerSource === 'none' && q.options.length >= 2 && !q.options.some((o) => o.isCorrect));
+      const answers = await inferAnswersWithAI(targets, (done, total) => {
+        if (id === operation.current) setProgress(`AI a procesat ${done} din ${total} întrebări.`);
+      });
+      if (id !== operation.current) return;
+      const replacements = new Map(targets.map((q, i) => [q, answers[i]]));
+      const filled = questions.map((q) => replacements.get(q) ?? q);
       setQuestions(filled);
-      addToast('AI a completat răspunsurile lipsă (marcate „de verificat").', 'success', 4000);
+      const added = filled.filter((q, i) => q.answerSource === 'ai' && questions[i].answerSource === 'none').length;
+      const message = added > 0
+        ? `AI a propus ${added} răspunsuri. Verifică-le înainte de import; unele răspunsuri pot lipsi în continuare.`
+        : 'AI nu a completat niciun răspuns. Marchează manual răspunsurile corecte sau încearcă din nou.';
+      setNotice(message);
+      addToast(message, added > 0 ? 'success' : 'warning', 5000);
     } catch (error) {
+      if (id !== operation.current) return;
+      setErrorMessage(`AI n-a putut completa: ${friendlyAIError(error)}`);
       addToast(`AI n-a putut completa: ${friendlyAIError(error)}`, 'error', 5000);
     } finally {
-      setAiRunning(false);
+      if (id === operation.current) setAiRunning(false);
     }
   };
 
@@ -151,6 +194,7 @@ export default function ImportFromDocument({ targetFolderId, onDone, onImportQue
   };
 
   const doImport = () => {
+    if (aiRunning) return;
     if (importable.length === 0) {
       addToast('Nicio întrebare cu răspuns marcat de importat.', 'warning', 4000);
       return;
@@ -159,6 +203,7 @@ export default function ImportFromDocument({ targetFolderId, onDone, onImportQue
     // Wizard mode: hand the questions back to the create flow instead of saving.
     if (onImportQuestions) {
       onImportQuestions(importable);
+      addToast(`${plural(importable.length, 'întrebare adăugată', 'întrebări adăugate')} în wizard.`, 'success', 4000);
       onDone();
       return;
     }
@@ -176,8 +221,8 @@ export default function ImportFromDocument({ targetFolderId, onDone, onImportQue
       });
       addToast(
         groups.length > 1
-          ? `${importable.length} grile importate în ${groups.length} seturi, pe specialități.`
-          : `${importable.length} grile importate în „${createdTitles[0]}".`,
+          ? `${plural(importable.length, 'grilă importată', 'grile importate')} în ${plural(groups.length, 'set', 'seturi')}, pe specialități.`
+          : `${plural(importable.length, 'grilă importată', 'grile importate')} în „${createdTitles[0]}".`,
         'success', 4000,
       );
     } else {
@@ -190,7 +235,7 @@ export default function ImportFromDocument({ targetFolderId, onDone, onImportQue
       // Reuse the importer to mint proper question IDs, then append.
       const minted = parseImportedQuiz(data, target.folderId);
       updateQuiz(target.id, { questions: [...target.questions, ...minted.questions] });
-      addToast(`${importable.length} grile adăugate în „${target.title}".`, 'success', 4000);
+      addToast(`${plural(importable.length, 'grilă adăugată', 'grile adăugate')} în „${target.title}".`, 'success', 4000);
     }
     onDone();
   };
@@ -200,6 +245,9 @@ export default function ImportFromDocument({ targetFolderId, onDone, onImportQue
   if (phase === 'pick') {
     return (
       <div className="space-y-3">
+        {errorMessage && <p role="alert" className="text-sm break-words" style={{ color: theme.danger }}>{errorMessage}</p>}
+        {notice && <p role="status" className="text-sm" style={{ color: theme.text2 }}>{notice}</p>}
+        {errorMessage && <button onClick={() => handleFiles(lastFiles.current)} className="text-sm underline" style={{ color: theme.accentText }}>Reîncearcă aceleași fișiere</button>}
         <p className="text-xs" style={{ color: theme.text3 }}>
           Încarcă fișiere cu grile — PDF, Word, text sau chiar o <b>poză</b>. Recunosc întrebările,
           variantele și răspunsul corect din bold/culoare/cheie{hasKey ? ', iar pozele le citește AI-ul' : ''},
@@ -207,6 +255,7 @@ export default function ImportFromDocument({ targetFolderId, onDone, onImportQue
         </p>
         <input
           ref={inputRef}
+          aria-label="Alege documente sau imagini cu grile"
           type="file"
           accept=".pdf,.docx,.txt,image/*"
           multiple
@@ -218,6 +267,7 @@ export default function ImportFromDocument({ targetFolderId, onDone, onImportQue
         />
         <input
           ref={cameraRef}
+          aria-label="Fotografiază grilele"
           type="file"
           accept="image/*"
           capture="environment"
@@ -264,22 +314,31 @@ export default function ImportFromDocument({ targetFolderId, onDone, onImportQue
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-12">
         <Loader2 size={26} className="animate-spin" style={{ color: theme.accentText }} />
-        <p className="text-sm" style={{ color: theme.text2 }}>
+        <p role="status" aria-live="polite" aria-atomic="true" className="text-sm text-center break-words max-w-full" style={{ color: theme.text2 }}>
           {progress || 'Extrag grilele și elimin duplicatele…'}
         </p>
         <p className="text-[11px]" style={{ color: theme.text3 }}>
           Pozele și scanurile citite cu AI pot dura mai mult.
         </p>
+        <button onClick={cancelOperation} className="text-sm underline" style={{ color: theme.text2 }}>Anulează procesarea</button>
+        <p className="text-xs text-center" style={{ color: theme.text3 }}>Rezultatele vor fi ignorate; cererile deja pornite pot continua în fundal.</p>
       </div>
     );
   }
 
   // review
-  const stats = result?.stats;
+  const stats = { total: questions.length, withAnswer: importable.length, needsReview: questions.filter((q) => !q.options.some((o) => o.isCorrect) || q.confidence !== 'high').length };
   const dedupe = result?.dedupe;
 
   return (
     <div className="space-y-4">
+      {errorMessage && <p role="alert" className="text-sm break-words" style={{ color: theme.danger }}>{errorMessage}</p>}
+      <p role="status" aria-live="polite" aria-atomic="true" className="text-sm break-words" style={{ color: theme.text2 }}>{aiRunning ? progress : notice || `${plural(questions.length, 'întrebare extrasă', 'întrebări extrase')}. ${importable.length} cu răspuns marcat pentru import.`}</p>
+      {aiRunning && <button onClick={cancelOperation} className="text-sm underline" style={{ color: theme.text2 }}>Anulează completarea AI</button>}
+      {questions.length === 0 && <p className="text-sm" style={{ color: theme.text2 }}>Nu am găsit întrebări. Încearcă un document cu enunțuri și variante clare sau o fotografie mai lizibilă.</p>}
+      {questions.length > 0 && importable.length === 0 && <p className="text-sm" style={{ color: theme.text2 }}>Marchează cel puțin un răspuns corect pentru a putea importa. Întrebările fără răspuns marcat nu se importă.</p>}
+      <button disabled={aiRunning} onClick={() => { setPhase('pick'); setErrorMessage(''); setNotice(''); }} className="text-sm underline" style={{ color: theme.accentText }}>Alege alte fișiere</button>
+      {questions.length === 0 && <button onClick={() => handleFiles(lastFiles.current)} className="text-sm underline" style={{ color: theme.accentText }}>Reîncearcă aceleași fișiere</button>}
       {/* summary */}
       <div className="rounded-[var(--r-sm)] p-3 text-xs" style={{ background: theme.surface2, color: theme.text2 }}>
         <div className="flex flex-wrap gap-x-4 gap-y-1">
@@ -291,7 +350,7 @@ export default function ImportFromDocument({ targetFolderId, onDone, onImportQue
           )}
         </div>
         {result && result.perFile.some((f) => f.error) && (
-          <p className="mt-1" style={{ color: theme.danger }}>
+          <p role="alert" className="mt-1 break-words" style={{ color: theme.danger }}>
             {result.perFile.filter((f) => f.error).map((f) => `${f.name}: ${f.error}`).join(' · ')}
           </p>
         )}
@@ -317,6 +376,7 @@ export default function ImportFromDocument({ targetFolderId, onDone, onImportQue
         <div className="flex gap-2">
           <button
             onClick={() => setDest('new')}
+            aria-pressed={dest === 'new'}
             className="flex-1 py-2 rounded-[var(--r-sm)] text-xs font-semibold"
             style={{ background: dest === 'new' ? theme.accent : theme.surface2, color: dest === 'new' ? '#fff' : theme.text3 }}
           >
@@ -324,6 +384,7 @@ export default function ImportFromDocument({ targetFolderId, onDone, onImportQue
           </button>
           <button
             onClick={() => setDest(existingQuizzes[0]?.id ?? 'new')}
+            aria-pressed={dest !== 'new'}
             disabled={existingQuizzes.length === 0}
             className="flex-1 py-2 rounded-[var(--r-sm)] text-xs font-semibold"
             style={{ background: dest !== 'new' ? theme.accent : theme.surface2, color: dest !== 'new' ? '#fff' : theme.text3, opacity: existingQuizzes.length === 0 ? 0.5 : 1 }}
@@ -335,13 +396,15 @@ export default function ImportFromDocument({ targetFolderId, onDone, onImportQue
           <div className="space-y-2">
             <input
               value={title}
+              aria-label="Numele grilei noi"
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Numele grilei noi"
               className="w-full text-sm px-3 py-2 rounded-[var(--r-sm)]"
               style={{ background: theme.surface2, border: `1px solid ${theme.border}`, color: theme.text, outline: 'none' }}
             />
             <div className="flex gap-2">
-              <div className="flex-1">
+              <fieldset className="flex-1 min-w-0">
+                <legend className="text-xs" style={{ color: theme.text2 }}>Folder de destinație</legend>
                 <ThemedSelect
                   value={folderChoice}
                   onChange={setFolderChoice}
@@ -351,10 +414,11 @@ export default function ImportFromDocument({ targetFolderId, onDone, onImportQue
                     { value: FOLDER_NEW, label: 'Folder nou…' },
                   ]}
                 />
-              </div>
+              </fieldset>
               {folderChoice === FOLDER_NEW && (
                 <input
                   value={newFolderName}
+                  aria-label="Nume folder nou"
                   onChange={(e) => setNewFolderName(e.target.value)}
                   placeholder="Nume folder"
                   autoFocus
@@ -365,12 +429,15 @@ export default function ImportFromDocument({ targetFolderId, onDone, onImportQue
             </div>
           </div>
         ) : (
+          <fieldset>
+          <legend className="text-xs" style={{ color: theme.text2 }}>Grila de destinație</legend>
           <ThemedSelect
             value={dest}
             onChange={setDest}
             placeholder="Alege grila"
             options={existingQuizzes.map((q) => ({ value: q.id, label: `${q.title} (${q.questions.length})` }))}
           />
+          </fieldset>
         )}
       </div>
       )}
@@ -408,8 +475,11 @@ export default function ImportFromDocument({ targetFolderId, onDone, onImportQue
               </div>
               <button
                 onClick={() => toggleMultipleCorrect(qi)}
+                disabled={aiRunning}
+                aria-pressed={q.multipleCorrect}
+                aria-label={`Întrebarea ${qi + 1}: mai multe răspunsuri corecte`}
                 className="ml-5 mt-1 rounded-[var(--r-sm)] px-1.5 py-0.5 text-[10px] font-bold"
-                style={{ background: q.multipleCorrect ? `${theme.accent}22` : theme.surface, color: q.multipleCorrect ? theme.accent : theme.text3 }}
+                style={{ background: q.multipleCorrect ? `${theme.accent}22` : theme.surface, color: q.multipleCorrect ? theme.accentText : theme.text3 }}
                 title="Apasă dacă are de fapt mai multe răspunsuri corecte"
               >
                 {q.multipleCorrect
@@ -421,6 +491,9 @@ export default function ImportFromDocument({ targetFolderId, onDone, onImportQue
                   <button
                     key={oi}
                     onClick={() => toggleCorrect(qi, oi)}
+                    disabled={aiRunning}
+                    aria-pressed={o.isCorrect}
+                    aria-label={`Întrebarea ${qi + 1}, varianta ${String.fromCharCode(97 + oi)}: ${o.text}`}
                     className="flex items-center gap-1.5 w-full text-left text-[11.5px] px-2 py-1 rounded-[var(--r-sm)]"
                     style={{
                       background: o.isCorrect ? `${theme.success}22` : 'transparent',
@@ -445,7 +518,7 @@ export default function ImportFromDocument({ targetFolderId, onDone, onImportQue
       {/* actions */}
       <div className="flex gap-2">
         <button
-          onClick={onDone}
+          onClick={close}
           className="px-4 py-2.5 rounded-[var(--r-sm)] text-sm font-semibold flex items-center gap-1.5"
           style={{ background: theme.surface2, color: theme.text3 }}
         >
@@ -453,12 +526,13 @@ export default function ImportFromDocument({ targetFolderId, onDone, onImportQue
         </button>
         <motion.button
           onClick={doImport}
+          disabled={aiRunning || importable.length === 0}
           whileTap={calmMotion ? undefined : { scale: 0.97 }}
           className="flex-1 py-2.5 rounded-[var(--r-sm)] text-sm font-semibold text-white flex items-center justify-center gap-2"
           style={{ background: theme.accent }}
         >
           <FileText size={14} />
-          {wizardMode ? `Adaugă ${importable.length} în wizard` : `Importă ${importable.length} grile`}
+          {wizardMode ? `Adaugă ${importable.length} în wizard` : `Importă ${plural(importable.length, 'grilă', 'grile')}`}
         </motion.button>
       </div>
     </div>

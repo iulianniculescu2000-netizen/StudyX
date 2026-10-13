@@ -109,7 +109,7 @@ export default function FolderTree({
                           className="relative flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm transition-colors press-feedback"
                           style={{
                             background: isDropTarget ? `${theme.accent}24` : isActive ? `${theme.accent}16` : 'transparent',
-                            color: isActive ? theme.accent : theme.text2,
+                            color: isActive ? theme.accentText : theme.text2,
                             boxShadow: isDropTarget ? `inset 0 0 0 1px ${theme.accent}55` : isActive ? `0 3px 14px ${theme.accent}22` : 'none',
                           }}
                           onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.background = `${theme.accent}09`; }}
@@ -183,7 +183,7 @@ export default function FolderTree({
                             className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm transition-colors press-feedback"
                             style={{
                               background: isDropTarget ? `${colorHex}24` : isActive ? `${theme.accent}16` : 'transparent',
-                              color: isActive ? theme.accent : theme.text2,
+                              color: isActive ? theme.accentText : theme.text2,
                               paddingRight: 36,
                               paddingLeft: 12 + depth * 14,
                               boxShadow: isDropTarget ? `inset 0 0 0 1px ${colorHex}66` : isActive ? `0 3px 14px ${colorHex}22` : 'none',
@@ -224,19 +224,19 @@ export default function FolderTree({
                                 useNewFolderDialog.getState().show(folder.id);
                               }}
                               aria-label={`Creează subfolder în ${folder.name}`}
-                              className="p-1 rounded hover:opacity-80" style={{ color: theme.accentText }}>
+                              className="rounded p-[7px] hover:opacity-80" style={{ color: theme.accentText }}>
                               <Plus size={11} />
                             </button>
                             <button
                               onClick={(e) => { e.preventDefault(); setEditingFolder(folder.id); setEditName(folder.name); }}
                               aria-label={`Redenumește folderul ${folder.name}`}
-                              className="p-1 rounded hover:opacity-80" style={{ color: theme.text3 }}>
+                              className="rounded p-[7px] hover:opacity-80" style={{ color: theme.text3 }}>
                               <Pencil size={11} />
                             </button>
                             <button
                               onClick={(e) => { e.preventDefault(); setDeleteTarget({ id: folder.id, name: folder.name }); }}
                               aria-label={`Șterge folderul ${folder.name}`}
-                              className="p-1 rounded hover:opacity-80" style={{ color: theme.danger }}>
+                              className="rounded p-[7px] hover:opacity-80" style={{ color: theme.danger }}>
                               <Trash2 size={11} />
                             </button>
                           </div>

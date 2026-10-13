@@ -1,18 +1,43 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { StickyNote, Search, Trash2, X, Sparkles, Loader2, CreditCard, ExternalLink, FileQuestion, HelpCircle, Filter } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
 import { useNotesStore } from '../store/notesStore';
 import { useQuizStore } from '../store/quizStore';
+import { useTutorialStore } from '../store/tutorialStore';
 import { useAIStore } from '../store/aiStore';
 import { notesToFlashcards, generateQuestionsFromText } from '../lib/groq';
 import { friendlyAIError } from '../lib/ai/friendlyError';
 import { matchesQuery } from '../lib/searchText';
 import PageHeader from '../components/ui/PageHeader';
 import EmptyState from '../components/ui/EmptyState';
+import { plural } from '../lib/plural';
 import { useAdaptiveMotion } from '../hooks/useAdaptiveMotion';
 import { dur, ease } from '../theme/motion';
+
+type EnrichedNoteItem = {
+  questionId: string;
+  text: string;
+  quiz: ReturnType<typeof useQuizStore.getState>['quizzes'][number] | null;
+  question: ReturnType<typeof useQuizStore.getState>['quizzes'][number]['questions'][number] | null;
+};
+
+type FlatNoteItem =
+  | {
+      kind: 'header';
+      id: string;
+      quizId: string;
+      quiz: EnrichedNoteItem['quiz'];
+      count: number;
+    }
+  | {
+      kind: 'note';
+      id: string;
+      note: EnrichedNoteItem;
+      isFirstOverall: boolean;
+    };
 
 export default function Notes() {
   const theme = useTheme();
@@ -75,6 +100,104 @@ export default function Notes() {
     return map;
   }, [filtered]);
 
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  // Flatten grouped notes for dynamic height virtualization
+  const flatItems = useMemo<FlatNoteItem[]>(() => {
+    const items: FlatNoteItem[] = [];
+    let isFirstOverall = true;
+    for (const [quizId, noteList] of grouped.entries()) {
+      const quiz = noteList[0]?.quiz ?? null;
+      items.push({
+        kind: 'header',
+        id: `header-${quizId}`,
+        quizId,
+        quiz,
+        count: noteList.length,
+      });
+      for (const note of noteList) {
+        items.push({
+          kind: 'note',
+          id: `note-${note.questionId}`,
+          note: note as EnrichedNoteItem,
+          isFirstOverall,
+        });
+        isFirstOverall = false;
+      }
+    }
+    return items;
+  }, [grouped]);
+
+  const rowVirtualizer = useVirtualizer({
+    count: flatItems.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: (index) => (flatItems[index]?.kind === 'header' ? 44 : 160),
+    overscan: 5,
+    initialRect: { width: 1024, height: 800 },
+    getItemKey: (index) => flatItems[index]?.id ?? index,
+    measureElement: (element, entry, instance) => {
+      if (entry?.borderBoxSize?.[0]?.blockSize) {
+        return Math.round(entry.borderBoxSize[0].blockSize);
+      }
+      const measured = element.getBoundingClientRect().height || (element instanceof HTMLElement ? element.offsetHeight : 0);
+      if (measured > 0) return measured;
+      const index = instance.indexFromElement(element);
+      return instance.options.estimateSize(index);
+    },
+    observeElementRect: (instance, cb) => {
+      const element = instance.scrollElement;
+      if (!element) return;
+      const targetWindow = instance.targetWindow;
+      const handler = () => {
+        const rect = element.getBoundingClientRect();
+        const width = rect.width > 0 ? rect.width : 1024;
+        const height = rect.height > 0 ? rect.height : 800;
+        cb({ width, height });
+      };
+      handler();
+      let ro: ResizeObserver | null = null;
+      if (typeof targetWindow !== 'undefined' && targetWindow?.ResizeObserver) {
+        ro = new targetWindow.ResizeObserver((entries) => {
+          const entry = entries[0];
+          if (entry?.borderBoxSize?.[0]) {
+            const box = entry.borderBoxSize[0];
+            const width = box.inlineSize > 0 ? Math.round(box.inlineSize) : 1024;
+            const height = box.blockSize > 0 ? Math.round(box.blockSize) : 800;
+            cb({ width, height });
+          } else {
+            handler();
+          }
+        });
+        ro.observe(element, { box: 'border-box' });
+      }
+      targetWindow?.addEventListener('resize', handler, { passive: true });
+      return () => {
+        ro?.disconnect();
+        targetWindow?.removeEventListener('resize', handler);
+      };
+    },
+  });
+
+  // Scroll to top when search query or quiz filter changes
+  useEffect(() => {
+    if (parentRef.current) {
+      parentRef.current.scrollTop = 0;
+    }
+    rowVirtualizer.scrollToOffset(0);
+  }, [search, quizFilter]);
+
+  // Ensure first item is mounted and in view when tutorial runs or step changes
+  const activeTour = useTutorialStore((s) => s.activeTour);
+  const currentStep = useTutorialStore((s) => s.currentStep);
+  useEffect(() => {
+    if (activeTour === 'notes') {
+      if (parentRef.current) {
+        parentRef.current.scrollTop = 0;
+      }
+      rowVirtualizer.scrollToOffset(0);
+    }
+  }, [activeTour, currentStep]);
+
   const runConversion = async (kind: 'quiz' | 'flashcards') => {
     setAiError(null);
     setAiConverting(true);
@@ -88,7 +211,7 @@ export default function Notes() {
         const newQuiz = {
           id: crypto.randomUUID().replace(/-/g, '').slice(0, 12),
           title: 'Quiz din Notițe',
-          description: `Generat automat din ${filtered.length} notițe`,
+          description: `Generat automat din ${plural(filtered.length, 'notiță', 'notițe')}`,
           emoji: '📝',
           color: 'blue' as const,
           category: 'Notițe',
@@ -112,7 +235,7 @@ export default function Notes() {
         const newQuiz = {
           id: crypto.randomUUID().replace(/-/g, '').slice(0, 12),
           title: 'Flashcarduri din notițe',
-          description: `Generat automat din ${filtered.length} notițe`,
+          description: `Generat automat din ${plural(filtered.length, 'notiță', 'notițe')}`,
           emoji: '🃏',
           color: 'purple' as const,
           category: 'Notițe',
@@ -140,19 +263,20 @@ export default function Notes() {
   const spinner = calmMotion ? '' : 'animate-spin';
 
   return (
-    <div className="h-full overflow-y-auto px-4 py-6 sm:px-8 sm:py-10">
+    <div ref={parentRef} className="h-full overflow-y-auto px-4 py-6 sm:px-8 sm:py-10">
       <div className="max-w-4xl mx-auto">
 
         <PageHeader
           eyebrow="Biblioteca ta"
           title="Notițele mele"
-          help="page-notes"
+          tour={{ id: 'notes', label: 'Ghid pentru notițe' }}
           subtitle={enriched.length === 0
             ? 'Nicio notiță salvată'
             : `${enriched.length} ${enriched.length === 1 ? 'notiță' : 'notițe'} din ${grouped.size} ${grouped.size === 1 ? 'grilă' : 'grile'}`}
           actions={enriched.length > 0 && hasKey ? (
             <>
               <button
+                data-tutorial="notes-ai-quiz"
                 disabled={aiConverting}
                 onClick={() => runConversion('quiz')}
                 className="press-feedback fx-lift focus-ring flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold"
@@ -166,6 +290,7 @@ export default function Notes() {
                   : <><Sparkles size={13} /> Grilă AI</>}
               </button>
               <button
+                data-tutorial="notes-ai-flashcards"
                 disabled={aiConverting}
                 onClick={() => runConversion('flashcards')}
                 className="press-feedback fx-lift focus-ring flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold"
@@ -190,6 +315,7 @@ export default function Notes() {
           <div className="relative mb-4">
             <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: theme.text3 }} aria-hidden="true" />
             <input
+              data-tutorial="notes-search"
               type="text"
               aria-label="Caută în notițe"
               placeholder="Caută în notițe..."
@@ -249,103 +375,123 @@ export default function Notes() {
           />
         )}
 
-        {/* Notes grouped by quiz */}
-        <div className="space-y-6">
-          {Array.from(grouped.entries()).map(([quizId, noteList], gi) => {
-            const quiz = noteList[0]?.quiz;
-            return (
-              <motion.div
-                key={quizId}
-                initial={calmMotion ? false : { opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: dur.base, ease: ease.standard, delay: Math.min(gi, 8) * 0.04 }}
-              >
-                {/* Quiz header */}
-                <div className="flex items-center gap-2 mb-3">
-                  {quiz ? (
-                    <Link to={`/quiz/${quiz.id}`}
-                      className="flex items-center gap-2 hover:underline"
-                      style={{ color: theme.accentText }}>
-                      <span className="text-lg">{quiz.emoji}</span>
-                      <span className="font-semibold text-sm">{quiz.title}</span>
-                    </Link>
-                  ) : (
-                    <div className="flex items-center gap-2" style={{ color: theme.text3 }}>
-                      <FileQuestion size={14} />
-                      <span className="font-semibold text-sm">Grilă ștearsă</span>
-                    </div>
-                  )}
-                  <span className="text-xs px-2 py-0.5 rounded-full"
-                    style={{ background: theme.surface2, color: theme.text3 }}>
-                    {noteList.length}
-                  </span>
-                  {!quizFilter && grouped.size > 1 && (
-                    <button
-                      onClick={() => updateParam('quiz', quizId)}
-                      aria-label={`Arată doar notițele din ${quiz?.title ?? 'grila ștearsă'}`}
-                      title="Arată doar această grilă"
-                      className="fine-row press-feedback ml-auto p-1.5"
-                      style={{ color: theme.text3 }}>
-                      <Filter size={13} />
-                    </button>
-                  )}
-                </div>
+        {/* Notes grouped by quiz - Virtualized */}
+        {flatItems.length > 0 && (
+          <div
+            style={{
+              height: `${rowVirtualizer.getTotalSize()}px`,
+              width: '100%',
+              position: 'relative',
+            }}
+          >
+            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              const item = flatItems[virtualRow.index];
+              if (!item) return null;
 
-                {/* Notes cards */}
-                <div className="space-y-3">
-                  {noteList.map((n) => (
+              return (
+                <div
+                  key={virtualRow.key}
+                  data-index={virtualRow.index}
+                  ref={rowVirtualizer.measureElement}
+                  className="pb-3"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                >
+                  {item.kind === 'header' ? (
+                    <div className="flex items-center gap-2 pt-2 mb-1">
+                      {item.quiz ? (
+                        <Link
+                          to={`/quiz/${item.quiz.id}`}
+                          className="group focus-ring inline-flex items-center gap-2 rounded-[var(--r-sm)] transition-opacity hover:opacity-90"
+                          style={{ color: theme.accentText }}
+                        >
+                          <span className="text-lg select-none leading-none" aria-hidden="true">{item.quiz.emoji}</span>
+                          <span className="font-semibold text-sm underline-offset-4 decoration-1 group-hover:underline">{item.quiz.title}</span>
+                        </Link>
+                      ) : (
+                        <div className="flex items-center gap-2" style={{ color: theme.text3 }}>
+                          <FileQuestion size={14} />
+                          <span className="font-semibold text-sm">Grilă ștearsă</span>
+                        </div>
+                      )}
+                      <span className="text-xs px-2 py-0.5 rounded-full"
+                        style={{ background: theme.surface2, color: theme.text3 }}>
+                        {item.count}
+                      </span>
+                      {!quizFilter && grouped.size > 1 && (
+                        <button
+                          onClick={() => updateParam('quiz', item.quizId)}
+                          aria-label={`Arată doar notițele din ${item.quiz?.title ?? 'grila ștearsă'}`}
+                          title="Arată doar această grilă"
+                          className="fine-row press-feedback ml-auto p-1.5"
+                          style={{ color: theme.text3 }}>
+                          <Filter size={13} />
+                        </button>
+                      )}
+                    </div>
+                  ) : (
                     <div
-                      key={n.questionId}
-                      className="group glass-panel rounded-[var(--r-lg)] p-4 relative"
+                      {...(item.isFirstOverall ? { 'data-tutorial': 'notes-entry' } : {})}
+                      className="glass-panel rounded-[var(--r-lg)] p-4 sm:p-5"
                     >
-                      {/* Question text + link to quiz detail */}
-                      {n.question && (
-                        <div className="flex items-start gap-2 mb-2 pr-6">
-                          <p className="text-xs font-medium line-clamp-2 flex-1"
-                            style={{ color: theme.text3 }}>
-                            <HelpCircle size={12} className="inline-block align-text-bottom mr-1" />{n.question.text}
+                      {/* Keep the question, personal note and actions in separate visual rows. */}
+                      {item.note.question && (
+                        <div className="mb-3">
+                          <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: theme.text3 }}>
+                            <HelpCircle size={12} aria-hidden="true" /> Întrebare
+                          </div>
+                          <p className="question-body text-sm font-semibold leading-relaxed" style={{ color: theme.text }}>
+                            {item.note.question.text}
                           </p>
-                          {n.quiz && (
-                            <Link
-                              to={`/quiz/${n.quiz.id}`}
-                              title="Deschide grila"
-                              aria-label="Deschide grila"
-                              className="flex-shrink-0 p-1 rounded-[var(--r-sm)] opacity-60 hover:opacity-100 transition-opacity"
-                              style={{ color: theme.accentText }}
-                            >
-                              <ExternalLink size={11} />
-                            </Link>
-                          )}
                         </div>
                       )}
 
-                      <div style={{ height: 1, background: theme.border, marginBottom: 8 }} />
+                      {item.note.question && <div className="mb-3 h-px" style={{ background: theme.border }} />}
 
-                      <p className="text-sm whitespace-pre-wrap pr-16" style={{ color: theme.text }}>
-                        {n.text}
+                      <p className="note-body text-sm whitespace-pre-wrap break-words leading-relaxed" style={{ color: theme.text2 }}>
+                        {item.note.text}
                       </p>
 
-                      {/* Delete button */}
-                      <AnimatePresence>
-                        {confirmDelete === n.questionId ? (
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t pt-3" style={{ borderColor: theme.border }}>
+                        {item.note.quiz && item.note.question ? (
+                          <Link
+                            to={`/play/${encodeURIComponent(item.note.quiz.id)}?question=${encodeURIComponent(item.note.questionId)}`}
+                            title="Deschide această întrebare"
+                            aria-label={`Deschide întrebarea: ${item.note.question.text}`}
+                            className="press-feedback focus-ring inline-flex items-center gap-1.5 rounded-[var(--r-sm)] px-2 py-1.5 text-xs font-semibold"
+                            style={{ color: theme.accentText, background: `${theme.accent}12` }}
+                          >
+                            <ExternalLink size={13} aria-hidden="true" /> Deschide întrebarea
+                          </Link>
+                        ) : <span />}
+                        <AnimatePresence mode="wait">
+                        {confirmDelete === item.note.questionId ? (
                           <motion.div
                             initial={{ opacity: 0, scale: 0.97 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.97 }}
                             transition={{ duration: dur.fast, ease: ease.snap }}
-                            className="absolute top-3 right-3 flex items-center gap-1"
+                            role="group"
+                            aria-label="Confirmă ștergerea notiței"
+                            className="flex items-center gap-2"
                           >
-                            <button
-                              onClick={() => { deleteNote(n.questionId); setConfirmDelete(null); }}
-                              className="press-feedback px-2 py-1 rounded-[var(--r-sm)] text-xs font-semibold text-white transition-[filter] duration-300 hover:brightness-110"
-                              style={{ background: theme.danger }}>
-                              Șterge
-                            </button>
+                            <span className="text-xs font-medium" style={{ color: theme.text2 }}>Ștergi notița?</span>
                             <button
                               onClick={() => setConfirmDelete(null)}
-                              className="fine-chip press-feedback px-2 py-1 rounded-[var(--r-sm)] text-xs"
-                              style={{ color: theme.text3 }}>
-                              Nu
+                              className="fine-chip press-feedback px-3 py-1.5 rounded-[var(--r-sm)] text-xs font-semibold"
+                              style={{ color: theme.text2 }}>
+                              Anulează
+                            </button>
+                            <button
+                              onClick={() => { deleteNote(item.note.questionId); setConfirmDelete(null); }}
+                              className="press-feedback px-3 py-1.5 rounded-[var(--r-sm)] text-xs font-semibold text-white transition-[filter] duration-300 hover:brightness-110"
+                              style={{ background: theme.danger }}>
+                              Șterge
                             </button>
                           </motion.div>
                         ) : (
@@ -354,22 +500,23 @@ export default function Notes() {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             transition={{ duration: dur.fast }}
-                            onClick={() => setConfirmDelete(n.questionId)}
+                            onClick={() => setConfirmDelete(item.note.questionId)}
                             title="Șterge notița"
                             aria-label="Șterge notița"
-                            className="absolute top-3 right-3 p-1.5 rounded-[var(--r-sm)] opacity-40 hover:opacity-100 group-hover:opacity-100 transition-opacity"
+                            className="focus-ring p-1.5 rounded-[var(--r-sm)] opacity-70 hover:opacity-100 transition-opacity"
                             style={{ color: theme.text3 }}>
                             <Trash2 size={13} />
                           </motion.button>
                         )}
-                      </AnimatePresence>
+                        </AnimatePresence>
+                      </div>
                     </div>
-                  ))}
+                  )}
                 </div>
-              </motion.div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

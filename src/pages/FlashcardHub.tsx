@@ -1,3 +1,4 @@
+import { plural } from '../lib/plural';
 import { useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
@@ -20,7 +21,7 @@ import { AnkiImportModal } from './flashcard-hub/AnkiImportModal';
 import { ChapterBooks, ChapterSplitCard } from './flashcard-hub/chapters';
 import SegmentedTabs from '../components/fx/SegmentedTabs';
 import { flashcardPickerFolders } from '../lib/flashcardTreeView';
-import { buildResidencyContext, classifyResidencyDeck } from '../lib/flashcardGroups';
+import { buildResidencyContext, classifyResidencyDeck, foldersForHubScope } from '../lib/flashcardGroups';
 import { HubFileInputs } from './flashcard-hub/HubFileInputs';
 import { useDeckCreation } from './flashcard-hub/useDeckCreation';
 import { useChapterView } from './flashcard-hub/useChapterView';
@@ -56,10 +57,12 @@ export default function FlashcardHub({ scope = 'general' }: { scope?: 'general' 
     libraryGenerating, ankiModalOpen, setAnkiModalOpen, setCreatedDeck, setResume, resuming, createdCardRef,
     visibleCreatedDeck, targetFolderId, handleTargetFolderChange, handleCreateFolder, moveCreatedDeck,
     resumeGeneration, readyLibrarySources, generateDeckFromLibrary, handleCsvImport, handlePhotoImport,
-    handlePdfImport, guardBusy, createMistakeDeck, createQuickDeck,
+    handlePdfImport, guardBusy, createMistakeDeck,
   } = creation;
 
   const decks = useMemo(() => buildDeckSummaries(quizzes, questionStats), [quizzes, questionStats]);
+  // Fiecare hub vede doar folderele spațiului lui (Rezidențiat sau general), nu și pe ale celuilalt.
+  const treeFolders = useMemo(() => foldersForHubScope(folders, decks, rezScope), [folders, decks, rezScope]);
   const chapterView = useChapterView(quizzes, questionStats);
   const {
     query, setQuery, chapterSections, splitPlan, splitting, splitDeck, dismissSplit,
@@ -100,7 +103,7 @@ export default function FlashcardHub({ scope = 'general' }: { scope?: 'general' 
           title={rezScope ? 'Flashcarduri Rezidențiat' : 'Flashcarduri'}
           back={rezScope ? { to: '/rezidentiat', label: 'Rezidențiat' } : undefined}
           subtitle={decks.length > 0
-            ? `${decks.length} ${decks.length === 1 ? 'pachet' : 'pachete'} · ${totalCards} carduri · SM-2`
+            ? `${plural(decks.length, 'pachet', 'pachete')} · ${plural(totalCards, 'card', 'carduri')} · SM-2`
             : rezScope ? 'Pachetele pe capitole apar aici, din Carduri Kumar sau din cărțile tale.' : 'Repetare spațiată și carduri inteligente.'}
           actions={(
             <>
@@ -191,7 +194,7 @@ export default function FlashcardHub({ scope = 'general' }: { scope?: 'general' 
         {/* ── Pachetele tale ── */}
         {view === 'pachete' && (
         <div data-tutorial="flashcards-decks" className="empty:hidden">
-          <FlashcardDeckTree decks={decks} folders={folders} theme={theme} query={query} onQueryChange={setQuery} residency={rezScope} />
+          <FlashcardDeckTree decks={decks} folders={treeFolders} theme={theme} query={query} onQueryChange={setQuery} residency={rezScope} />
         </div>
         )}
 
@@ -220,7 +223,6 @@ export default function FlashcardHub({ scope = 'general' }: { scope?: 'general' 
             onMistakeDeckCreate={createMistakeDeck}
             onPhotoImport={handlePhotoImport}
             onPdfImport={handlePdfImport}
-            onQuickDeckCreate={createQuickDeck}
             onTargetFolderChange={handleTargetFolderChange}
           />
         </div>}

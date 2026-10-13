@@ -51,11 +51,15 @@ describe('HelpTip', () => {
     expect(screen.getByRole('heading', { name: HELP_TIPS['rez-ai-level'].title })).toBeTruthy();
   });
 
-  it('„Ghid pas cu pas” apare doar când există un tur', () => {
-    wrap(<><HelpTip id="fc-new-folder" /><HelpTip id="rez-ai-level" /></>);
-    fireEvent.click(screen.getByRole('button', { name: labelFor('fc-new-folder') }));
-    expect(screen.getByRole('button', { name: 'Ghid pas cu pas' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: labelFor('rez-ai-level') }));
-    expect(screen.queryByRole('button', { name: 'Ghid pas cu pas' })).toBeNull();
+  it('indiciile din chat folosesc un portal poziționat fix și arată ghidul', () => {
+    wrap(<><HelpTip id="chat-citations" size={14} /><HelpTip id="chat-cross-check" size={16} /></>);
+    for (const id of ['chat-citations', 'chat-cross-check'] as const) {
+      fireEvent.click(screen.getByRole('button', { name: labelFor(id) }));
+      const dialog = screen.getByRole('dialog');
+      expect(dialog.parentElement).toBe(document.body);
+      expect(dialog.style.position).toBe('fixed');
+      expect(dialog.style.visibility).toBe('visible');
+      expect(screen.getByRole('button', { name: 'Ghid pas cu pas' })).toBeTruthy();
+    }
   });
 });

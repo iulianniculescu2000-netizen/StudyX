@@ -1,3 +1,4 @@
+import { libraryStatus, aiStatus } from '../contextText';
 import { Database, Layers3, Plus, Search } from 'lucide-react';
 import type { TourDefinition } from '../types';
 
@@ -9,7 +10,7 @@ export const vaultTour: TourDefinition = {
     {
       id: 'vault-intro',
       title: 'Biblioteca AI',
-      body: 'Aici stau cursurile și cărțile din care lucrează AI-ul. Cât timp un document se indexează, el nu poate fi folosit încă. Un tur scurt, în patru pași.',
+      body: (ctx) => libraryStatus(ctx),
       icon: <Database size={22} />,
       placement: 'center',
       route: '/vault',
@@ -18,7 +19,7 @@ export const vaultTour: TourDefinition = {
     {
       id: 'vault-add',
       title: 'Adaugă un document',
-      body: 'PDF, DOCX, text sau poze. După încărcare, documentul se indexează; când apare gata, AI-ul îl poate folosi.',
+      body: (ctx) => ctx.indexingSourceCount > 0 ? 'Documentele încă se indexează. Așteaptă starea Gata înainte să le folosești; poți adăuga și alte PDF-uri, DOCX, texte sau poze.' : ctx.failedSourceCount > 0 ? 'Pentru documentele cu eroare, citește mesajul afișat și reîncarcă fișierul dacă indexarea a fost întreruptă.' : 'Adaugă un PDF, DOCX, text sau poze. Așteaptă starea Gata înainte să folosești documentul în AI.',
       icon: <Plus size={22} />,
       target: '[data-tutorial="vault-add"]',
       targetPadding: 6,
@@ -39,7 +40,7 @@ export const vaultTour: TourDefinition = {
     {
       id: 'vault-studio',
       title: 'AI Studio',
-      body: 'Alegi un document sau un capitol și generezi grile din el. Ajung în folderul ales, iar cele pentru Rezidențiat în Grile › specialitate.',
+      body: (ctx) => `${aiStatus(ctx)} ${ctx.readySourceCount > 0 ? 'În Studio alegi un document gata, capitolul și folderul. Verifică opțiunile înainte să pornești generarea.' : 'Studio are nevoie de un document gata. Adaugă unul și așteaptă indexarea.'}`,
       icon: <Layers3 size={22} />,
       target: '[data-tutorial="vault-studio"]',
       targetPadding: 6,

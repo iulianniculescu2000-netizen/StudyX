@@ -1,3 +1,4 @@
+import { plural } from '../lib/plural';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useMemo, useRef, useCallback } from 'react';
 import type { CSSProperties } from 'react';
@@ -99,7 +100,7 @@ export default function QuizList() {
   );
 
   const filtered = activeQuizzes.filter((q) => {
-    const matchSearch = matchesQuery(`${q.title} ${q.description} ${q.category ?? ''} ${(q.tags ?? []).join(' ')}`, search);
+    const matchSearch = matchesQuery(`${q.title} ${q.description ?? ''} ${q.category ?? ''} ${(q.tags ?? []).join(' ')}`, search);
     const matchCategory = category === 'Toate' || q.category === category;
     const matchTag = !activeTag || (q.tags ?? []).includes(activeTag);
     return matchSearch && matchCategory && matchTag;
@@ -130,7 +131,7 @@ export default function QuizList() {
         <PageHeader
           eyebrow="Biblioteca"
           title="Grilele tale"
-          subtitle={`${filtered.length} grile ${filtered.length !== activeQuizzes.length ? `filtrate din ${activeQuizzes.length}` : 'disponibile'}`}
+          subtitle={`${plural(filtered.length, 'grilă', 'grile')} ${filtered.length !== activeQuizzes.length ? `filtrate din ${activeQuizzes.length}` : 'disponibile'}`}
           tour={{ id: 'quizzes', label: 'Vezi turul listei de grile' }}
           actions={(
             <div data-tutorial="quizzes-actions" className="flex flex-wrap items-center gap-2">
@@ -156,7 +157,7 @@ export default function QuizList() {
               placeholder="Caută în titlu, descriere sau subiect..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="bg-transparent flex-1 text-sm font-bold outline-none border-none"
+              className="input-bare min-w-0 flex-1 text-sm font-bold"
               style={{ color: theme.text }}
             />
             {search && (
@@ -199,6 +200,7 @@ export default function QuizList() {
               <div className="ml-auto min-w-[180px]">
                 <PremiumSelect
                   value={sort}
+                  label="Sortare"
                   onChange={(val) => setSort(val as SortOption)}
                   options={(Object.entries(SORT_LABELS) as [SortOption, string][]).map(([k, v]) => ({ value: k, label: v }))}
                   icon={<ArrowUpDown size={14} className="opacity-50" />}

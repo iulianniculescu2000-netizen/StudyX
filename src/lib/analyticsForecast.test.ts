@@ -37,9 +37,9 @@ describe('netScore', () => {
 });
 
 describe('forecastConfidence', () => {
-  it('says few data under 10 distinct questions', () => {
-    expect(forecastConfidence(9)).toBe('few');
-    expect(forecastConfidence(10)).toBe('some');
+  it('says insufficient data under 30 distinct questions', () => {
+    expect(forecastConfidence(29)).toBe('few');
+    expect(forecastConfidence(30)).toBe('some');
     expect(forecastConfidence(40)).toBe('enough');
     expect(forecastConfidence(200, 10)).toBe('some');
   });

@@ -192,17 +192,12 @@ export interface AIState {
 }
 
 export interface AIActions {
-  setProcessing: (processing: boolean) => void;
-  setCurrentRequest: (request: string | null) => void;
-  setLastResponse: (response: AIResponse | null) => void;
   setError: (error: string | null) => void;
-  clearError: () => void;
   setApiKey: (apiKey: string) => void;
   setProvider: (provider: AIProvider) => void;
   setModel: (model: AIModel) => void;
   /** Sets the model for ANY provider, not just the active one — used by the multi-provider model check. Keeps `model` in sync only if that provider happens to be active right now. */
   setProviderModel: (provider: AIProvider, model: AIModel) => void;
-  setHasKey: (hasKey: boolean) => void;
   addKnowledgeSource: (
     name: string,
     text: string,
@@ -236,7 +231,6 @@ export interface AIActions {
   recordAIInteraction: (profileId: string, input: AIInteractionMemoryInput) => void;
   getAIMemoryContext: (profileId: string) => string;
   clearAIMemory: (profileId?: string) => void;
-  markHydrated: () => void;
   reset: () => void;
   /** Per-profile: knowledge sources + library folders load/save through profileStorage.ts, not the global zustand persist blob. */
   _hydrate: (data: { knowledgeSources: AIKnowledgeSource[]; libraryFolders: AILibraryFolder[] }) => void;
@@ -522,6 +516,7 @@ export class ReindexCancelledError extends Error {
 
 /** Documents being indexed right now, so a hydrate does not mistake them for interrupted ones. */
 const indexingInFlight = new Set<string>();
+const inFlightNames = new Set<string>();
 
 export const useAIStore = create<AIState & AIActions>()(
   devtools(
@@ -529,11 +524,7 @@ export const useAIStore = create<AIState & AIActions>()(
       (set, get) => ({
         ...createDefaultState(),
 
-        setProcessing: (processing) => set({ isProcessing: processing }, false, 'ai/setProcessing'),
-        setCurrentRequest: (request) => set({ currentRequest: request }, false, 'ai/setCurrentRequest'),
-        setLastResponse: (response) => set({ lastResponse: response }, false, 'ai/setLastResponse'),
         setError: (error) => set({ error }, false, 'ai/setError'),
-        clearError: () => set({ error: null }, false, 'ai/clearError'),
 
         setApiKey: (apiKey) => {
           const trimmed = apiKey.trim();
@@ -570,9 +561,34 @@ export const useAIStore = create<AIState & AIActions>()(
           providerModels: { ...state.providerModels, [provider]: model },
           ...(state.provider === provider ? { model } : {}),
         }), false, 'ai/setProviderModel'),
-        setHasKey: (hasKey) => set({ hasKey }, false, 'ai/setHasKey'),
 
         addKnowledgeSource: async (name, text, type = 'txt', options = {}) => {
+          const trimmedName = name.trim();
+          const targetFolderId = options.folderId ?? null;
+          const normalizedNameLower = trimmedName.toLowerCase();
+
+          // Deduplicare 1: Dacă există deja o sursă gata sau în indexare cu același nume în același folder
+          const existingSource = get().knowledgeSources.find(
+            (s) =>
+              s.name.trim().toLowerCase() === normalizedNameLower &&
+              (targetFolderId === null ? !s.folderId : s.folderId === targetFolderId) &&
+              s.indexStatus !== 'error'
+          );
+
+          if (existingSource) {
+            return existingSource;
+          }
+
+          // Deduplicare 2: In-flight locking pe nume pentru a preveni apeluri simultane concurente
+          const lockKey = `${normalizedNameLower}:${targetFolderId ?? 'root'}`;
+          if (inFlightNames.has(lockKey)) {
+            const current = get().knowledgeSources.find(
+              (s) => s.name.trim().toLowerCase() === normalizedNameLower
+            );
+            if (current) return current;
+          }
+          inFlightNames.add(lockKey);
+
           const sourceId = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
           // The stores are global: if the profile changes while this runs, its results belong to the old one.
           const startedInEpoch = currentProfileEpoch();
@@ -654,6 +670,7 @@ export const useAIStore = create<AIState & AIActions>()(
             throw error;
           } finally {
             indexingInFlight.delete(sourceId);
+            inFlightNames.delete(lockKey);
           }
         },
 
@@ -942,8 +959,6 @@ export const useAIStore = create<AIState & AIActions>()(
           delete next[profileId];
           return { studyMemory: next };
         }, false, 'ai/clearAIMemory'),
-
-        markHydrated: () => set({ isHydrated: true }, false, 'ai/markHydrated'),
 
         _hydrate: (data) => set({
           knowledgeSources: data.knowledgeSources ?? [],

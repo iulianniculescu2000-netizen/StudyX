@@ -23,7 +23,7 @@ interface TutorialStore {
   /** Closes the running tour for this profile and records it as seen, whether it ended or was skipped. */
   finishTour: (profileId: string) => void;
   markSeen: (profileId: string, tourId: TourId) => void;
-  /** After the onboarding every tour counts as seen: a new user is not shown 2.3.0's "what's new". */
+  /** Explicitly dismisses every tour for this profile; onboarding does not call this. */
   markAllSeen: (profileId: string) => void;
   skipTutorial: (profileId: string) => void;
   completeTutorial: (profileId: string) => void;
@@ -76,8 +76,8 @@ export const useTutorialStore = create<TutorialStore>()(
 
       finishTour: (profileId) => set((s) => ({
         seen: s.activeTour === 'onboarding'
-          // The onboarding already covered the pages the short tours explain, and a new user has no "what's new".
-          ? TOUR_IDS.reduce((acc, tourId) => withSeen(acc, profileId, tourId), s.seen)
+          // New users skip release news, but page guides and the film keep their own seen state.
+          ? withSeen(withSeen(s.seen, profileId, 'onboarding'), profileId, 'whatsNew')
           : s.activeTour ? withSeen(s.seen, profileId, s.activeTour) : s.seen,
         activeTour: null,
         active: false,

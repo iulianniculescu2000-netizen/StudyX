@@ -3,10 +3,10 @@ import { migrateTutorialState, useTutorialStore } from '../store/tutorialStore';
 import { CURRENT_TOUR_VERSION, GUIDE_LIST, LEGACY_ONBOARDING_VERSION, RELEASE_DISPLAY_NAME, TOUR_IDS, TOUR_META } from './tourMeta';
 import { TOURS, type SpotlightTourId } from './registry';
 import { keyGuideIntro } from './keyGuideText';
-import { savedProviders } from './useTourContext';
+import { readTourContext, savedProviders } from './useTourContext';
 import type { TourContext } from './types';
 
-const emptyContext: TourContext = { aiProviders: [], aiKeyCount: 0, quizCount: 0, deckCount: 0, sourceCount: 0, pathname: '/' };
+const emptyContext: TourContext = readTourContext('/');
 const spotlightIds = Object.keys(TOURS) as SpotlightTourId[];
 
 describe('tour registry', () => {
@@ -87,9 +87,11 @@ describe('tour registry', () => {
     expect(TOURS.residency.autoStartRoute).toBe('/rezidentiat');
     expect(TOURS.chat.autoStartRoute).toBeUndefined();
     for (const id of ['residency', 'residencyFlashcards', 'chat'] as const) {
-      const steps = TOURS[id].steps;
-      expect(steps.length, id).toBeGreaterThanOrEqual(3);
-      expect(steps.length, id).toBeLessThanOrEqual(6);
+      for (const context of [emptyContext, { ...emptyContext, residencyQuizCount: 1, residencyDeckCount: 1 }]) {
+        const steps = TOURS[id].steps.filter((step) => !step.when || step.when(context));
+        expect(steps.length, id).toBeGreaterThanOrEqual(2);
+        expect(steps.length, id).toBeLessThanOrEqual(6);
+      }
     }
   });
 
@@ -170,12 +172,42 @@ describe('tutorial store', () => {
     expect(useTutorialStore.getState().hasSeen('p1', 'residency')).toBe(false);
   });
 
-  it('marks every tour seen once the onboarding ends, so a new user skips "what is new"', () => {
+  it('finishes onboarding without dismissing unseen page guides or the welcome film', () => {
     const store = useTutorialStore.getState();
     store.startTutorial();
     store.finishTour('p1');
-    for (const id of TOUR_IDS) expect(useTutorialStore.getState().hasSeen('p1', id), id).toBe(true);
+    for (const id of TOUR_IDS) {
+      expect(useTutorialStore.getState().hasSeen('p1', id), id).toBe(id === 'onboarding' || id === 'whatsNew');
+    }
     expect(useTutorialStore.getState().seen.p1?.whatsNew).toBe(TOUR_META.whatsNew.version);
+  });
+
+  it('keeps page guides available when onboarding is closed at its first step', () => {
+    const store = useTutorialStore.getState();
+    store.startTutorial();
+    expect(useTutorialStore.getState().currentStep).toBe(0);
+    store.skipTutorial('p1');
+    const finished = useTutorialStore.getState();
+    expect(finished.active).toBe(false);
+    expect(finished.activeTour).toBeNull();
+    expect(finished.currentStep).toBe(0);
+    expect(finished.seen.p1).toEqual({ onboarding: CURRENT_TOUR_VERSION, whatsNew: CURRENT_TOUR_VERSION });
+  });
+
+  it('preserves recorded film and page guide versions and isolates other profiles', () => {
+    const existing = {
+      p1: { welcomeFilm: '0.9.0', residency: '0.9.0' },
+      p2: { onboarding: '0.9.0', flashcards: CURRENT_TOUR_VERSION },
+    };
+    useTutorialStore.setState({ seen: existing });
+    const store = useTutorialStore.getState();
+    store.startTutorial();
+    store.completeTutorial('p1');
+    const finished = useTutorialStore.getState();
+    expect(finished.seen.p1).toEqual({ ...existing.p1, onboarding: CURRENT_TOUR_VERSION, whatsNew: CURRENT_TOUR_VERSION });
+    expect(finished.seen.p2).toEqual(existing.p2);
+    expect(finished.hasSeen('p3', 'onboarding')).toBe(false);
+    expect(finished.hasSeen('p1', 'flashcards')).toBe(false);
   });
 
   it('keeps a profile that has not finished separate from one that has', () => {

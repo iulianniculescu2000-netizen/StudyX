@@ -6,7 +6,7 @@
  * LLM light (opțional, ~70 tokeni): DOAR dacă scorul de regăsire de la prima încercare a fost slab.
  */
 import { expandMedicalQuery, normalizeSearchText } from '../medicalSynonyms';
-import { contentWords, fixSedilla, type HelperMessage } from './shared';
+import { contentWords, fixSedilla } from './shared';
 
 /** Termeni EN → RO (fără diacritice). Doar echivalențe certe, frecvente în cărți/cursuri. */
 export const EN_RO_TERMS: readonly (readonly [string, string])[] = [
@@ -74,30 +74,4 @@ export function rewriteQuery(query: string, options: QueryRewriteOptions = {}): 
   const searchText = joined.length > maxSearchChars ? joined.slice(0, maxSearchChars).replace(/\s+\S*$/, '') : joined;
   const needsLlm = lastRetrievalScore !== undefined && lastRetrievalScore < weakThreshold && contentWords(core).length >= 2;
   return { original: query, core, expansions, searchText, needsLlm };
-}
-
-/** Prompt LLM light (~25 tokeni de sistem). Răspunsul: o singură linie de cuvinte-cheie. */
-export const QUERY_REWRITE_SYSTEM =
-  'Rescrie întrebarea medicală ca 6-12 cuvinte-cheie pentru căutare în manuale, în română, cu sinonime și abrevieri. O singură linie, fără explicații.';
-
-export function buildQueryRewriteMessages(query: string): HelperMessage[] {
-  return [
-    { role: 'system', content: QUERY_REWRITE_SYSTEM },
-    { role: 'user', content: query.slice(0, 400) },
-  ];
-}
-
-/** Curăță răspunsul LLM: prima linie, fără ghilimele/prefix, plafonat; null dacă e inutilizabil. */
-export function parseQueryRewriteReply(reply: string | null | undefined, maxChars = 200): string | null {
-  if (!reply) return null;
-  const line = reply
-    .split('\n')
-    .map((l) => l.trim())
-    .find((l) => l.length > 0);
-  if (!line) return null;
-  const cleaned = fixSedilla(
-    line.replace(/^(?:cuvinte[- ]cheie|query|căutare)\s*:\s*/i, '').replace(/^["'„“`]+|["'”“`]+$/g, ''),
-  ).trim();
-  if (cleaned.length < 3) return null;
-  return cleaned.slice(0, maxChars);
 }

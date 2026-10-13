@@ -6,7 +6,7 @@
  *   <textul fragmentului, întreg sau tăiat la capăt de propoziție>
  */
 
-import { CHARS_PER_TOKEN, isNearDuplicate } from '../lib/ai/tokenBudget';
+import { contextDuplicateKey, contextLimit, normalizeContextProse } from './contextBudget';
 
 /** Strictul necesar dintr-un rezultat de retrieval; `RetrievedChunk` și `ChunkRecord` se potrivesc. */
 export interface ContextChunkInput {
@@ -105,6 +105,7 @@ function pagesOf(chunk: ContextChunkInput): { page?: number; pageEnd?: number; p
  * propoziție, apoi de cuvânt. Nu taie sub 40% din buget doar ca să găsească o frontieră frumoasă.
  */
 export function truncateAtBoundary(text: string, max: number): string {
+  max = contextLimit(max);
   const trimmed = text.trim();
   if (max <= 0) return '';
   if (trimmed.length <= max) return trimmed;
@@ -130,8 +131,9 @@ export function truncateAtBoundary(text: string, max: number): string {
   const line = window.lastIndexOf('\n');
   if (line >= floor) return window.slice(0, line).trim();
 
-  const space = window.search(/\s\S*$/);
-  const cut = space >= floor ? window.slice(0, space).trim() : window.trim();
+  const ellipsisWindow = window.slice(0, max - 1);
+  const space = ellipsisWindow.search(/\s\S*$/);
+  const cut = space >= floor ? ellipsisWindow.slice(0, space).trim() : ellipsisWindow.trim();
   return `${cut.replace(/[,;:\-–]$/, '')}…`;
 }
 
@@ -150,22 +152,27 @@ function headerFor(n: number, chunk: ContextChunkInput): string {
  * (primul e mai mare decât tot bugetul) se taie primul, pe frontieră de propoziție.
  */
 export function buildNumberedContext(chunks: ContextChunkInput[], maxChars: number, maxChunks = Infinity): NumberedContext {
-  if (chunks.length === 0 || maxChars <= 0) return { context: '', sources: [] };
+  maxChars = contextLimit(maxChars);
+  maxChunks = contextLimit(maxChunks);
+  if (chunks.length === 0 || maxChars <= 0 || maxChunks <= 0) return { context: '', sources: [] };
 
   const headerCost = HEADER.length + 2;
   let budget = maxChars - headerCost;
   const picked: Array<{ chunk: ContextChunkInput; body: string }> = [];
+  const seen = new Set<string>();
 
   for (const chunk of chunks) {
-    const body = chunk.text.trim();
+    if (picked.length >= maxChunks) break;
+    const body = normalizeContextProse(chunk.text);
     if (!body) continue;
-    // Același text deja ales (dublură exactă) nu mai intră.
-    if (picked.some((entry) => entry.body === body)) continue;
-    // Fragment aproape identic cu unul deja ales (aceeași pagină reindexată, suprapunere de chunk-uri): nu plătim tokeni de două ori.
-    if (isNearDuplicate(body, picked.map((entry) => entry.body))) continue;
+    const pages = pagesOf(chunk);
+    const key = contextDuplicateKey(body, [chunk.sourceId, chunk.source, pages.page, pages.pageEnd,
+      pages.printedPage, chunk.heading ?? chunk.metadata?.heading, chunk.chapter]);
+    if (seen.has(key)) continue;
     const cost = headerFor(picked.length + 1, chunk).length + 1 + body.length + 2;
     if (picked.length < maxChunks && cost <= budget) {
       picked.push({ chunk, body });
+      seen.add(key);
       budget -= cost;
     }
   }
@@ -175,7 +182,7 @@ export function buildNumberedContext(chunks: ContextChunkInput[], maxChars: numb
     if (!first) return { context: '', sources: [] };
     const head = headerFor(1, first);
     const room = budget - head.length - 3;
-    const body = truncateAtBoundary(first.text, room);
+    const body = truncateAtBoundary(normalizeContextProse(first.text), room);
     if (!body) return { context: '', sources: [] };
     picked.push({ chunk: first, body });
   }
@@ -251,37 +258,4 @@ export function parseInlineCitations<S extends { n: number }>(text: string, sour
   }
   pushText(text.slice(last));
   return segments;
-}
-
-/* ── Context compact pentru modelul local (context mic) ───────────────────────────────────── */
-
-export const COMPACT_MAX_CHUNKS = 2;
-export const COMPACT_CONTEXT_TOKENS = 1200;
-export const COMPACT_HISTORY_TURNS = 4;
-export const COMPACT_TURN_CHARS = 400;
-
-export interface CompactTurn {
-  role: 'user' | 'assistant';
-  content: string;
-}
-
-/** Cel mult 2 fragmente RAG, numerotate, încadrate în ~1200 tokeni (aceeași estimare ca tokenBudget). */
-export function buildCompactContext(
-  chunks: ContextChunkInput[],
-  maxTokens = COMPACT_CONTEXT_TOKENS,
-  maxChunks = COMPACT_MAX_CHUNKS,
-): NumberedContext {
-  const maxChars = Math.floor(maxTokens * CHARS_PER_TOKEN);
-  return buildNumberedContext(chunks, maxChars, maxChunks);
-}
-
-/** Ultimele `maxTurns` mesaje, fiecare trunchiat; începe mereu cu un mesaj de utilizator. */
-export function compactHistory(
-  history: CompactTurn[],
-  maxTurns = COMPACT_HISTORY_TURNS,
-  maxChars = COMPACT_TURN_CHARS,
-): CompactTurn[] {
-  const tail = history.filter((t) => t.content.trim()).slice(-maxTurns);
-  while (tail.length > 0 && tail[0].role !== 'user') tail.shift();
-  return tail.map((t) => ({ role: t.role, content: truncateAtBoundary(t.content, maxChars) }));
 }

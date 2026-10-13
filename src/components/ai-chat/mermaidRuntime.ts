@@ -166,6 +166,15 @@ export function resetMermaidRuntime(): void {
 
 export class MermaidSyntaxError extends Error {}
 
+/** Mermaid draws `root((Long title))` as a circle with a fixed visual radius.
+ * Longer labels can extend outside that circle, so use its content-sized card
+ * shape while keeping the text and the rest of the mindmap unchanged. */
+export function fitMindmapRoots(code: string): string {
+  if (!/^\s*mindmap\b/im.test(code)) return code;
+  return code.replace(/^(\s*)([\w-]+)\(\(([^()\n]+)\)\)(\s*)$/gm, (whole, indent: string, id: string, label: string, suffix: string) =>
+    label.trim().length > 7 && !label.includes(']') ? `${indent}${id}[${label}]${suffix}` : whole);
+}
+
 /**
  * Renders mermaid source to a sanitized SVG string for the given theme.
  * Rejects with MermaidSyntaxError when the diagram does not parse.
@@ -179,17 +188,18 @@ export function renderMermaid(code: string, theme: MermaidTheme): Promise<string
     const again = cache.get(key);
     if (again) return again;
     const mermaid = await loadMermaid();
+    const fittedCode = fitMindmapRoots(code);
     if (configuredFor !== theme.id) {
       mermaid.initialize(buildMermaidConfig(theme));
       configuredFor = theme.id;
     }
-    const ok = await mermaid.parse(code, { suppressErrors: true });
+    const ok = await mermaid.parse(fittedCode, { suppressErrors: true });
     if (!ok) throw new MermaidSyntaxError('parse');
 
     idSeq += 1;
     const id = `sx-mermaid-${idSeq}`;
     try {
-      const { svg } = await mermaid.render(id, code);
+      const { svg } = await mermaid.render(id, fittedCode);
       const clean = sanitizeSvg(svg);
       if (!clean.includes('<svg')) throw new MermaidSyntaxError('empty');
       if (cache.size >= CACHE_LIMIT) cache.delete(cache.keys().next().value as string);

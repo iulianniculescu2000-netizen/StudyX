@@ -8,7 +8,7 @@ import { resolveMaterialsRoot } from '../../lib/organizareRoot';
 import { fileBaseName, parseFilePages, printedPageFor, type BookSource } from '../../lib/bookPages';
 import type { Topic } from '../../lib/organizare/types';
 import PdfPageViewer from './PdfPageViewer';
-import { bridge, canReadBookPdf } from './bridge';
+import { BUNDLED_ROOT, bridge, canReadBookPdf } from './bridge';
 
 /** Ce se citește: sursele posibile (capitol întreg, secțiune, carte) și pagina din PDF-ul compilat al cărții. */
 export interface BookViewRequest {
@@ -50,21 +50,30 @@ export default function BookPdfReader({ request, onUnavailable }: Props) {
 
   useEffect(() => {
     const api = bridge();
-    if (!api?.organizareReadPdf || !root) return;
+    if (!api?.organizareReadPdf) return;
+    const key = root ?? BUNDLED_ROOT;
     let cancelled = false;
     void (async () => {
       let lastError = 'Nu am găsit fișierul PDF în folderul ales.';
-      for (const source of request.sources) {
-        try {
-          const result = await api.organizareReadPdf!(root, source.file);
-          if (cancelled) return;
-          if (result.ok && result.data) { setLoaded({ request, root, result: { kind: 'ready', data: result.data, source } }); return; }
-          if (result.error) lastError = result.error;
-        } catch {
-          // Încearcă următoarea sursă.
+      // Folderul utilizatorului întâi (are și PDF-urile pe capitole), apoi cărțile livrate cu aplicația.
+      for (const base of root ? [root, BUNDLED_ROOT] : [BUNDLED_ROOT]) {
+        for (const source of request.sources) {
+          try {
+            const result = await api.organizareReadPdf!(base, source.file);
+            if (cancelled) return;
+            if (result.ok && result.data) { setLoaded({ request, root: key, result: { kind: 'ready', data: result.data, source } }); return; }
+            if (result.error && base !== BUNDLED_ROOT) lastError = result.error;
+          } catch {
+            // Încearcă următoarea sursă.
+          }
         }
       }
       if (cancelled) return;
+      if (!root) {
+        setLoaded({ request, root: key, result: { kind: 'missing', error: 'need-root' } });
+        unavailable.current?.();
+        return;
+      }
       // Nicio sursă nu e în folderul ales: poate e un subfolder sau părintele. Îl căutăm o singură dată și reîncercăm.
       if (!healedRoots.current.has(root)) {
         healedRoots.current.add(root);
@@ -78,9 +87,10 @@ export default function BookPdfReader({ request, onUnavailable }: Props) {
     return () => { cancelled = true; };
   }, [request, root, profileId, setRoot]);
 
-  const current = loaded && loaded.request === request && loaded.root === root ? loaded.result : null;
+  const current = loaded && loaded.request === request && loaded.root === (root ?? BUNDLED_ROOT) ? loaded.result : null;
+  // Fără folder ales și fără carte inclusă potrivită: abia atunci cerem folderul.
   const state: { kind: 'loading' | 'need-root' | 'pick-file' } | Loaded = picked
-    ?? (!hasBridge ? { kind: 'pick-file' } : !root ? { kind: 'need-root' } : current ?? { kind: 'loading' });
+    ?? (!hasBridge ? { kind: 'pick-file' } : current?.kind === 'missing' && current.error === 'need-root' ? { kind: 'need-root' } : current ?? { kind: 'loading' });
 
   const pickRoot = async () => {
     const picked = await bridge()?.organizarePickRoot?.();

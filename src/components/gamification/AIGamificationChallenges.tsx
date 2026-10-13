@@ -42,7 +42,7 @@ export default function AIGamificationChallenges({ challenges }: AIGamificationC
             <div className="flex items-start gap-3">
               <span
                 className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[var(--r-sm)]"
-                style={challenge.done ? { background: theme.accent, color: '#fff' } : { background: 'var(--accent-soft)', color: theme.accent }}
+                style={challenge.done ? { background: theme.accent, color: '#fff' } : { background: 'var(--accent-soft)', color: theme.accentText }}
                 aria-hidden="true"
               >
                 {challenge.done ? <Check className="h-5 w-5" /> : <Icon className="h-5 w-5" />}

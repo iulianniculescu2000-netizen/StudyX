@@ -9,7 +9,7 @@ const mermaid = vi.hoisted(() => ({
 vi.mock('mermaid', () => ({ default: mermaid }));
 
 import { THEMES } from '../../theme/themes';
-import { MermaidSyntaxError, buildMermaidConfig, mixHex, peekRendered, renderMermaid, resetMermaidRuntime } from './mermaidRuntime';
+import { MermaidSyntaxError, buildMermaidConfig, fitMindmapRoots, mixHex, peekRendered, renderMermaid, resetMermaidRuntime } from './mermaidRuntime';
 import { sanitizeSvg } from './sanitize';
 
 beforeEach(() => {
@@ -45,6 +45,16 @@ describe('buildMermaidConfig', () => {
 });
 
 describe('renderMermaid', () => {
+  it('gives long circular mindmap labels a content-sized card without changing their text', async () => {
+    const source = 'mindmap\n  root((Psoriazis))\n    Vulgar în plăci\n    Gutat';
+    expect(fitMindmapRoots(source)).toBe('mindmap\n  root[Psoriazis]\n    Vulgar în plăci\n    Gutat');
+    expect(fitMindmapRoots('mindmap\n  root((BPOC))')).toContain('root((BPOC))');
+    expect(fitMindmapRoots('flowchart TD\n  A((Psoriazis)) --> B')).toContain('A((Psoriazis))');
+    await renderMermaid(source, THEMES.light);
+    expect(mermaid.parse).toHaveBeenCalledWith(fitMindmapRoots(source), { suppressErrors: true });
+    expect(mermaid.render).toHaveBeenCalledWith(expect.any(String), fitMindmapRoots(source));
+  });
+
   it('renders, sanitizes and caches per theme', async () => {
     const svg = await renderMermaid('graph TD\nA-->B', THEMES.light);
     expect(svg).toContain('<svg');

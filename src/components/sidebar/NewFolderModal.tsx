@@ -6,6 +6,7 @@ import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useAdaptiveMotion } from '../../hooks/useAdaptiveMotion';
 import ThemedSelect from '../ThemedSelect';
 import { suggestFolderAppearance } from '../../lib/folderAppearance';
+import { hasSiblingFolderNamed } from '../../store/folderStore';
 import type { QuizColor } from '../../types';
 import { FOLDER_COLORS, FOLDER_EMOJIS } from './constants';
 
@@ -61,13 +62,16 @@ export default function NewFolderModal({
   // Always show the active emoji in the grid so a smart suggestion (e.g. ❤️) is highlighted.
   const emojiOptions = Array.from(new Set([emoji, ...FOLDER_EMOJIS]));
 
+  const targetParentId = parentId === '__root__' ? null : parentId;
+  const isDuplicate = hasSiblingFolderNamed(folders, name, targetParentId);
+
   const handleCreate = () => {
-    if (!name.trim()) return;
+    if (!name.trim() || isDuplicate) return;
     onAdd(name.trim(), emoji, color, parentId === '__root__' ? null : parentId);
     onClose();
   };
 
-  const canCreate = name.trim().length > 0;
+  const canCreate = name.trim().length > 0 && !isDuplicate;
 
   return (
     <motion.div
@@ -172,7 +176,14 @@ export default function NewFolderModal({
               style={{
                 width: '100%', padding: '14px 18px', borderRadius: 16, background: theme.surface2, border: `1px solid ${theme.border}`,
                 color: theme.text, outline: 'none', fontSize: 14, fontWeight: 600,
-              }} />
+              }}
+              aria-invalid={isDuplicate || undefined}
+              aria-describedby={isDuplicate ? `${titleId}-dup` : undefined} />
+            {isDuplicate && (
+              <div id={`${titleId}-dup`} role="alert" style={{ marginTop: 8, fontSize: 12, fontWeight: 600, color: theme.danger }}>
+                Există deja un folder cu acest nume aici. Alege alt nume sau alt loc.
+              </div>
+            )}
           </div>
 
           <div style={{ marginBottom: 28 }}>

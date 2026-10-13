@@ -1,13 +1,13 @@
-import { EXAM_SIM_TAG, disciplineBreakdown } from '../lib/examSimulation';
+import { EXAM_SIM_TAG } from '../lib/examSimulation';
 import { useBack } from '../hooks/useBack';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { RotateCcw, Home, Check, X, Star, Download, Bot, Loader2, Scale, MessageSquare, BookOpen, Trophy, ThumbsUp, Lightbulb } from 'lucide-react';
-import confetti from 'canvas-confetti';
+import { RotateCcw, Home, Check, X, Star, Download, Bot, Loader2, MessageSquare, BookOpen, Trophy, ThumbsUp, Lightbulb } from 'lucide-react';
 import type { QuizSession, Question, QuestionStat } from '../types';
 import type { WrongOptionAnalysis } from '../ai/types';
 import { useQuizStore } from '../store/quizStore';
+import { upsertGeneratedQuiz } from '../lib/generatedQuiz';
 import { useStatsStore } from '../store/statsStore';
 import { useTheme } from '../theme/ThemeContext';
 import { useAIStore } from '../store/aiStore';
@@ -17,7 +17,9 @@ import { useAdaptiveMotion } from '../hooks/useAdaptiveMotion';
 import { useStoresHydrated } from '../hooks/useStoresHydrated';
 import PageSkeleton from '../components/ui/PageSkeleton';
 import EmptyState from '../components/ui/EmptyState';
-import { dur, ease } from '../theme/motion';
+import TourHelpButton from '../tutorial/TourHelpButton';
+import ResultHero from './results/ResultHero';
+import { countUnanswered, disciplineBreakdownWithUnanswered, isUnanswered } from './results/unanswered';
 import { buildClarificationFallback, cleanQuestionExplanation, getAnswerTextForOptionIds, getCorrectAnswerText } from '../helpers/quizAi';
 import { explainAnswerInline } from '../lib/groq';
 import AIRichText from '../components/ai-chat/AIRichText';
@@ -26,11 +28,11 @@ import { buildAdaptiveExamQuiz, buildMistakeFlashcardQuiz, buildWeaknessRecovery
 export default function QuizResults() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
+  const singleQuestionResult = new URLSearchParams(location.search).get('single') === '1';
   const navigate = useNavigate();
   const goBack = useBack('/quizzes');
   const quizzes = useQuizStore((s) => s.quizzes);
   const sessions = useQuizStore((s) => s.sessions);
-  const addQuiz = useQuizStore((s) => s.addQuiz);
   const theme = useTheme();
   const { calmMotion, t } = useAdaptiveMotion();
   const hydrated = useStoresHydrated('quiz');
@@ -58,11 +60,11 @@ export default function QuizResults() {
   }
 
   const fallbackSession = useMemo(() => {
-    if (!id) return undefined;
+    if (!id || singleQuestionResult) return undefined;
     return sessions
       .filter((item) => item.quizId === id)
       .sort((left, right) => (right.finishedAt ?? right.startedAt) - (left.finishedAt ?? left.startedAt))[0];
-  }, [id, sessions]);
+  }, [id, sessions, singleQuestionResult]);
 
   session = session ?? fallbackSession;
 
@@ -74,7 +76,7 @@ export default function QuizResults() {
   const isExamSimulation = quiz?.tags?.includes(EXAM_SIM_TAG) ?? false;
   const disciplineResults = useMemo(() => {
     if (!isExamSimulation) return [];
-    return disciplineBreakdown(questions, (question) => {
+    return disciplineBreakdownWithUnanswered(questions, session?.answers, (question) => {
       const given = session?.answers[question.id] ?? [];
       const correct = question.options.filter((option) => option.isCorrect).map((option) => option.id);
       return given.length === correct.length && correct.every((entry) => given.includes(entry));
@@ -87,7 +89,9 @@ export default function QuizResults() {
       const isCorrect = userAnswerIds.length === correctIds.length && correctIds.every((entry) => userAnswerIds.includes(entry));
       return { question, isCorrect };
     })
-    .filter((entry) => !entry.isCorrect), [questions, session?.answers]);
+    // Întrebările fără răspuns (examen expirat) nu sunt greșeli de revizuit.
+    .filter((entry) => !entry.isCorrect && !isUnanswered(session?.answers, entry.question)), [questions, session?.answers]);
+  const unansweredCount = useMemo(() => countUnanswered(session?.answers, questions), [questions, session?.answers]);
 
   // `?? 1` only guards `undefined`; a session with total 0 (imported/legacy data,
   // or a quiz whose questions were later deleted) still gave 0/0 = NaN, which
@@ -95,22 +99,6 @@ export default function QuizResults() {
   const pct = session && session.total > 0
     ? Math.round((session.score / session.total) * 100)
     : 0;
-
-  useEffect(() => {
-    if (pct >= 90 && session && quiz) {
-      confetti({ particleCount: 120, spread: 70, origin: { y: 0.35 }, colors: ['#FFD60A', '#FF9F0A', '#30D158', '#0A84FF'] });
-      if (pct >= 95) {
-        // Cleared on unmount so a burst can't paint over the next screen.
-        const first = window.setTimeout(() => confetti({ particleCount: 80, spread: 100, origin: { y: 0.3 }, angle: 60, colors: ['#FFD60A', '#FF375F'] }), 400);
-        const second = window.setTimeout(() => confetti({ particleCount: 80, spread: 100, origin: { y: 0.3 }, angle: 120, colors: ['#30D158', '#5E5CE6'] }), 700);
-        return () => {
-          window.clearTimeout(first);
-          window.clearTimeout(second);
-        };
-      }
-    }
-    return undefined;
-  }, [pct, session, quiz]);
 
   if (!hydrated) return <PageSkeleton blocks={3} />;
 
@@ -121,7 +109,7 @@ export default function QuizResults() {
           <EmptyState
             icon={BookOpen}
             title="Sesiunea nu a fost găsită"
-            body="Rezultatul nu mai există sau linkul nu mai este valid."
+            body={singleQuestionResult ? 'Rezultatul acestei întrebări nu se păstrează în istoricul grilei.' : 'Rezultatul nu mai există sau linkul nu mai este valid.'}
             primary={{ label: 'Toate grilele', to: '/quizzes' }}
             secondary={{ label: 'Înapoi', onClick: goBack }}
           />
@@ -135,7 +123,7 @@ export default function QuizResults() {
   const handleExplain = async (q: Question, userAnswerText: string, correctText: string) => {
     if (aiLoading[q.id] || aiExplanations[q.id]) return;
     setAiLoading((p) => ({ ...p, [q.id]: true }));
-    const total = Object.values(questionStats).reduce((s, qs: QuestionStat) => s + qs.timesCorrect + qs.timesWrong, 0);
+    const total = Object.values(questionStats).reduce((s, qs: QuestionStat) => (qs.retired ? s : s + qs.timesCorrect + qs.timesWrong), 0);
     const userContext = total > 0 ? `Student medical: ${total} grile rezolvate, acuratețe ${getAccuracy()}%.` : undefined;
     try {
       // Streams, and — unlike the previous explainer — first checks whether the
@@ -196,7 +184,7 @@ export default function QuizResults() {
   };
 
   const grade =
-    pct >= 90 ? { label: 'Excelent!', Icon: Trophy, color: '#FFD60A' }
+    pct >= 90 ? { label: 'Excelent!', Icon: Trophy, color: theme.accentText }
     : pct >= 70 ? { label: 'Bine!', Icon: Star, color: theme.success }
     : pct >= 50 ? { label: 'Satisfăcător', Icon: ThumbsUp, color: theme.warning }
     : { label: 'Mai încearcă!', Icon: BookOpen, color: theme.danger };
@@ -239,9 +227,10 @@ export default function QuizResults() {
             : buildAdaptiveExamQuiz(activeProfileId, quizzes, questionStats);
 
       if (!nextQuiz) return;
-      addQuiz(nextQuiz);
+      // Același set generat se reîmprospătează, nu se înmulțește în bibliotecă la fiecare lansare.
+      const nextId = upsertGeneratedQuiz(nextQuiz);
       navigate(
-        mode === 'flashcards' ? `/flashcards/session/${nextQuiz.id}?mode=all` : `/play/${nextQuiz.id}`,
+        mode === 'flashcards' ? `/flashcards/session/${nextId}?mode=all` : `/play/${nextId}`,
         mode === 'exam' ? { state: { mode: 'exam' } } : undefined,
       );
     } finally {
@@ -273,128 +262,23 @@ export default function QuizResults() {
     <div className="min-h-full pt-6 pb-20 px-4 sm:px-6 relative z-10">
       <div className="max-w-3xl mx-auto shell-main-stage">
 
-        {/* Score hero */}
-        <motion.div initial={calmMotion ? { opacity: 0 } : { opacity: 0, y: 12 }} animate={calmMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
-          transition={t.hero} className="editorial-hero luxe-card text-center mb-8 overflow-hidden rounded-[var(--r-xl)] sm:rounded-[38px] px-5 sm:px-6 py-7 sm:py-8">
-
-          <motion.div initial={calmMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-            transition={t.panel}
-            className="h-[72px] mb-4 flex items-center justify-center" style={{ color: grade.color }}>
-            <grade.Icon size={64} strokeWidth={1.5} />
-          </motion.div>
-
-          <div className="secondary-label mb-2 font-black tracking-[0.22em]" style={{ color: theme.text3 }}>
-            RAPORT SESIUNE
-          </div>
-          <h1 className="page-title-compact mb-2" style={{ color: theme.text }}>{grade.label}</h1>
-          <p className="mb-6" style={{ color: theme.text2 }}>{quiz.title}</p>
-
-          {/* Score ring */}
-          <div className="relative w-32 h-32 sm:w-36 sm:h-36 mx-auto mb-6">
-            <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-              <circle cx="50" cy="50" r="42" fill="none" stroke={theme.surface2} strokeWidth="8" />
-              <motion.circle cx="50" cy="50" r="42" fill="none"
-                stroke={grade.color} strokeWidth="8" strokeLinecap="round"
-                strokeDasharray={`${2 * Math.PI * 42}`}
-                initial={{ strokeDashoffset: 2 * Math.PI * 42 }}
-                animate={{ strokeDashoffset: 2 * Math.PI * 42 * (1 - pct / 100) }}
-                transition={calmMotion ? { duration: dur.instant } : { duration: dur.slow * 2, ease: ease.emphasized }}
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="metric-value" style={{ color: theme.text }}>{pct}%</span>
-              <span className="text-xs" style={{ color: theme.text3 }}>scor</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3 sm:flex sm:items-center sm:justify-center sm:gap-6">
-            {[
-              { val: session.score, label: 'Corecte', color: theme.success },
-              null,
-              ...(session.partialAnswers && session.partialAnswers.length > 0
-                ? [{ val: session.partialAnswers.length, label: 'Parțiale', color: theme.warning }, null]
-                : []),
-              { val: session.total - session.score - (session.partialAnswers?.length ?? 0), label: 'Greșite', color: theme.danger },
-              null,
-              { val: formatTime(duration), label: 'Timp', color: theme.text },
-            ].map((item, i) =>
-              item === null
-                ? <div key={i} className="hidden h-8 w-px sm:block" style={{ background: theme.border }} />
-                : <div key={i} className="text-center">
-                    <div className="section-title" style={{ color: (item as { val: number|string; label: string; color: string }).color }}>{(item as { val: number|string; label: string; color: string }).val}</div>
-                    <div className="micro-copy" style={{ color: theme.text3 }}>{(item as { val: number|string; label: string; color: string }).label}</div>
-                  </div>
-            )}
-          </div>
-
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
-            <span className="premium-chip rounded-full px-3 py-1 text-[11px] font-semibold" style={{ color: theme.text3 }}>
-              {wrongEntries.length} greșeli de revizuit
-            </span>
-            {session.partialAnswers && session.partialAnswers.length > 0 && (
-              <span className="premium-chip rounded-full px-3 py-1 text-[11px] font-semibold" style={{ color: theme.warning }}>
-                {session.partialAnswers.length} parțiale — necesită consolidare
-              </span>
-            )}
-            <span className="premium-chip rounded-full px-3 py-1 text-[11px] font-semibold" style={{ color: theme.text3 }}>
-              {formatTime(duration)} durată
-            </span>
-            <span className="premium-chip rounded-full px-3 py-1 text-[11px] font-semibold" style={{ color: theme.text3 }}>
-              {quiz.questions.length} întrebări în set
-            </span>
-          </div>
-
-          {disciplineResults.length > 0 && (
-            <section className="glass-panel mb-6 rounded-[var(--r-lg)] p-5" aria-label="Rezultat pe discipline">
-              <h2 className="mb-3 text-[13px] font-semibold" style={{ color: theme.text }}>Rezultat pe discipline (cele mai slabe întâi)</h2>
-              <ul className="space-y-2">
-                {disciplineResults.map((row) => (
-                  <li key={row.discipline} className="flex items-center justify-between gap-3 text-[13px]">
-                    <span className="min-w-0 flex-1 truncate" style={{ color: theme.text2 }}>{row.discipline}</span>
-                    <span className="tabular-nums" style={{ color: theme.text3 }}>{row.correct}/{row.total}</span>
-                    <span className="w-12 text-right font-semibold tabular-nums" style={{ color: row.percent >= 75 ? theme.success : row.percent >= 50 ? theme.warning : theme.danger }}>{row.percent}%</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {/* Rezidențiat penalty score panel */}
-          {session.penalizedScore !== undefined && quiz.penaltyMode && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-              transition={t.page}
-              className="mt-5 mx-auto"
-              style={{
-                maxWidth: 320,
-                background: `${theme.danger}14`,
-                border: `1px solid ${theme.danger}40`,
-                borderRadius: 14,
-                padding: '14px 20px',
-              }}>
-              <div className="flex items-center gap-2 mb-1" style={{ color: theme.danger }}>
-                <Scale size={14} />
-                <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  Scor net Rezidențiat
-                </span>
-              </div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: theme.danger, lineHeight: 1 }}>
-                {session.penalizedScore}
-                <span style={{ fontSize: 16, fontWeight: 500, color: `${theme.danger}99`, marginLeft: 4 }}>
-                  / {session.total} pct
-                </span>
-              </div>
-              <div style={{ fontSize: 12, color: theme.text2, marginTop: 6 }}>
-                {session.total > 0 ? Math.round((session.penalizedScore / session.total) * 100) : 0}% din punctajul maxim ·{' '}
-                <span style={{ color: theme.text3 }}>+1 corect · −0.25/greșit</span>
-              </div>
-            </motion.div>
-          )}
-        </motion.div>
+        <div className="mb-2 flex justify-end"><TourHelpButton tour="quizResults" label="Ghid pentru rezultatele grilei" /></div>
+        <div data-tutorial="quiz-results-score">
+        <ResultHero key={session.id} quiz={quiz} session={session} sessions={sessions}
+          pct={pct} grade={grade} duration={duration} formatTime={formatTime}
+          wrongCount={wrongEntries.length} unansweredCount={unansweredCount} disciplineResults={disciplineResults} />
+        </div>
+        {singleQuestionResult && (
+          <p className="-mt-4 mb-6 rounded-[var(--r-md)] px-4 py-3 text-center text-xs leading-relaxed"
+            style={{ background: theme.surface2, color: theme.text2, border: `1px solid ${theme.border}` }}>
+            Ai exersat o singură întrebare. Rezultatul acesta nu se păstrează în istoricul grilei.
+          </p>
+        )}
 
         <motion.div
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
+          data-tutorial="quiz-results-next"
+          initial={calmMotion ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={t.page}
           className="editorial-hero luxe-card rounded-[var(--r-xl)] p-5 mb-6 relative overflow-hidden"
           style={{
@@ -402,10 +286,10 @@ export default function QuizResults() {
             border: `1px solid ${theme.border}`,
             boxShadow: 'var(--elev-1)',
           }}>
-          <div
+          {!calmMotion && <div
             className="absolute -top-10 right-0 w-40 h-40 rounded-full blur-3xl pointer-events-none"
             style={{ background: `${theme.accent}10` }}
-          />
+          />}
           <div className="relative">
             <div className="text-[11px] uppercase tracking-[0.18em] font-black mb-2" style={{ color: theme.accentText }}>
               Continuă inteligent
@@ -449,11 +333,11 @@ export default function QuizResults() {
         </motion.div>
 
         {/* Question review */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+        <motion.div initial={calmMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }}
           transition={t.page}
           className="luxe-card rounded-[var(--r-xl)] p-5 mb-6"
           style={{ background: theme.surface, border: `1px solid ${theme.border}` }}>
-          <h2 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: theme.text2 }}>
+          <h2 data-tutorial="quiz-results-answers" className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: theme.text2 }}>
             <Star size={13} />Revizuire răspunsuri
           </h2>
           <div className="space-y-3">
@@ -464,24 +348,25 @@ export default function QuizResults() {
                 userAnswerIds.length === correctIds.length &&
                 correctIds.every((id) => userAnswerIds.includes(id));
 
+              const skipped = !isCorrect && userAnswerIds.length === 0;
               const userAnswerTexts = getAnswerTextForOptionIds(q.options, userAnswerIds, '');
               const correctTexts = getCorrectAnswerText(q);
 
               return (
                 <motion.div key={q.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ ...t.page, delay: Math.min(i, 8) * t.stagger }}
+                  initial={calmMotion ? false : { opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={t.pop}
                   className="premium-card-hover flex items-start gap-3 p-4 rounded-[var(--r-lg)]"
                   style={{
-                    background: isCorrect ? `${theme.success}08` : `${theme.danger}08`,
-                    border: `1px solid ${isCorrect ? `${theme.success}20` : `${theme.danger}20`}`,
+                    background: isCorrect ? `${theme.success}08` : skipped ? theme.surface2 : `${theme.danger}08`,
+                    border: `1px solid ${isCorrect ? `${theme.success}20` : skipped ? theme.border : `${theme.danger}20`}`,
                   }}>
                   <div className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-0.5"
-                    style={{ background: isCorrect ? `${theme.success}18` : `${theme.danger}18` }}>
+                    style={{ background: isCorrect ? `${theme.success}18` : skipped ? theme.surface2 : `${theme.danger}18` }}>
                     {isCorrect
                       ? <Check size={12} style={{ color: theme.success }} />
-                      : <X size={12} style={{ color: theme.danger }} />}
+                      : <X size={12} style={{ color: skipped ? theme.text3 : theme.danger }} />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium mb-1" style={{ color: theme.text }}>
@@ -491,6 +376,9 @@ export default function QuizResults() {
                       <img src={q.imageUrl} alt="Imagine întrebare"
                         className="max-h-28 object-contain rounded-xl mb-2"
                         style={{ border: `1px solid ${theme.border}` }} />
+                    )}
+                    {skipped && (
+                      <p className="text-xs mb-0.5" style={{ color: theme.text3 }}>Fără răspuns</p>
                     )}
                     {!isCorrect && userAnswerTexts && (
                       <p className="text-xs mb-0.5" style={{ color: theme.danger }}>
@@ -525,14 +413,15 @@ export default function QuizResults() {
                                 border: `1px solid ${theme.accent}30`,
                               }}>
                               {aiLoading[q.id]
-                                ? <><Loader2 size={11} className="animate-spin" />Generez explicație...</>
+                                ? <><Loader2 size={11} className={calmMotion ? undefined : 'animate-spin'} />Generez explicație...</>
                                 : <><Bot size={11} />{hasKey ? 'Explică cu AI' : 'Explică smart'}</>}
                             </button>
                           ) : (
                             <AnimatePresence>
                               <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
+                                initial={calmMotion ? false : { opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={t.pop}
                                 className="mt-1 p-2.5 rounded-xl text-xs leading-relaxed overflow-hidden"
                                 style={{ background: `${theme.accent}0d`, border: `1px solid ${theme.accent}20`, color: theme.text2 }}>
                                 <span className="font-semibold flex items-center gap-1 mb-1" style={{ color: theme.accentText }}>
@@ -600,7 +489,7 @@ export default function QuizResults() {
         </motion.div>
 
         {/* Actions */}
-        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}
+        <motion.div initial={calmMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }}
           transition={t.page} className="space-y-2">
           {/* Primary: retry */}
           <Link to={`/play/${quiz.id}`}

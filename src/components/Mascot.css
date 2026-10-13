@@ -1,0 +1,44 @@
+/* Conversation gestures are finite and keyed by semantic state, never by streamed tokens. */
+.pip-controlled .pip-float { transform-origin: 60px 86px; }
+.pip-controlled .pip-hand { transform-box: view-box; transform-origin: 94px 62px; }
+.pip-controlled[data-state="waiting"] .pip-dots { opacity: 1; }
+.pip-controlled[data-state="waiting"] .pip-float { transform: rotate(-6deg); }
+.pip-controlled[data-state="streaming"] .pip-hand { transform: translateY(-8px) rotate(-20deg); }
+.pip-controlled[data-state="success"] .pip-eyes { transform: scaleY(.65); }
+.pip-controlled[data-state="error"] .pip-hand { transform: translateY(4px); }
+.pip-controlled[data-state="unconfigured"] .pip-ant,
+.pip-controlled[data-state="stopped"] .pip-ant { fill: #a3b4c8; }
+.pip-expressive[data-state="idle"] .pip-hand { animation: pip-hello-once 1.4s ease-in-out; }
+.pip-expressive[data-state="waiting"] .pip-float { animation: pip-listen-once 1.2s ease-in-out; }
+.pip-expressive[data-state="streaming"] .pip-hand { animation: pip-explain-once 1.4s ease-in-out; }
+.pip-expressive[data-state="success"] .pip-float { animation: pip-nod-once .9s ease-in-out; }
+.pip-expressive[data-state="error"] .pip-float { animation: pip-concern-once .8s ease-in-out; }
+@keyframes pip-hello-once {
+  0%, 100% { transform: rotate(0); }
+  25%, 65% { transform: translateY(-9px) rotate(-35deg); }
+  45%, 80% { transform: translateY(-6px) rotate(-12deg); }
+}
+@keyframes pip-listen-once {
+  0% { transform: rotate(0); }
+  55% { transform: rotate(-10deg); }
+  100% { transform: rotate(-6deg); }
+}
+@keyframes pip-explain-once {
+  0% { transform: rotate(0); }
+  35%, 75% { transform: translateY(-13px) rotate(-32deg); }
+  55%, 100% { transform: translateY(-8px) rotate(-20deg); }
+}
+@keyframes pip-nod-once {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  35% { transform: translateY(3px) rotate(5deg); }
+  70% { transform: translateY(-2px) rotate(-3deg); }
+}
+@keyframes pip-concern-once {
+  0%, 100% { transform: rotate(0); }
+  45% { transform: rotate(5deg); }
+}
+:root:is([data-performance="lite"], [data-power-save="true"]) .pip-controlled *,
+.pip[data-static="true"] * { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .pip-controlled * { animation: none !important; transition: none !important; }
+}

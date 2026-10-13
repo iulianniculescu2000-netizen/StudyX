@@ -50,6 +50,8 @@ Object.defineProperty(window, 'indexedDB', {
 
 // Mock Electron API
 Object.defineProperty(window, 'electronAPI', {
+  writable: true,
+  configurable: true,
   value: {
     appReady: () => {},
     onAppClose: () => () => {},
@@ -59,6 +61,8 @@ Object.defineProperty(window, 'electronAPI', {
     maximize: () => Promise.resolve(),
     unmaximize: () => Promise.resolve(),
     close: () => Promise.resolve(),
+    setZoomFactor: () => {},
+    getZoomFactor: () => 1,
     storageLoad: () => Promise.resolve(null),
     storageSave: () => Promise.resolve(),
     autoBackup: () => Promise.resolve({ success: true, path: '/mock/backup' }),

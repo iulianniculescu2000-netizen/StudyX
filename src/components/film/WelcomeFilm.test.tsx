@@ -14,6 +14,11 @@ vi.mock('../../hooks/useAdaptiveMotion', async () => {
   return { useAdaptiveMotion: () => ({ calmMotion: true, reducedMotion: true, performanceLite: false, t: resolve(true) }) };
 });
 
+// Keep default-story tests independent of author-owned recordings in public/.
+vi.mock('./narration', async (importOriginal) => ({
+  ...await importOriginal<typeof import('./narration')>(), BUNDLED_NARRATION: [],
+}));
+
 const PROFILE = 'p-film';
 
 const reset = (seen: Record<string, Record<string, string>> = {}) => {
@@ -22,8 +27,13 @@ const reset = (seen: Record<string, Record<string, string>> = {}) => {
 };
 
 describe('filmul de bun venit', () => {
-  beforeEach(() => { vi.useFakeTimers(); reset(); });
-  afterEach(() => { cleanup(); vi.useRealTimers(); });
+  beforeEach(() => {
+    vi.useFakeTimers(); reset();
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+    vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {});
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+  });
+  afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
   it('are șapte scene, fiecare cu titlu, text și durată', () => {
     expect(FILM_SCENES).toHaveLength(7);
@@ -44,6 +54,7 @@ describe('filmul de bun venit', () => {
     render(<WelcomeFilm />);
     await act(async () => { window.dispatchEvent(new Event(WELCOME_FILM_OPEN_EVENT)); });
     expect(screen.getByRole('dialog', { name: FILM_SCENES[0].title })).toBeTruthy();
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Pauză film');
 
     fireEvent.click(screen.getByRole('button', { name: /Scena următoare/i }));
     await act(async () => { await vi.advanceTimersByTimeAsync(300); });
@@ -95,5 +106,70 @@ describe('filmul de bun venit', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(300); });
     expect(screen.getByRole('dialog', { name: /Bun venit/i })).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Sari peste/i })).toBeNull();
+  });
+
+  it('Esc face loc turului fără să îl închidă și el', async () => {
+    render(<MemoryRouter><ThemeProvider><TourEngine profileId={PROFILE} /><WelcomeFilm /></ThemeProvider></MemoryRouter>);
+    await act(async () => { useTutorialStore.getState().startTour('onboarding'); });
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await act(async () => { await vi.advanceTimersByTimeAsync(50); });
+    expect(useTutorialStore.getState().activeTour).toBe('onboarding');
+    expect(screen.getByRole('dialog', { name: /Bun venit/i })).toBeTruthy();
+  });
+
+  it('folosește textul și durata măsurată, pornește fără audio și păstrează pauza la schimbarea scenei', async () => {
+    vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => [{ id: 'intro', text: 'Narațiune locală de test', durationMs: 7080 }] } as Response);
+    render(<WelcomeFilm />);
+    await act(async () => { window.dispatchEvent(new Event(WELCOME_FILM_OPEN_EVENT)); });
+    expect(screen.getByText('Narațiune locală de test')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Pornește narațiunea' }).getAttribute('aria-pressed')).toBe('false');
+    expect(document.querySelector('audio')?.hasAttribute('src')).toBe(false);
+    await act(async () => { await vi.advanceTimersByTimeAsync(200); });
+    fireEvent.click(screen.getByRole('button', { name: 'Pauză film' }));
+    const before = screen.getByRole('progressbar').getAttribute('aria-valuenow');
+    await act(async () => { await vi.advanceTimersByTimeAsync(10000); });
+    expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe(before);
+    fireEvent.keyDown(window, { key: '2' });
+    await act(async () => {});
+    expect(screen.getByRole('dialog').getAttribute('data-film-scene')).toBe('quiz');
+    expect(screen.getByRole('dialog').getAttribute('data-film-playing')).toBe('false');
+    expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('7230');
+    fireEvent.click(screen.getByRole('button', { name: 'Reia de la început' }));
+    await act(async () => {});
+    expect(screen.getByRole('dialog').getAttribute('data-film-scene')).toBe('intro');
+    expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('0');
+  });
+
+  it('R reia filmul chiar dacă focusul e pe butonul de pauză, fără să deturneze Ctrl+R', async () => {
+    render(<WelcomeFilm />);
+    await act(async () => { window.dispatchEvent(new Event(WELCOME_FILM_OPEN_EVENT)); });
+    fireEvent.click(screen.getByRole('button', { name: /Scena 3/i }));
+    await act(async () => {});
+    expect(screen.getByRole('dialog').getAttribute('data-film-scene')).not.toBe('intro');
+    const pause = screen.getByRole('button', { name: /film$/ });
+    pause.focus();
+    expect(document.activeElement).toBe(pause);
+    fireEvent.keyDown(pause, { key: 'r', ctrlKey: true });
+    await act(async () => {});
+    expect(screen.getByRole('dialog').getAttribute('data-film-scene')).not.toBe('intro');
+    fireEvent.keyDown(pause, { key: 'r' });
+    await act(async () => {});
+    expect(screen.getByRole('dialog').getAttribute('data-film-scene')).toBe('intro');
+  });
+
+  it('ține ultima scenă până la confirmare, apoi reia fără a marca profilul văzut', async () => {
+    render(<WelcomeFilm />);
+    await act(async () => { window.dispatchEvent(new Event(WELCOME_FILM_OPEN_EVENT)); });
+    fireEvent.click(screen.getByRole('button', { name: /Scena 7/i }));
+    await act(async () => {});
+    await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+    expect(screen.getByRole('dialog').getAttribute('data-film-scene')).toBe('finish');
+    expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('60000');
+    expect(screen.getByRole('dialog').getAttribute('data-film-playing')).toBe('false');
+    expect(useTutorialStore.getState().seen[PROFILE]?.welcomeFilm).toBeUndefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Reia filmul' }));
+    await act(async () => {});
+    expect(screen.getByRole('dialog').getAttribute('data-film-scene')).toBe('intro');
+    expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('0');
   });
 });

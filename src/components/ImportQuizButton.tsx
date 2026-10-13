@@ -125,8 +125,8 @@ export default function ImportQuizButton({ targetFolderId, open, onClose, hideTr
       {!hideTrigger && <motion.button
         onClick={() => setModalOpen(true)}
         whileTap={calmMotion ? undefined : { scale: 0.97 }}
-        className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--r-md)] text-sm font-medium transition-colors"
-        style={{ background: theme.surface2, border: `1px solid ${theme.border2}`, color: theme.text2 }}
+        className="press-feedback focus-ring flex items-center gap-2 px-4 py-2.5 rounded-[var(--r-md)] text-sm font-semibold transition-opacity hover:opacity-80"
+        style={{ background: 'var(--accent-soft)', color: theme.accentText }}
       >
         <Upload size={15} />
         Import grile

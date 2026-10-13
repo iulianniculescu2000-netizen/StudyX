@@ -4,6 +4,7 @@ import type { Theme } from '../../theme/themes';
 import { pressLarge } from '../../theme/motion';
 
 interface ReviewActionCardProps {
+  'data-tutorial'?: string;
   accent: string;
   badge?: number | string;
   ctaLabel?: string;
@@ -18,6 +19,7 @@ interface ReviewActionCardProps {
 }
 
 export default function ReviewActionCard({
+  'data-tutorial': tutorialAnchor,
   accent,
   badge,
   ctaLabel,
@@ -32,6 +34,7 @@ export default function ReviewActionCard({
 }: ReviewActionCardProps) {
   return (
     <motion.button
+      data-tutorial={tutorialAnchor}
       {...(disabled ? {} : pressLarge)}
       onClick={onClick}
       disabled={disabled}

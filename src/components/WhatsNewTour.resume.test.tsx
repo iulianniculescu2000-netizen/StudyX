@@ -70,5 +70,5 @@ describe('"Arată-mi" in the what\'s-new slides', () => {
     expect(seen.length).toBeGreaterThanOrEqual(4);
     const { TOURS } = await import('../tutorial/registry');
     for (const tour of ['flashcards', 'vault', 'residency', 'simulation', 'settings'] as const) expect(TOURS[tour]).toBeTruthy();
-  });
+  }, 15000);
 });

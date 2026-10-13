@@ -57,9 +57,15 @@ export function useFocusTrap(active: boolean, onEscape?: () => void) {
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (trapStack[trapStack.length - 1] !== id) return;
+      // The tour handles keys on window, after this document listener. Yield
+      // while its card is mounted: informational steps trap focus themselves,
+      // whereas action steps must let focus reach controls outside this modal.
+      if (event.defaultPrevented || document.querySelector('[data-tour-keyboard-layer]')) return;
       if (event.key === 'Escape') {
+        // Without a handler the trap leaves Esc alone: the owner closes on its own terms.
+        if (!escapeRef.current) return;
         event.preventDefault();
-        escapeRef.current?.();
+        escapeRef.current();
         return;
       }
       if (event.key !== 'Tab') return;

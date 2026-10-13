@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HELP_TIPS, HELP_TIPS_PENDING, type HelpTipId } from './helpTips';
+import { HELP_TIPS, type HelpTipId } from './helpTips';
 import { TOUR_IDS } from './tourMeta';
 
 const sources = import.meta.glob(['../**/*.ts', '../**/*.tsx'], { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
@@ -18,17 +18,18 @@ describe('registrul de indicii „?”', () => {
     }
   });
 
-  it('turul din „Mai mult” există', () => {
+  it('fiecare indiciu oferă un ghid pas cu pas valid', () => {
     for (const id of ids) {
       const tour = (HELP_TIPS[id] as { tour?: string }).tour;
-      if (tour) expect(TOUR_IDS, id).toContain(tour);
+      expect(tour, `„${id}” trebuie să ofere un ghid`).toBeTruthy();
+      expect(TOUR_IDS, id).toContain(tour);
     }
   });
 
-  it('fiecare id din registru e folosit în cod sau marcat explicit ca neplasat', () => {
+  it('fiecare id din registru e folosit în cod', () => {
     for (const id of ids) {
       const used = code.some((text) => text.includes(`"${id}"`) || text.includes(`'${id}'`));
-      expect(used || HELP_TIPS_PENDING.includes(id), `„${id}” nu e folosit nicăieri`).toBe(true);
+      expect(used, `„${id}” nu e folosit nicăieri`).toBe(true);
     }
   });
 

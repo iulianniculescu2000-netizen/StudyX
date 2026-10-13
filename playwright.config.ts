@@ -35,14 +35,37 @@ export default defineConfig({
     screenshot: 'only-on-failure',
 
     /* Record video on failure */
-    video: 'retain-on-failure',
+    video: process.env.STUDYX_TEST_BROWSER ? 'off' : 'retain-on-failure',
   },
 
   /* Configure projects for major browsers */
   projects: [
     {
+      // Vizual: același aspect pe laptop (1536×816, 125%), ferestre mici și ambele teme. Folosește Brave, fiindcă
+      // descărcarea Chromium e blocată pe această mașină; STUDYX_TEST_BROWSER îl poate înlocui (Edge, Chrome).
+      name: 'visual',
+      testDir: './tests/visual',
+      timeout: 120 * 1000,
+      workers: 1,
+      use: {
+        ...devices['Desktop Chrome'],
+        deviceScaleFactor: 1.25,
+        video: 'off',
+        launchOptions: {
+          executablePath: process.env.STUDYX_TEST_BROWSER || 'C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe',
+        },
+      },
+    },
+
+    {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        // Optional installed Chromium browser (for example Brave) for local QA.
+        launchOptions: process.env.STUDYX_TEST_BROWSER
+          ? { executablePath: process.env.STUDYX_TEST_BROWSER }
+          : {},
+      },
     },
 
     {

@@ -54,9 +54,9 @@ export default function SourceRow({
       <div className="flex items-center gap-3">
         <button
           type="button"
-          onClick={() => isReady && onOpenReader(source)}
+          onClick={() => onOpenReader(source)}
           className="flex min-w-0 flex-1 items-center gap-3 text-left"
-          aria-label={`Deschide ${source.name}`}
+          aria-label={`${isReady ? 'Deschide' : 'Vezi starea pentru'} ${source.name}`}
         >
           <div
             className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[var(--r-sm)]"
@@ -158,7 +158,7 @@ export default function SourceRow({
             role="menu"
           >
             {[
-              { label: 'Deschide', run: () => onOpenReader(source), needsReady: true },
+              { label: isReady ? 'Deschide' : 'Vezi starea', run: () => onOpenReader(source), needsReady: false },
               { label: 'Întreabă AI', run: () => onAsk(source), needsReady: true },
               { label: 'AI Studio', run: () => onOpenStudio(source), needsReady: true },
               { label: 'Mută în folder', run: () => onStartMove(source.id), needsReady: false },

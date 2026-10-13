@@ -58,11 +58,13 @@ describe('tokenBudget', () => {
     expect(after.context).toBe(before.context);
   });
 
-  it('contextul numerotat respectă plafonul și elimină fragmentele aproape identice', () => {
+  it('contextul numerotat respectă plafonul și păstrează fragmentele cu citări sau text diferit', () => {
     const base = paragraph('Același text').repeat(3);
     const dup = base.replace('cea mai frecventă', 'cea mai comună');
     const out = buildNumberedContext([chunk(1, base), chunk(2, dup), chunk(3, paragraph('Alt subiect, cu totul diferit despre insuficiența cardiacă').replace(/fibrilația atrială/g, 'cardiomiopatia dilatativă'))], 7400);
-    expect(out.sources).toHaveLength(2);
+    expect(out.sources).toHaveLength(3);
+    expect(out.context).toContain(dup.trim());
+    expect(out.sources.map(source => source.page)).toEqual([101, 102, 103]);
     expect(out.context.length).toBeLessThanOrEqual(7400);
     expect(estimateTextTokens(out.context)).toBeLessThanOrEqual(2400);
   });

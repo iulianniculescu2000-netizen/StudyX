@@ -3,7 +3,7 @@ import { Maximize2, Minimize2, MoreHorizontal, PanelRightClose, PanelRightOpen, 
 import type { Transition } from 'framer-motion';
 import type { Theme } from '../../theme/themes';
 import TourHelpButton from '../../tutorial/TourHelpButton';
-import AIOrb from './AIOrb';
+import Mascot from '../Mascot';
 import ChatGlassControls from './ChatGlassControls';
 import type { useChatGlass } from './useChatGlass';
 import type { ChatThread } from './useChatMessages';
@@ -14,6 +14,7 @@ interface ChatHeaderProps {
   popTransition: Transition;
   chatThread: ChatThread;
   loading: boolean;
+  visualState: 'idle' | 'waiting' | 'streaming' | 'success' | 'error' | 'stopped' | 'unconfigured';
   immersive: boolean;
   mobile: boolean;
   view: 'chat' | 'studio';
@@ -38,27 +39,27 @@ interface ChatHeaderProps {
 
 /** Title, Chat/Studio switch, glass and full-screen controls, the overflow menu and the close button. */
 export default function ChatHeader({
-  theme, calmMotion, popTransition, chatThread, loading, immersive, mobile, view, onViewChange, scopedSourceName, weakTopics,
+  theme, calmMotion, popTransition, chatThread, loading, visualState, immersive, mobile, view, onViewChange, scopedSourceName, weakTopics,
   memoryInteractions, glass, glassPanelOpen, setGlassPanelOpen, overflowMenuOpen, setOverflowMenuOpen, wideChat, setWideChat,
   hasMessages, lastAssistantIndex, onRegenerate, onClearRequest, onClose,
 }: ChatHeaderProps) {
+  const status = {
+    idle: 'Pregătit', waiting: 'Pregătesc răspunsul', streaming: 'Scriu răspunsul',
+    success: 'Răspuns finalizat', error: 'Răspuns întrerupt de o eroare',
+    stopped: 'Răspuns oprit', unconfigured: 'Configurează AI în Setări',
+  }[visualState];
   return (
     <div className="flex items-center gap-3 border-b px-5 py-4" style={{ borderColor: theme.border }}>
-      <AIOrb theme={theme} size={42} active={loading} calm={calmMotion} />
+      <div className="shrink-0"><Mascot accent={theme.accent} size={42} expression={visualState} calm={calmMotion} /></div>
 
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-center gap-2">
-          <h3 className="min-w-0 truncate whitespace-nowrap text-base font-black tracking-tight" style={{ color: theme.text }}>
+          <h3 className="min-w-0 truncate whitespace-nowrap text-base font-black tracking-tight leading-normal" style={{ color: theme.text }}>
             StudyX AI{chatThread === 'rezidentiat' ? ' · Rezidențiat' : ''}
           </h3>
           <TourHelpButton tour="chat" label="Vezi turul chatului AI" />
-          <div className="flex flex-shrink-0 items-center gap-1 rounded-full px-2 py-0.5"
-            title="Online"
-            style={{ background: `${theme.success}18`, border: `1px solid ${theme.success}30` }}>
-            <div className="h-1.5 w-1.5 rounded-full" style={{ background: theme.success }} />
-            {immersive && <span className="text-[10px] font-bold" style={{ color: theme.success }}>Online</span>}
-          </div>
         </div>
+        <p role="status" className="mt-0.5 truncate text-[11px] font-semibold" style={{ color: visualState === 'error' ? theme.danger : theme.accentText }}>{status}</p>
         <p className="mt-0.5 text-[11px] font-medium truncate" style={{ color: theme.text3 }}>
           {chatThread === 'rezidentiat'
             ? 'Conversație separată, dedicată pregătirii de rezidențiat'
@@ -150,7 +151,7 @@ export default function ChatHeader({
           title="Mai multe opțiuni"
           className="fine-row rounded-2xl p-2.5 transition-colors hover:bg-[var(--hover-fill)] press-feedback"
           style={{
-            color: overflowMenuOpen ? theme.accent : theme.text3,
+            color: overflowMenuOpen ? theme.accentText : theme.text3,
             background: overflowMenuOpen ? `${theme.accent}18` : undefined,
           }}
         >

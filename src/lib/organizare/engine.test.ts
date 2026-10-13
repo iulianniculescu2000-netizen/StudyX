@@ -3,7 +3,7 @@ import raw from '../../data/organizare/plan.json';
 import {
   accuracySeries, activePhase, addPicks, buildSummary, computeWindows, countStatus, currentIndex, daysBetween,
   emptyState, focusNow, heatGrid, insights, mondayOf, nextStatus, normalizePlan, readState, removePick, statusOf,
-  studyStats, suggestFor, toggleGroup, togglePick, upNext, weekIndex, weekProgress, withDay, withStatus,
+  isOverdueStart, studyStats, suggestFor, toggleGroup, togglePick, upNext, weekIndex, weekProgress, withDay, withStatus,
 } from './engine';
 import type { RawPlan } from './types';
 
@@ -100,6 +100,22 @@ describe('what to do now', () => {
     const next = upNext(plan, s, win, '2026-10-06');
     expect(next).toHaveLength(4);
     expect(next).not.toContain(currentIndex(plan, win, 1, '2026-10-06'));
+  });
+
+  it('puts overdue topics first and orders the rest by planned date, not by topic number', () => {
+    const s = S();
+    const base = computeWindows(plan, s, '2026-10-06');
+    const a = base.a.map((row) => row.slice());
+    const b = base.b.map((row) => row.slice());
+    // Topic 9 was planned to start on 10 Oct (already past); topic 2 on 12 Oct (still ahead).
+    a[0][9] = '2026-10-10'; b[0][9] = '2026-10-20';
+    a[0][2] = '2026-10-12'; b[0][2] = '2026-10-20';
+    const win = { ...base, a, b };
+    const next = upNext(plan, s, win, '2026-10-11', 1000);
+    expect(next.indexOf(9)).toBeGreaterThanOrEqual(0);
+    expect(next.indexOf(9)).toBeLessThan(next.indexOf(2));
+    expect(isOverdueStart('2026-10-10', '2026-10-11')).toBe(true);
+    expect(isOverdueStart('2026-10-12', '2026-10-11')).toBe(false);
   });
 });
 

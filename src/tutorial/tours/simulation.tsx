@@ -1,3 +1,4 @@
+import { plural } from '../../lib/plural';
 import { Gauge, GraduationCap, ListChecks, Timer } from 'lucide-react';
 import type { TourDefinition } from '../types';
 
@@ -9,7 +10,7 @@ export const simulationTour: TourDefinition = {
     {
       id: 'simulation-intro',
       title: 'Exersează ca la examen',
-      body: 'O simulare te pune în condiții reale: grile amestecate, un ceas care merge și punctaj cu penalizare. Un tur scurt, ca să știi cum o pornești.',
+      body: (ctx) => ctx.simulationQuestionCount === 0 ? 'Nu ai întrebări eligibile pentru simulare. Importă o bancă de grile din Rezidențiat, apoi revino aici.' : `Ai ${plural(ctx.simulationQuestionCount, 'întrebare eligibilă', 'întrebări eligibile')}. Alegi disciplina și lungimea; apăsarea pe o variantă pornește examenul cronometrat.`,
       icon: <GraduationCap size={22} />,
       placement: 'center',
       route: '/simulare',
@@ -26,19 +27,19 @@ export const simulationTour: TourDefinition = {
       route: '/simulare',
       accent: '#BF6FFF',
       // Nothing to pick from until some grile are in the profile.
-      when: (ctx) => ctx.quizCount > 0,
+      when: (ctx) => ctx.simulationQuestionCount > 0,
     },
     {
       id: 'simulation-lengths',
       title: 'Alege lungimea',
-      body: 'Apeși pe o variantă și simularea începe. Primește un timp total; dacă el se scurge, simularea se încheie singură, cu ce ai răspuns până atunci.',
+      body: (ctx) => `Sunt ${plural(ctx.simulationQuestionCount, 'întrebare eligibilă', 'întrebări eligibile')} în total; opțiunile se adaptează disciplinei alese. Apăsarea unei variante începe imediat simularea. Poți termina ghidul înainte să alegi.`,
       icon: <Timer size={22} />,
       target: '[data-tutorial="simulation-lengths"]',
       targetPadding: 8,
       placement: 'bottom',
       route: '/simulare',
       accent: '#FF9F0A',
-      when: (ctx) => ctx.quizCount > 0,
+      when: (ctx) => ctx.simulationQuestionCount > 0,
     },
     {
       id: 'simulation-result',

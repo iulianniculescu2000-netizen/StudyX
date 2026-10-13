@@ -176,7 +176,7 @@ export default function ThemedSelect({
                       >
                         <span
                           className="min-w-0 flex-1 truncate text-xs font-bold"
-                          style={{ color: active ? theme.accent : theme.text2 }}
+                          style={{ color: active ? theme.accentText : theme.text2 }}
                         >
                           {option.label}
                         </span>

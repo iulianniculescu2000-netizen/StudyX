@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildQueryRewriteMessages, parseQueryRewriteReply, rewriteQuery } from './queryRewrite';
-import { messagesTokens } from './shared';
+import { rewriteQuery } from './queryRewrite';
 
 describe('rewriteQuery (local)', () => {
   it('scoate formulele de comandă și expandează IMA', () => {
@@ -49,22 +48,5 @@ describe('rewriteQuery (local)', () => {
     expect(rewriteQuery('criterii diagnostic lupus', { lastRetrievalScore: 0.8 }).needsLlm).toBe(false);
     expect(rewriteQuery('criterii diagnostic lupus').needsLlm).toBe(false);
     expect(rewriteQuery('lupus', { lastRetrievalScore: 0.1 }).needsLlm).toBe(false);
-  });
-});
-
-describe('queryRewrite LLM light', () => {
-  it('promptul rămâne sub 85 de tokeni (sistem + întrebare tipică)', () => {
-    const tokens = messagesTokens(buildQueryRewriteMessages('Ce mă fac cu pacientul cu durere toracică și supradenivelare ST?'));
-    expect(tokens).toBeLessThanOrEqual(85);
-  });
-
-  it('parsează o singură linie curată', () => {
-    expect(parseQueryRewriteReply('Cuvinte-cheie: "infarct miocardic, IMA, STEMI, supradenivelare ST"\nAlt text')).toBe(
-      'infarct miocardic, IMA, STEMI, supradenivelare ST',
-    );
-    expect(parseQueryRewriteReply('')).toBeNull();
-    expect(parseQueryRewriteReply('  \n ')).toBeNull();
-    expect(parseQueryRewriteReply('ab')).toBeNull();
-    expect(parseQueryRewriteReply('ţesut conjunctiv, colagen')).toContain('țesut');
   });
 });

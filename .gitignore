@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+.venv-tools/
 
 # Build output
 dist/
@@ -43,6 +44,15 @@ src/data/rezidentiat/capitole_db.json
 # Rapoarte de teste (regenerabile)
 playwright-report/
 test-results/
+.qa-results/
+.qa-results-edge/
+.qa-results-brave/
+.qa-results-visual/
+.qa-results-*/
+e2e-brave.log
+e2e-edge.log
+*-local.log
+*-final.log
 
 # Repo-ul de update are propriul repo (studyx-releases); copia locală nu se urcă aici
 studyx-releases/
@@ -62,3 +72,9 @@ README.md.docx
 docs/PREDARE-*.md
 docs/LOCAL-AI-*.md
 docs/PLAN-tutoriale-*.md
+
+# Artefacte de dezvoltare (în afara public/, deci nu intră în build)
+dev-artifacts/
+
+# PDF-urile cărților incluse în installer (139 MB): copiate local din folderul cu materiale, nu în git
+build/books/

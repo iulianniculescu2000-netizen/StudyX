@@ -91,6 +91,8 @@ const CATEGORY_ALIASES: Array<[string, number]> = [
   ['sepsis', 0],
   ['infectii bacteriene', 0],
   ['echilibru hidro', 1],
+  // Titlul curent tipărit pe paginile capitolului 9 din Kumar diferă de cel din cuprins.
+  ['echilibrul apei', 1],
   ['acido-bazic', 1],
   ['hidroelectrolitic', 1],
   ['terapie intensiva', 2],

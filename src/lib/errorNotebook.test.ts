@@ -45,6 +45,28 @@ describe('errorNotebook', () => {
     expect(filterErrorEntries(entries, 'intrebare 3 sedinta')).toHaveLength(1);
   });
 
+  it('găsește greșeli folosind căutare cu mai multe cuvinte sau cuvinte parțiale', () => {
+    const entries = buildErrorEntries(quizzes, stats);
+
+    // Multi-cuvânt: textul întrebării + categoria quiz-ului
+    const multiField = filterErrorEntries(entries, 'sedinta Nefrologie');
+    expect(multiField).toHaveLength(1);
+    expect(multiField[0].key).toBe('b:3');
+
+    // Cuvinte parțiale (prefixe)
+    const partial = filterErrorEntries(entries, 'intreb Cardio');
+    expect(partial).toHaveLength(1);
+    expect(partial[0].key).toBe('a:1');
+
+    // Căutare după număr
+    expect(filterErrorEntries(entries, '3')).toHaveLength(1);
+    expect(filterErrorEntries(entries, '999')).toHaveLength(0);
+
+    // Șir gol sau doar spații returnează toate intrările
+    expect(filterErrorEntries(entries, '')).toHaveLength(2);
+    expect(filterErrorEntries(entries, '   ')).toHaveLength(2);
+  });
+
   it('construiește o sesiune cu id-uri noi și tag mistake-bank', () => {
     const entries = buildErrorEntries(quizzes, stats);
     const practice = buildErrorPracticeQuiz(entries)!;

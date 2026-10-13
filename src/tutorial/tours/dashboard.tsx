@@ -1,3 +1,4 @@
+import { plural } from '../../lib/plural';
 import { BarChart3, CalendarCheck, Grid3x3, LayoutDashboard, Library, Plus, Sparkles } from 'lucide-react';
 import type { TourDefinition } from '../types';
 
@@ -8,7 +9,7 @@ export const dashboardTour: TourDefinition = {
     {
       id: 'dash-intro',
       title: 'Panoul tău',
-      body: 'Prima pagină îți arată unde ești azi și ce merită făcut. Un tur de un minut, cât să știi la ce te uiți.',
+      body: (ctx) => ctx.quizCount + ctx.deckCount === 0 ? 'Profilul este gol. Începe cu Creează grilă sau Import; cifrele se completează după ce lucrezi.' : `Ai ${plural(ctx.quizCount, 'grilă', 'grile')} și ${plural(ctx.deckCount, 'pachet', 'pachete')}. Panoul adună progresul și ce urmează azi.`,
       icon: <LayoutDashboard size={22} />,
       placement: 'center',
       route: '/',
@@ -17,7 +18,7 @@ export const dashboardTour: TourDefinition = {
     {
       id: 'dash-today',
       title: 'Ce ai de făcut azi',
-      body: 'Aici apar recapitulările scadente și, dacă ți-ai făcut un plan în Organizare, topicul zilei. Un buton te duce direct la sesiune.',
+      body: (ctx) => `${plural(ctx.dueQuizCount, 'întrebare scadentă', 'întrebări scadente')}, ${plural(ctx.dueCardCount, 'card scadent', 'carduri scadente')} și ${plural(ctx.newCardCount, 'card nou', 'carduri noi')}. ${ctx.hasPlan ? 'Planul din Organizare adaugă topicul zilei.' : 'Deschide Organizare dacă vrei și un plan pe topicuri.'}`,
       icon: <CalendarCheck size={22} />,
       target: '[data-tutorial="dashboard-today"]',
       targetPadding: 6,
@@ -29,7 +30,7 @@ export const dashboardTour: TourDefinition = {
     {
       id: 'dash-coach',
       title: 'Study Coach',
-      body: 'Îți propune ce să lucrezi acum, după ce ai făcut și ce ai greșit. Cu o cheie AI salvată primești și o recomandare scrisă; fără ea, planul se calculează în aplicație.',
+      body: (ctx) => ctx.aiReady ? 'Coach folosește progresul și greșelile tale. Recomandarea AI se cere din controlul paginii, când alegi tu.' : 'Recomandările locale funcționează fără AI. Pentru o recomandare scrisă, configurează furnizorul ales în Setări › AI.',
       icon: <Sparkles size={22} />,
       target: '[data-tutorial="dashboard-coach"]',
       targetPadding: 6,
@@ -75,7 +76,7 @@ export const dashboardTour: TourDefinition = {
     {
       id: 'dash-recent',
       title: 'Grilele recente',
-      body: 'Ultimele grile la care ai lucrat sau pe care le-ai făcut, la un click distanță. „Vezi tot” deschide lista completă.',
+      body: (ctx) => ctx.quizCount === 0 ? 'Nu ai grile recente încă. Creează sau importă una; apoi o găsești și în Grilele tale.' : 'Aici revii la grilele recente. Vezi tot deschide biblioteca; sesiunea începe doar după alegerea ta.',
       icon: <Library size={22} />,
       target: '[data-tutorial="dashboard-recent"]',
       targetPadding: 6,

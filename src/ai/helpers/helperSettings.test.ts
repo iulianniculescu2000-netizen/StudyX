@@ -12,32 +12,29 @@ function memoryStorage(initial?: string) {
 }
 
 describe('defaultHelperFlags', () => {
-  it('without local: only clarifyGate is on', () => {
-    const f = defaultHelperFlags(false);
+  it('only clarifyGate is on by default', () => {
+    const f = defaultHelperFlags();
     expect(f.clarifyGate).toBe(true);
     expect(f.queryRewrite).toBe(false);
-    expect(f.answerChecklist).toBe(false);
     expect(Object.entries(f).filter(([, v]) => v).map(([k]) => k)).toEqual(['clarifyGate']);
-  });
-  it('with local: queryRewrite, answerChecklist and clarifyGate; the rest off', () => {
-    const f = defaultHelperFlags(true);
-    expect(Object.entries(f).filter(([, v]) => v).map(([k]) => k).sort()).toEqual(['answerChecklist', 'clarifyGate', 'queryRewrite']);
   });
 });
 
 describe('resolveHelperFlags', () => {
   it('uses the defaults on empty or broken storage', () => {
-    expect(resolveHelperFlags(true, memoryStorage())).toEqual(defaultHelperFlags(true));
-    expect(resolveHelperFlags(true, memoryStorage('{oops'))).toEqual(defaultHelperFlags(true));
-    expect(resolveHelperFlags(false, null)).toBeTruthy();
+    expect(resolveHelperFlags(memoryStorage())).toEqual(defaultHelperFlags());
+    expect(resolveHelperFlags(memoryStorage('{oops'))).toEqual(defaultHelperFlags());
+    expect(resolveHelperFlags(null)).toBeTruthy();
   });
   it('explicit values beat the defaults, both ways', () => {
-    const s = memoryStorage(JSON.stringify({ queryRewrite: false, clarifyGate: false, selfCritique: true, answerChecklist: 'yes' }));
-    const f = resolveHelperFlags(true, s);
-    expect(f.queryRewrite).toBe(false);
+    const s = memoryStorage(JSON.stringify({ queryRewrite: true, clarifyGate: false }));
+    const f = resolveHelperFlags(s);
+    expect(f.queryRewrite).toBe(true);
     expect(f.clarifyGate).toBe(false);
-    expect(f.selfCritique).toBe(true);
-    expect(f.answerChecklist).toBe(true); // non-boolean ignored -> default for local
+  });
+  it('ignores non-boolean values', () => {
+    const f = resolveHelperFlags(memoryStorage(JSON.stringify({ clarifyGate: 'no', queryRewrite: 1 })));
+    expect(f).toEqual(defaultHelperFlags());
   });
 });
 
@@ -52,6 +49,6 @@ describe('writeHelperFlag', () => {
   it('does not throw when storage fails', () => {
     const bad = { getItem: () => { throw new Error('x'); }, setItem: () => { throw new Error('x'); } };
     expect(() => writeHelperFlag('clarifyGate', true, bad)).not.toThrow();
-    expect(resolveHelperFlags(false, bad).clarifyGate).toBe(true);
+    expect(resolveHelperFlags(bad).clarifyGate).toBe(true);
   });
 });

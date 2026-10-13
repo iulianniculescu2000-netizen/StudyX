@@ -14,6 +14,7 @@
  */
 import type { Folder, QuestionStat, Quiz, QuizSession } from '../types';
 import { countsAsGrile, isGenericTag, DAY_MS } from './analyticsStats';
+import { findDuplicatesCached, memberKey } from './bankDedup';
 
 /* ───────────────────────── Presupuneri (toate vizibile în interfață) ───────────────────────── */
 
@@ -36,14 +37,14 @@ const MIN_TREND_QUESTIONS = 15;
 export const EXAM_QUESTIONS = 200;
 export const WRONG_PENALTY = 0.25;
 
-export const FEW_DATA_BELOW = 10;
+export const FEW_DATA_BELOW = 30;
 export const ENOUGH_DATA_FROM = 40;
 /** Sub această acoperire (%) estimarea rămâne „medie” oricâte grile ai rezolvat: restul e presupunere. */
 export const ENOUGH_COVERAGE = 25;
 
 export type ForecastConfidence = 'few' | 'some' | 'enough';
 export const FORECAST_CONFIDENCE_LABEL: Record<ForecastConfidence, string> = {
-  few: 'Puține date',
+  few: 'Date insuficiente',
   some: 'Încredere medie',
   enough: 'Încredere bună',
 };
@@ -288,6 +289,21 @@ export function buildScoreForecast(input: ForecastInput): ScoreForecast {
   const byText = new Map<string, string>(); // enunț -> id canonic
   const canon = new Map<string, QuestionAcc>();
   const unitOfQuiz = new Map<string, string>();
+  // Aceeași regulă ca în Rezidențiat: copiile redundante dintr-un grup de dubluri și grilele ascunse nu se numără;
+  // răspunsurile date unei copii se atribuie grilei primare.
+  const eligibleQuizzes = quizzes.filter((quiz) => countsAsGrile(quiz) && !isSessionQuiz(quiz));
+  const dupReport = findDuplicatesCached(eligibleQuizzes);
+  const redundantKeys = new Set<string>();
+  const aliasOf = new Map<string, string>(); // questionId copie -> questionId primar
+  for (const group of dupReport.groups) {
+    const primaryKey = memberKey(group.primary.quizId, group.primary.questionId);
+    for (const member of group.members) {
+      const key = memberKey(member.quizId, member.questionId);
+      if (key === primaryKey) continue;
+      redundantKeys.add(key);
+      aliasOf.set(member.questionId, group.primary.questionId);
+    }
+  }
   for (const quiz of quizzes) {
     if (!countsAsGrile(quiz) || isSessionQuiz(quiz)) continue;
     const place = placementOf(quiz, folders);
@@ -299,6 +315,8 @@ export function buildScoreForecast(input: ForecastInput): ScoreForecast {
       units.set(key, unit);
     }
     for (const question of quiz.questions) {
+      const qKey = memberKey(quiz.id, question.id);
+      if (redundantKeys.has(qKey) || (question.hidden && !dupReport.groupOf.has(qKey))) continue;
       const text = textKey(question.text ?? '');
       const known = byId.get(question.id) ?? (text ? byText.get(text) : undefined);
       if (known) {
@@ -318,7 +336,7 @@ export function buildScoreForecast(input: ForecastInput): ScoreForecast {
   // 2. Istoricul: fără cel retras; încercările aceleiași grile din mai multe seturi se adună pe grila canonică.
   for (const stat of Object.values(questionStats)) {
     if (!stat || stat.retired) continue;
-    const id = byId.get(stat.questionId);
+    const id = byId.get(stat.questionId) ?? byId.get(aliasOf.get(stat.questionId) ?? '');
     const q = id ? canon.get(id) : undefined;
     if (!q) continue;
     const right = Number(stat.timesCorrect);

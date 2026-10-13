@@ -1,4 +1,5 @@
 import { isFlashcardDeck } from './deckKind';
+import { isDueStat } from '../store/statsStore';
 import { isFolderSessionQuiz } from './rezidentiatOverview';
 import { normalizeSearchText } from './searchText';
 import type { Question, QuestionStat, Quiz } from '../types';
@@ -21,12 +22,12 @@ export function buildDueItems(
 ): DueItem[] {
   const quizById = new Map(quizzes.map((quiz) => [quiz.id, quiz]));
   const due = Object.values(stats)
-    .filter((s) => s.nextReview > 0 && s.nextReview <= now)
+    .filter((s) => isDueStat(s, now))
     .flatMap((s) => {
       const quiz = quizById.get(s.quizId);
       if (!quiz || isFlashcardDeck(quiz)) return [];
       const question = quiz.questions.find((q) => q.id === s.questionId);
-      if (!question) return [];
+      if (!question || question.hidden) return [];
       return [{ quizId: quiz.id, quizTitle: quiz.title, question }];
     });
 
@@ -45,4 +46,13 @@ export function buildDueItems(
     unique.add(item);
   }
   return due.filter((item) => unique.has(item));
+}
+
+/** Câte întrebări intră într-o sesiune zilnică; restul rămân scadente pentru următoarea. */
+export const DAILY_SESSION_CAP = 40;
+
+/** Sesiunea de azi (primele `cap`) și câte rămân scadente după ea. Nimic nu se șterge: elementele rămân scadente. */
+export function planDailySession<T>(due: ReadonlyArray<T>, cap: number = DAILY_SESSION_CAP): { today: T[]; remaining: number } {
+  const today = due.slice(0, Math.max(0, cap));
+  return { today, remaining: due.length - today.length };
 }

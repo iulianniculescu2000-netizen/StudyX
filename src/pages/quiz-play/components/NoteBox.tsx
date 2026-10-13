@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { motion } from 'framer-motion';
 import { StickyNote } from 'lucide-react';
 import { useNotesStore } from '../../../store/notesStore';
@@ -10,28 +11,33 @@ interface NoteBoxProps {
 
 /** Per-question personal note, persisted through the notes store. */
 export default function NoteBox({ questionId, theme }: NoteBoxProps) {
+  const noteId = useId();
   const currentNote = useNotesStore((s) => s.notes[questionId] ?? '');
   const setNote = useNotesStore((s) => s.setNote);
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mb-4 rounded-2xl overflow-hidden"
-      style={{ border: `1px solid ${theme.border}` }}
+      className="mb-4 overflow-hidden rounded-[var(--r-md)] border transition-shadow focus-within:shadow-[var(--ring-focus)]"
+      style={{ borderColor: theme.border }}
     >
       <div className="flex items-center gap-2 px-3 py-2"
         style={{ background: theme.surface2, borderBottom: `1px solid ${theme.border}` }}>
         <StickyNote size={12} style={{ color: theme.warning }} />
-        <span className="text-xs font-medium" style={{ color: theme.text3 }}>Notița mea</span>
+        <label htmlFor={noteId} className="text-xs font-medium" style={{ color: theme.text3 }}>Notița mea</label>
       </div>
-      <textarea
-        placeholder="Adaugă o notiță pentru această întrebare..."
-        value={currentNote}
-        onChange={e => setNote(questionId, e.target.value)}
-        rows={2}
-        className="w-full px-3 py-2 text-xs resize-none bg-transparent"
-        style={{ color: theme.text2, outline: 'none', border: 'none' }}
-      />
+      <div className="px-3 py-3" style={{ background: theme.surface }}>
+        <textarea
+          id={noteId}
+          placeholder="Adaugă o notiță pentru această întrebare..."
+          value={currentNote}
+          onChange={e => setNote(questionId, e.target.value)}
+          onFocus={e => e.currentTarget.scrollIntoView?.({ block: 'center', behavior: 'smooth' })}
+          rows={3}
+          className="input-bare block w-full resize-y text-[13px] leading-relaxed"
+          style={{ color: theme.text2, minHeight: 64 }}
+        />
+      </div>
     </motion.div>
   );
 }

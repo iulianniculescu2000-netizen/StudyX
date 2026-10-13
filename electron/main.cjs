@@ -9,6 +9,13 @@ const { registerOrganizareIPC } = require('./organizare.cjs');
 const { compareVersion } = require('./lib/versions.cjs');
 const { shouldClearStorageOnFirstRun, inspectUserData } = require('./lib/firstRun.cjs');
 const { isSafeStorageId } = require('./lib/validate.cjs');
+const {
+  getAdaptiveWindowMetrics: getAdaptiveMetricsFromHelper,
+  clampBoundsToDisplay: clampBoundsHelper,
+  readWindowState: readWindowStateHelper,
+  persistWindowState: persistWindowStateHelper,
+  ensureWindowFitsDisplay: ensureWindowFitsDisplayHelper,
+} = require('./lib/windowState.cjs');
 
 // Must be called before any other app.* API — Windows reads AUMID at startup
 // to associate the process with the correct taskbar button and icon.
@@ -369,48 +376,15 @@ function readStartupSettings() {
 }
 
 function getAdaptiveWindowMetrics() {
-  const primaryDisplay = screen.getPrimaryDisplay();
-  const area = primaryDisplay.workArea;
-  const margin = Math.max(20, Math.round(Math.min(area.width, area.height) * 0.03));
-  const width = Math.max(820, Math.min(1440, area.width - margin * 2));
-  const height = Math.max(620, Math.min(920, area.height - margin * 2));
-
-  return {
-    width,
-    height,
-    x: area.x + Math.round((area.width - width) / 2),
-    y: area.y + Math.round((area.height - height) / 2),
-    shouldMaximize: area.width < 1360 || area.height < 820,
-  };
+  return getAdaptiveMetricsFromHelper(screen);
 }
 
 function clampBoundsToDisplay(bounds) {
-  const fallback = getAdaptiveWindowMetrics();
-  const targetBounds = bounds ?? fallback;
-  const display = screen.getDisplayMatching({
-    x: targetBounds.x ?? fallback.x,
-    y: targetBounds.y ?? fallback.y,
-    width: targetBounds.width ?? fallback.width,
-    height: targetBounds.height ?? fallback.height,
-  });
-  const area = display.workArea;
-  const width = Math.max(720, Math.min(targetBounds.width ?? fallback.width, area.width));
-  const height = Math.max(520, Math.min(targetBounds.height ?? fallback.height, area.height));
-  const x = Math.min(Math.max(targetBounds.x ?? fallback.x, area.x), area.x + area.width - width);
-  const y = Math.min(Math.max(targetBounds.y ?? fallback.y, area.y), area.y + area.height - height);
-
-  return { x, y, width, height };
+  return clampBoundsHelper(bounds, screen);
 }
 
 function readWindowState() {
-  try {
-    if (!fs.existsSync(getWindowStatePath())) return null;
-    const raw = fs.readFileSync(getWindowStatePath(), 'utf-8');
-    const parsed = JSON.parse(raw);
-    return clampBoundsToDisplay(parsed);
-  } catch {
-    return null;
-  }
+  return readWindowStateHelper(getWindowStatePath(), screen);
 }
 
 function getBundledVersion() {
@@ -512,13 +486,7 @@ async function pruneStaleOverlay() {
 }
 
 function persistWindowState(win) {
-  try {
-    if (!win || win.isDestroyed() || win.isMinimized() || win.isMaximized()) return;
-    const bounds = clampBoundsToDisplay(win.getBounds());
-    fs.writeFileSync(getWindowStatePath(), JSON.stringify(bounds), 'utf-8');
-  } catch (err) {
-    console.error('[WindowState] Failed to persist bounds:', err);
-  }
+  persistWindowStateHelper(win, getWindowStatePath(), screen);
 }
 
 function scheduleWindowStateSave(win) {
@@ -527,14 +495,7 @@ function scheduleWindowStateSave(win) {
 }
 
 function ensureWindowFitsDisplay(win) {
-  if (!win || win.isDestroyed() || win.isMaximized() || win.isMinimized()) return;
-  const nextBounds = clampBoundsToDisplay(win.getBounds());
-  const current = win.getBounds();
-  const changed = current.x !== nextBounds.x
-    || current.y !== nextBounds.y
-    || current.width !== nextBounds.width
-    || current.height !== nextBounds.height;
-  if (changed) win.setBounds(nextBounds);
+  ensureWindowFitsDisplayHelper(win, screen);
 }
 
 const startupSettings = readStartupSettings();
@@ -767,7 +728,9 @@ function registerIpcHandlers() {
 
   ipcMain.handle('win:isMaximized', () => mainWindow?.isMaximized() ?? false);
 
-  registerOrganizareIPC({ ipcMain, dialog, shell, getWindow: () => mainWindow, userDataDir: app.getPath('userData') });
+  // Cărțile de Rezidențiat livrate cu aplicația (Kumar, Lawrence, Sinopsis): extraResources/books în installer, build/books în dezvoltare.
+  const bundledBooksDir = app.isPackaged ? path.join(process.resourcesPath, 'books') : path.join(__dirname, '..', 'build', 'books');
+  registerOrganizareIPC({ ipcMain, dialog, shell, getWindow: () => mainWindow, userDataDir: app.getPath('userData'), bundledBooksDir });
 
   // File import IPCs
   ipcMain.handle('dialog:openJson', async () => {
@@ -933,7 +896,10 @@ function registerIpcHandlers() {
 
   ipcMain.handle('app:autoBackup', async (_, { data }) => {
     try {
-      const backupDir = path.join(app.getPath('documents'), 'StudyX-Backups');
+      // Test profiles must never rotate or overwrite the user's real backups.
+      const backupDir = userDataOverride
+        ? path.join(userDataOverride, 'backups')
+        : path.join(app.getPath('documents'), 'StudyX-Backups');
       await fsp.mkdir(backupDir, { recursive: true });
       const files = await fsp.readdir(backupDir);
       const existing = files.filter(f => f.startsWith('studyx-backup-')).sort();
@@ -964,6 +930,23 @@ function registerIpcHandlers() {
       return true;
     } catch (err) {
       console.error('[Storage] Save error:', err);
+      return false;
+    }
+  });
+
+  // Deleting a profile removes its disk folder (userData/profiles/<safeId>) and nothing else.
+  ipcMain.handle('storage:delete-profile', async (_, { profileId } = {}) => {
+    try {
+      if (!isSafeStorageId(profileId)) return false;
+      const safeId = profileId.replace(/[^a-z0-9_-]/gi, '_');
+      const profilesRoot = path.join(app.getPath('userData'), 'profiles');
+      const target = path.join(profilesRoot, safeId);
+      // Same sanitising as storage:save, so the folder is always a direct child of profiles/.
+      if (path.dirname(target) !== profilesRoot) return false;
+      await fsp.rm(target, { recursive: true, force: true });
+      return true;
+    } catch (err) {
+      console.error('[Storage] Delete profile error:', err);
       return false;
     }
   });
@@ -1086,7 +1069,7 @@ function createWindow() {
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
-    mainWindow.webContents.openDevTools({ mode: 'detach' });
+    if (!userDataOverride) mainWindow.webContents.openDevTools({ mode: 'detach' });
     // Event-object form (the positional-arguments form is deprecated in Electron 35+).
     mainWindow.webContents.on('console-message', (event) => {
       if (event.level === 'warning' || event.level === 'error') {
@@ -1126,7 +1109,7 @@ function createWindow() {
     }
     // Force Windows taskbar to pick up the correct icon and AUMID association.
     try { app.setAppUserModelId(APP_USER_MODEL_ID); } catch { /* ignore */ }
-    if (!savedBounds && adaptiveMetrics.shouldMaximize) {
+    if (savedBounds?.isMaximized || (!savedBounds && adaptiveMetrics.shouldMaximize)) {
       mainWindow?.maximize();
     }
   });
@@ -1140,8 +1123,14 @@ function createWindow() {
     // Overlay icon = null clears any residual Electron default overlay on Windows.
     try { mainWindow?.setOverlayIcon(null, ''); } catch { /* ignore */ }
   });
-  mainWindow.on('maximize', () => mainWindow?.webContents.send('win:maximized', true));
-  mainWindow.on('unmaximize', () => mainWindow?.webContents.send('win:maximized', false));
+  mainWindow.on('maximize', () => {
+    mainWindow?.webContents.send('win:maximized', true);
+    scheduleWindowStateSave(mainWindow);
+  });
+  mainWindow.on('unmaximize', () => {
+    mainWindow?.webContents.send('win:maximized', false);
+    scheduleWindowStateSave(mainWindow);
+  });
   mainWindow.on('resize', () => scheduleWindowStateSave(mainWindow));
   mainWindow.on('move', () => scheduleWindowStateSave(mainWindow));
   mainWindow.on('blur', () => persistWindowState(mainWindow));

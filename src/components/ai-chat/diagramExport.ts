@@ -62,11 +62,18 @@ export function downloadSvg(svg: string, color: string, filename = 'schema.svg')
 }
 
 const MAX_CANVAS_SIDE = 8192;
+const PNG_PADDING = 24;
+
+/** Keep the background margin inside the browser's canvas size limit. */
+export function pngRasterScale(natural: SvgSize): number {
+  const drawableSide = MAX_CANVAS_SIDE - PNG_PADDING * 2;
+  return Math.min(2, drawableSide / Math.max(natural.width, natural.height));
+}
 
 /** Rasterises the SVG on a canvas filled with the theme background, then downloads it. */
 export async function downloadPng(svg: string, color: string, background: string, filename = 'schema.png'): Promise<void> {
   const natural = readSvgSize(svg);
-  const scale = Math.min(2, MAX_CANVAS_SIDE / Math.max(natural.width, natural.height));
+  const scale = pngRasterScale(natural);
   const { markup, size } = toStandaloneSvg(svg, color, scale);
 
   const image = new Image();
@@ -77,15 +84,14 @@ export async function downloadPng(svg: string, color: string, background: string
   image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`;
   await loaded;
 
-  const padding = 24;
   const canvas = document.createElement('canvas');
-  canvas.width = size.width + padding * 2;
-  canvas.height = size.height + padding * 2;
+  canvas.width = size.width + PNG_PADDING * 2;
+  canvas.height = size.height + PNG_PADDING * 2;
   const context = canvas.getContext('2d');
   if (!context) throw new Error('canvas');
   context.fillStyle = background;
   context.fillRect(0, 0, canvas.width, canvas.height);
-  context.drawImage(image, padding, padding, size.width, size.height);
+  context.drawImage(image, PNG_PADDING, PNG_PADDING, size.width, size.height);
 
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
   if (!blob) throw new Error('png');

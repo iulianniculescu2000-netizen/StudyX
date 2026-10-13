@@ -227,14 +227,14 @@
   --shadow-rgb: 26 33 56;
   --elev-0: none;
   /* Trei straturi pe fiecare nivel: contact (strâns) + ambient (mediu) + penumbră (lată), toate în nuanța --shadow-rgb. */
-  --elev-1: 0 1px 1px rgb(var(--shadow-rgb) / .04), 0 2px 5px -1px rgb(var(--shadow-rgb) / .05), 0 8px 18px -8px rgb(var(--shadow-rgb) / .08);
-  --elev-2: 0 1px 2px rgb(var(--shadow-rgb) / .05), 0 4px 10px -2px rgb(var(--shadow-rgb) / .06), 0 14px 28px -10px rgb(var(--shadow-rgb) / .11);
-  --elev-3: 0 1px 3px rgb(var(--shadow-rgb) / .05), 0 8px 18px -4px rgb(var(--shadow-rgb) / .08), 0 24px 44px -14px rgb(var(--shadow-rgb) / .14);
+  --elev-1: 0 1px 2px rgb(var(--shadow-rgb) / .025), 0 3px 8px -2px rgb(var(--shadow-rgb) / .035), 0 10px 24px -9px rgb(var(--shadow-rgb) / .055);
+  --elev-2: 0 1px 3px rgb(var(--shadow-rgb) / .035), 0 5px 14px -3px rgb(var(--shadow-rgb) / .045), 0 18px 34px -12px rgb(var(--shadow-rgb) / .08);
+  --elev-3: 0 1px 4px rgb(var(--shadow-rgb) / .04), 0 9px 22px -5px rgb(var(--shadow-rgb) / .065), 0 28px 52px -16px rgb(var(--shadow-rgb) / .11);
   --elev-4: 0 2px 4px rgb(var(--shadow-rgb) / .05), 0 14px 28px -6px rgb(var(--shadow-rgb) / .09), 0 40px 80px -24px rgb(var(--shadow-rgb) / .16);
   /* Inel fin suplimentar pe sticla luminoasă. */
-  --glass-ring-shadow: 0 0 0 .5px rgba(60, 60, 67, .10);
+  --glass-ring-shadow: 0 0 0 .5px rgba(60, 60, 67, .065);
   /* Muchia sticlei: linie de lumină sus + o umbră foarte fină jos (adâncime). */
-  --glass-lowlight: rgb(var(--shadow-rgb) / .05);
+  --glass-lowlight: rgb(var(--shadow-rgb) / .025);
   --edge: inset 0 1px 0 var(--glass-highlight), inset 0 -1px 0 var(--glass-lowlight), var(--glass-ring-shadow);
 }
 :root[data-theme="dark"] {
@@ -331,6 +331,76 @@
   .display {
     font-family: "Bricolage Grotesque", "SF Pro Display", "Segoe UI Variable Display", system-ui, sans-serif;
   }
+  /* Conținut educațional selectabil (enunțuri, explicații, notițe, chat AI, rezumate) */
+  .selectable-text,
+  .prose,
+  .prose p,
+  .prose li,
+  .prose span,
+  .prose blockquote,
+  .prose table,
+  .chat-bubble-content,
+  .ai-rich-text,
+  .ai-md,
+  .ai-md p,
+  .ai-md li,
+  .ai-md blockquote,
+  .ai-md table,
+  .ai-md-pre,
+  .ai-md-pre code,
+  .question-body,
+  .note-body,
+  .explanation-body,
+  [data-selectable="true"] {
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: auto;
+  }
+
+  /* Protecție UI nativă: butoanele, controalele, iconițele, badge-urile și zona de drag a ferestrei
+     nu sunt niciodată selectabile accidental (ceea ce păstrează senzația de aplicație nativă de desktop) */
+  button,
+  a[role="button"],
+  [role="button"],
+  [role="tab"],
+  [role="tablist"],
+  [role="menuitem"],
+  label,
+  svg,
+  [aria-hidden="true"],
+  .lucide,
+  .citation-pill,
+  .fine-chip,
+  .premium-chip,
+  .composer-chip,
+  .composer-send,
+  .back-pill,
+  .ai-md-code-bar,
+  .ai-md-diagram-bar,
+  .ai-md-copy,
+  .ai-md-table-zoom,
+  .ai-md-cite,
+  .ai-md-diagram,
+  .sx-host,
+  .apple-titlebar,
+  .apple-titlebar *,
+  [style*="WebkitAppRegion: drag"],
+  [style*="webkit-app-region: drag"],
+  [style*="-webkit-app-region: drag"],
+  [style*="WebkitAppRegion: 'drag'"],
+  [style*="webkit-app-region: 'drag'"],
+  [data-window-drag="true"],
+  .window-drag,
+  .fx-lift,
+  .interactive-lift,
+  .lift-card,
+  .premium-card-hover,
+  .premium-option-card,
+  .no-select,
+  [data-no-select="true"] {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+  }
   :root[data-theme="light"] body {
     background-image:
       radial-gradient(circle at 10% 10%, color-mix(in srgb, var(--accent) 5%, transparent), transparent 22%),
@@ -346,29 +416,32 @@
       radial-gradient(circle at 50% 112%, color-mix(in srgb, var(--accent) 6%, transparent), transparent 32%);
     background-attachment: fixed;
   }
-  h1, h2, h3, h4, .text-3xl, .text-4xl {
-    letter-spacing: -0.035em;
+  h1, h2, h3, h4, h5, h6, .text-3xl, .text-4xl {
+    letter-spacing: -0.03em;
     font-weight: 750;
   }
   h1 {
-    line-height: 0.96;
+    line-height: 1.18;
   }
   h2, h3 {
-    line-height: 1.02;
+    line-height: 1.22;
+  }
+  h4, h5, h6 {
+    line-height: 1.25;
   }
   p {
     line-height: 1.55;
   }
   .page-title {
     font-size: clamp(2rem, 4vw, 3rem);
-    line-height: 0.98;
-    letter-spacing: -0.05em;
+    line-height: 1.16;
+    letter-spacing: -0.03em;
     font-weight: 800;
   }
   .page-title-compact {
     font-size: clamp(1.75rem, 3vw, 2.35rem);
-    line-height: 1;
-    letter-spacing: -0.045em;
+    line-height: 1.18;
+    letter-spacing: -0.025em;
     font-weight: 800;
   }
   .page-subtitle {
@@ -378,14 +451,14 @@
   }
   .section-title {
     font-size: clamp(1rem, 1.7vw, 1.15rem);
-    line-height: 1.15;
-    letter-spacing: -0.03em;
+    line-height: 1.2;
+    letter-spacing: -0.025em;
     font-weight: 800;
   }
   .metric-value {
     font-size: clamp(1.4rem, 2.6vw, 2rem);
-    line-height: 1;
-    letter-spacing: -0.04em;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
     font-weight: 800;
   }
   .micro-copy {
@@ -441,6 +514,15 @@
   button, a, [role="button"], label {
     cursor: pointer;
     transition: transform var(--dur-fast) var(--ease-standard), background-color var(--dur-fast) ease, border-color var(--dur-fast) ease, box-shadow var(--dur-fast) var(--ease-standard), color var(--dur-fast) ease, opacity var(--dur-fast) ease;
+  }
+  a {
+    text-underline-offset: 3px;
+    text-decoration-skip-ink: auto;
+  }
+  /* Prevent decorative icons, emojis or badges from inheriting broken underline lines */
+  a > svg, a > [aria-hidden="true"],
+  button > svg, button > [aria-hidden="true"] {
+    text-decoration: none;
   }
   /* Motion tokens — one press/hover feel for buttons, .press-feedback and the
      Framer presets in theme/motion.ts (keep the three in sync). */
@@ -649,19 +731,39 @@ button.citation-pill:hover {
 
 /* ── Custom Thin Scrollbar ── */
 *::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 6px;
+  height: 6px;
+}
+*:not(.no-scrollbar):hover::-webkit-scrollbar,
+*::-webkit-scrollbar:hover {
+  width: 8px;
+  height: 8px;
 }
 *::-webkit-scrollbar-track {
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--text3) 22%, transparent);
+  background: color-mix(in srgb, var(--text3) 26%, transparent);
   border-radius: 99px;
   transition: background var(--dur-fast) ease;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--accent) 48%, transparent);
+  background: color-mix(in srgb, var(--text3) 48%, transparent);
+}
+*::-webkit-scrollbar-thumb:active {
+  background: var(--accent);
+}
+
+/* Modern standard CSS scrollbars */
+html, body, * {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--text3) 26%, transparent) transparent;
+}
+*:hover {
+  scrollbar-color: color-mix(in srgb, var(--text3) 48%, transparent) transparent;
+}
+*:active {
+  scrollbar-color: var(--accent) transparent;
 }
 
 /* ── Scroll Performance Optimizations ── */
@@ -691,6 +793,16 @@ button.citation-pill:hover {
 
 .custom-scrollbar {
   overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--text3) 26%, transparent) transparent;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar:hover::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
 /* Optimize animated elements */
@@ -731,13 +843,18 @@ button.citation-pill:hover {
   50%      { opacity: 0.12; transform: translate3d(36px, 22px, 0); }
 }
 
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
+.no-scrollbar::-webkit-scrollbar,
+.no-scrollbar:hover::-webkit-scrollbar,
+*:hover.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+.no-scrollbar,
+.no-scrollbar:hover {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
 }
 
 .skeleton-block {
@@ -957,7 +1074,7 @@ button.press-feedback:not(:disabled):active {
    ── POLISH v2.2 — Serotonin UI (fluid, fără recul), pe tokenii de mișcare ──
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ── Intrare pagini — fade + lift scurt, fără scale (oglindă a pageEnter din motion.ts) ── */
+/* ── Intrare pagini — fade + lift scurt, fără scale ── */
 @keyframes page-enter {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -1186,7 +1303,7 @@ button.press-feedback:not(:disabled):active {
 /* În fereastra mărită (zonă de tras) fundalul alb al schemei folosește cursorul zonei, nu lupa de „clic pentru mărire”. */
 .ai-md-stage .ai-md-diagram-body, .ai-md-stage .ai-md-stage-content { cursor: inherit; }
 .ai-md-diagram-body svg { display: block; margin: 0 auto; max-width: 100%; height: auto; max-height: 460px; }
-.ai-md-diagram-viewer svg { display: block; width: 100%; height: auto; max-width: none !important; max-height: calc(min(86vh, 900px) - 110px); }
+.ai-md-diagram-viewer svg { display: block; width: 100%; height: auto; max-width: none !important; }
 /* ── Schemă: glass nodes, path highlight, staggered draw-in ───────────────────────────────────── */
 .sx-host { position: relative; }
 .sx-host .sx-node { cursor: pointer; outline: none; transition: opacity 180ms ease; }
@@ -1309,7 +1426,7 @@ button.press-feedback:not(:disabled):active {
 .premium-card-hover:hover {
   /* Doar mărire, fără translație: cu translateY(-3px) marginea de jos ieșea de sub cursor, hover-ul se pierdea,
      cardul cobora și îl recăpăta (oscilație vizibilă ca vibrație). O cutie care doar crește nu iese de sub cursor. */
-  transform: scale(1.012);
+  transform: scale(1.006);
   box-shadow: var(--elev-2), var(--edge);
 }
 /* Apăsare: cardul coboară aproape la loc, umbra scade o treaptă. */
@@ -1317,7 +1434,7 @@ button.press-feedback:not(:disabled):active {
 .interactive-lift:active,
 .lift-card:active,
 .premium-card-hover:active {
-  transform: scale(1.004);
+  transform: scale(1.002);
   box-shadow: var(--elev-1), var(--edge);
   transition-duration: var(--dur-instant);
 }
@@ -1342,7 +1459,7 @@ button.press-feedback:not(:disabled):active {
   animation-delay: calc(min(var(--i, 0), 8) * 40ms);
 }
 @keyframes fx-rise {
-  from { opacity: 0; transform: translateY(12px); }
+  from { opacity: 0; transform: translateY(5px); }
   to { opacity: 1; transform: none; }
 }
 .fx-mesh {
@@ -1608,3 +1725,24 @@ a:focus-visible,
   }
   .composer-send[data-ready='true']:active { transform: scale(0.92); }
 }
+
+/* ── StudyX Custom Hand Cursor & Microinteractions ── */
+.studyx-custom-cursor-active,
+.studyx-custom-cursor-active * {
+  cursor: none !important;
+}
+
+@keyframes cursorShockwave {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+/* Umbra mâinii/săgeții cursorului StudyX (filtru, nu box-shadow). */
+.cursor-hand-shadow-sm { filter: drop-shadow(0 1px 2px rgb(0 0 0 / .3)); }
+.cursor-hand-shadow-lg { filter: drop-shadow(0 1.5px 3px rgb(0 0 0 / .3)); }

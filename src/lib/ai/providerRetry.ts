@@ -2,7 +2,7 @@
  * Pure helpers for provider retry / fallback decisions, kept free of stores and fetch so they are unit-testable.
  */
 
-export type RetryProviderId = 'groq' | 'google' | 'mistral' | 'local';
+export type RetryProviderId = 'groq' | 'google' | 'mistral';
 
 /** Statuses that say "the provider is busy or down right now" — worth a short retry, then the next provider. */
 export function isTransientStatus(status: number): boolean {
@@ -35,8 +35,7 @@ export function nextConfiguredProvider<P extends string>(
   const start = order.indexOf(current);
   for (let i = 1; i <= order.length; i++) {
     const candidate = order[(start + i + order.length) % order.length];
-    // `local` is a safety net at the end of the chain, never a manual switch target.
-    if (candidate !== current && (candidate as string) !== 'local' && (keys[candidate] ?? '').trim()) return candidate;
+    if (candidate !== current && (keys[candidate] ?? '').trim()) return candidate;
   }
   return null;
 }

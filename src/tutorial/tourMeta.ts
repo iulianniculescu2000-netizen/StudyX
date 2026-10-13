@@ -17,7 +17,17 @@ export type TourId =
   | 'errors'
   | 'organizare'
   | 'residencyFlashcards'
-  | 'chat';
+  | 'chat'
+  | 'review'
+  | 'daily'
+  | 'notes'
+  | 'stats'
+  | 'flashcardSession'
+  | 'quizSession'
+  | 'quizResults'
+  | 'gamification'
+  | 'analytics'
+  | 'crunch';
 
 /**
  * The release whose content the tours currently describe. The one place the number lives: the "what's new"
@@ -54,6 +64,16 @@ export const TOUR_META: Record<TourId, TourMeta> = {
   organizare: { version: CURRENT_TOUR_VERSION, repeatOnNewVersion: true },
   residencyFlashcards: { version: CURRENT_TOUR_VERSION, repeatOnNewVersion: true },
   chat: { version: CURRENT_TOUR_VERSION, repeatOnNewVersion: true },
+  review: { version: CURRENT_TOUR_VERSION, repeatOnNewVersion: false },
+  daily: { version: CURRENT_TOUR_VERSION, repeatOnNewVersion: false },
+  notes: { version: CURRENT_TOUR_VERSION, repeatOnNewVersion: false },
+  stats: { version: CURRENT_TOUR_VERSION, repeatOnNewVersion: false },
+  flashcardSession: { version: CURRENT_TOUR_VERSION, repeatOnNewVersion: false },
+  quizSession: { version: CURRENT_TOUR_VERSION, repeatOnNewVersion: false },
+  quizResults: { version: CURRENT_TOUR_VERSION, repeatOnNewVersion: false },
+  gamification: { version: CURRENT_TOUR_VERSION, repeatOnNewVersion: false },
+  analytics: { version: CURRENT_TOUR_VERSION, repeatOnNewVersion: false },
+  crunch: { version: CURRENT_TOUR_VERSION, repeatOnNewVersion: false },
 };
 
 export const TOUR_IDS = Object.keys(TOUR_META) as TourId[];
@@ -73,6 +93,16 @@ export const GUIDE_LIST: ReadonlyArray<{ id: Exclude<TourId, 'whatsNew' | 'welco
   { id: 'simulation', title: 'Simulare de examen', description: 'Un examen de probă, cu ceas și penalizare.' },
   { id: 'errors', title: 'Caiet de erori', description: 'Greșelile tale, explicate și repetate până le fixezi.' },
   { id: 'settings', title: 'Setări', description: 'Aspect, date și backup, AI și ajutor.' },
+  { id: 'review', title: 'Recapitulare inteligentă', description: 'Cum alegi între întrebări scadente, puncte slabe și antrenament pentru examen.' },
+  { id: 'daily', title: 'Sesiune zilnică', description: 'Întrebările programate pentru azi și modul în care răspunsurile pregătesc repetarea următoare.' },
+  { id: 'notes', title: 'Notițele mele', description: 'Notițe din grile, căutare și transformare cu AI.' },
+  { id: 'stats', title: 'Performanță', description: 'Ritm, acuratețe și interpretarea progresului.' },
+  { id: 'flashcardSession', title: 'Sesiunea de flashcarduri', description: 'Întoarcerea cardurilor, evaluarea și repetarea următoare.' },
+  { id: 'quizSession', title: 'Rezolvarea unei grile', description: 'Alegerea răspunsurilor, verificarea și navigarea în sesiune.' },
+  { id: 'quizResults', title: 'Rezultatele unei grile', description: 'Interpretarea rezultatului și alegerea următorului pas de studiu.' },
+  { id: 'gamification', title: 'Realizări', description: 'Nivelul, seria de studiu și realizările câștigate.' },
+  { id: 'analytics', title: 'Perspective AI', description: 'Interpretarea estimărilor, lacunelor și recomandărilor de studiu.' },
+  { id: 'crunch', title: 'Aproape de examen', description: 'O sesiune de recuperare adaptată timpului disponibil.' },
 ];
 
 /** Version recorded for profiles that finished the single tour of the earliest builds. */

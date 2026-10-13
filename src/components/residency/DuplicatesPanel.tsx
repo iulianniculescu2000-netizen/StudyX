@@ -126,7 +126,7 @@ export default function DuplicatesPanel({ report }: { report: DuplicateReport })
             </div>
             <div className="mt-2 flex items-center justify-between gap-2 text-[11.5px]" style={{ color: theme.text3 }}>
               <span>{group.kind === 'exact' ? 'Identice' : 'Aproape identice, același răspuns'}</span>
-              <button type="button" onClick={() => toggleGroup(group)} className="press-feedback rounded-full px-2.5 py-1 font-medium hover:underline" style={actionStyle}>
+              <button type="button" onClick={() => toggleGroup(group)} className="press-feedback rounded-full px-2.5 py-1 font-medium hover:underline underline-offset-2" style={actionStyle}>
                 {allHidden ? 'Arată din nou' : copies.length > 1 ? 'Ascunde copiile' : 'Ascunde copia'}
               </button>
             </div>

@@ -99,7 +99,8 @@ const QuizCard = memo(function QuizCard({ quiz, index = 0, showDelete = false }:
       onHoverEnd={() => setHovered(false)}
       onFocusCapture={() => setFocusWithin(true)}
       onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocusWithin(false); }}
-      className={`relative group rounded-[var(--r-xl)] overflow-hidden glass-panel elev-hover-2 fine-card ${calmMotion ? '' : 'fx-rise'}`}
+      // overflow-clip, nu hidden: un card hidden poate fi derulat intern când confirmarea primește focus (decalaj de ~65 px).
+      className={`relative group rounded-[var(--r-xl)] overflow-clip glass-panel elev-hover-2 fine-card ${calmMotion ? '' : 'fx-rise'}`}
       style={{
         '--i': Math.min(index, 8),
         background: hovered
@@ -196,7 +197,7 @@ const QuizCard = memo(function QuizCard({ quiz, index = 0, showDelete = false }:
                 <button
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/create?edit=${quiz.id}`); }}
                   className={`p-2 rounded-[var(--r-sm)] transition-colors hover:bg-blue-500/15 press-feedback ${FOCUS_RING}`}
-                  style={{ color: theme.accent }}
+                  style={{ color: theme.accentText }}
                   title="Editează">
                   <Pencil size={15} />
                 </button>
@@ -243,7 +244,7 @@ const QuizCard = memo(function QuizCard({ quiz, index = 0, showDelete = false }:
             exit={{ opacity: 0 }}
             transition={{ duration: calmMotion ? dur.instant : dur.fast, ease: ease.standard }}
             onClick={(e) => e.preventDefault()}
-            className="absolute inset-0 z-30 rounded-[var(--r-xl)] flex flex-col items-center justify-center gap-4 p-6 [backdrop-filter:blur(var(--blur-1))]"
+            className="absolute inset-0 z-30 rounded-[var(--r-xl)] flex flex-col items-center justify-center gap-4 p-4 [backdrop-filter:blur(var(--blur-1))]"
             style={{ background: 'color-mix(in srgb, var(--bg) 92%, transparent)' }}>
             <div className="w-14 h-14 rounded-[var(--r-lg)] flex items-center justify-center" style={{ background: `${theme.danger}26`, border: `1px solid ${theme.danger}4D` }}>
               <AlertTriangle size={26} style={{ color: theme.danger }} />

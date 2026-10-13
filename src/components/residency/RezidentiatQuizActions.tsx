@@ -55,7 +55,7 @@ export default function RezidentiatQuizActions({ onAddBook, addingBook }: Props)
         title="Adaugă"
         disabled={addingBook}
         className="fine-row press-feedback flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full disabled:opacity-60"
-        style={{ background: menuOpen ? `${theme.accent}18` : theme.surface2, color: menuOpen ? theme.accent : theme.text2 }}
+        style={{ background: menuOpen ? `${theme.accent}18` : theme.surface2, color: menuOpen ? theme.accentText : theme.text2 }}
       >
         {addingBook ? <Loader2 size={16} className="animate-spin" /> : <Plus size={18} style={{ transform: menuOpen ? 'rotate(45deg)' : undefined, transition: 'transform 0.2s' }} />}
       </button>

@@ -81,6 +81,28 @@ export function residencyFolderIds(folders: ReadonlyArray<Folder>): Set<string> 
 }
 
 /**
+ * Folderele care aparțin unui hub: Rezidențiat › Flashcarduri vede doar arborele Rezidențiat, hub-ul general doar
+ * restul. Un folder de alt spațiu rămâne doar dacă ține un pachet afișat aici (împreună cu părinții lui).
+ */
+export function foldersForHubScope(
+  folders: ReadonlyArray<Folder>,
+  decks: ReadonlyArray<{ quiz: { folderId?: string | null } }>,
+  rezScope: boolean,
+): Folder[] {
+  const residency = residencyFolderIds(folders);
+  const byId = new Map(folders.map((folder) => [folder.id, folder]));
+  const needed = new Set<string>();
+  for (const deck of decks) {
+    let cursor = deck.quiz.folderId ? byId.get(deck.quiz.folderId) : undefined;
+    while (cursor && !needed.has(cursor.id)) {
+      needed.add(cursor.id);
+      cursor = cursor.parentId ? byId.get(cursor.parentId) : undefined;
+    }
+  }
+  return folders.filter((folder) => residency.has(folder.id) === rezScope || needed.has(folder.id));
+}
+
+/**
  * Pachetele grupate pe foldere, ca arbore. Un pachet fără folder sau cu folder inexistent merge la
  * „Neclasificate” (ultimul). Un folder cu părinte lipsă sau într-un ciclu devine rădăcină. Folderele goale
  * rămân (dacă `showEmpty`), mai puțin cele din Rezidențiat, care se umplu singure după reguli.

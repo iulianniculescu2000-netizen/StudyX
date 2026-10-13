@@ -1,0 +1,56 @@
+/**
+ * Textul organizat al cărților incluse în aplicație (Kumar, Lawrence, Sinopsis), pagină cu pagină, extras din exact
+ * PDF-urile livrate în installer (scripts/extract-book-pages.mjs). Numerotarea e cea din plan (`topic.pdf`), deci un
+ * capitol se citește direct din paginile lui, fără bibliotecă AI și fără reindexare.
+ */
+import { basePlan } from './curriculum';
+import { parsePageRange, type BookCode, type PageRange } from './bookPages';
+import type { Topic } from './organizare/types';
+
+const LOADERS: Record<BookCode, () => Promise<{ default: string[] }>> = {
+  K: () => import('../data/rezidentiat/library/kumar.pages.json'),
+  L: () => import('../data/rezidentiat/library/lawrence.pages.json'),
+  S: () => import('../data/rezidentiat/library/sinopsis.pages.json'),
+};
+
+const cache = new Map<BookCode, Promise<string[]>>();
+
+export function loadBookPages(book: BookCode): Promise<string[]> {
+  let pages = cache.get(book);
+  if (!pages) {
+    pages = LOADERS[book]().then((m) => m.default);
+    cache.set(book, pages);
+    pages.catch(() => cache.delete(book));
+  }
+  return pages;
+}
+
+/** Marcajul de început de pagină din textul compus; cititorul îl desenează ca separator discret. */
+export const PAGE_HEADING = '§ ';
+
+/** Paginile capitolului din care face parte topicul: de la prima la ultima pagină a topicurilor lui. */
+export function chapterPageRange(topic: Pick<Topic, 'group' | 'pdf'>): PageRange | null {
+  const ranges = basePlan().topics
+    .filter((t) => t.group === topic.group)
+    .map((t) => parsePageRange(t.pdf))
+    .filter((r): r is PageRange => !!r);
+  if (!ranges.length) return parsePageRange(topic.pdf);
+  return { first: Math.min(...ranges.map((r) => r.first)), last: Math.max(...ranges.map((r) => r.last)) };
+}
+
+/** Textul paginilor `range` (inclusiv), fiecare precedată de `§ <număr>`. */
+export async function bookText(book: BookCode, range: PageRange): Promise<string> {
+  const pages = await loadBookPages(book);
+  const out: string[] = [];
+  for (let n = Math.max(1, range.first); n <= Math.min(range.last, pages.length); n += 1) {
+    const text = pages[n - 1]?.trim();
+    if (text) out.push(`${PAGE_HEADING}${n}\n\n${text}`);
+  }
+  return out.join('\n\n');
+}
+
+/** Pentru un cititor deschis la un topic (capitolul întreg) sau la o pagină (pagina și vecinele ei). */
+export function bookTextFor(book: BookCode, topic: Pick<Topic, 'group' | 'pdf'> | null | undefined, pdfPage: number): Promise<string> {
+  const range = (topic && chapterPageRange(topic)) ?? { first: Math.max(1, pdfPage - 1), last: pdfPage + 1 };
+  return bookText(book, range);
+}

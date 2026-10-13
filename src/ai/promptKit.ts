@@ -14,6 +14,7 @@
  */
 
 import { DIAGRAM_RULES_COMPACT } from './diagramRules';
+import { diagramLayoutHint } from './diagramPlanning';
 
 export type PromptChatMode = 'grounded' | 'explain' | 'summarize' | 'diagram' | 'test' | 'mnemonic';
 
@@ -100,7 +101,7 @@ export const CHAT_FORMAT_RULES =
  */
 export const DIAGRAM_RULES = [
   DIAGRAM_RULES_COMPACT,
-  'Pentru clasificări, etape, interacțiuni sau stadii: ```mermaid cu `mindmap`, `timeline` („etapă : eveniment”), `sequenceDiagram` sau `stateDiagram-v2`, text simplu fără ghilimele sau caractere speciale. Pentru diferențiale cu mai multe coloane, tabelul Markdown e mai lizibil decât o schemă.',
+  'DESIGN: max 3 niveluri, 12 noduri, 2-5 cuvinte/nod; restul în `|` sau text. Peste 12: două scheme, nu tăia informația. Clasificări: `[formă]>` în ```schema. Etape: ```mermaid `timeline`, `sequenceDiagram`, `stateDiagram-v2`; evită `mindmap`. Diferențiale: tabelul Markdown. Păstrează exact relațiile și valorile; fără fapte inventate.',
 ].join('\n');
 
 export const MATH_RULES = [
@@ -124,7 +125,7 @@ const MODE_MODULES: Record<PromptChatMode, string[]> = {
     'Rol: editor de curs. Comprimă agresiv fără să pierzi mecanismele; segmente: „Foarte probabil”, „Posibil”, „Puțin probabil”, „Capcane”, „Regula de 30 de secunde”. Accent pe ce devine grilă: diferențe, excepții, indicații, contraindicații, triade, criterii.',
   ],
   diagram: [
-    'Rol: arhitect de scheme. Transformă conținutul în structură vizuală, nu în eseu: OBLIGATORIU cel puțin o schemă: bloc ```schema pentru decizie/flux, ```mermaid (mindmap pentru clasificări, timeline pentru etape); apoi ramurile importante pe scurt și 3-5 „noduri de examen”.',
+    'Rol: arhitect de scheme. OBLIGATORIU cel puțin o schemă: bloc ```schema pentru clasificare/decizie/flux; ```mermaid pentru etape speciale. Apoi 2-3 „noduri de examen”.',
   ],
   test: [
     'Rol: examinator. Întrebări care verifică mecanismul, diferențialul și capcana, nu definiții. Răspunsurile nu le dai decât dacă sunt cerute; atunci explici varianta corectă și de ce distractorii sunt plauzibili, dar greșiți. Dificultatea după topicurile vulnerabile din profil.',
@@ -179,10 +180,20 @@ export const APP_CONTEXT_RULES = [
   'CONTEXT DESPRE APLICAȚIE (StudyX, nu un sistem de fișiere):',
   '- „folder” = folder din aplicație (grile, flashcarduri; bara laterală), nu de pe disc; „agentul” = asistentul AI din aplicație care creează grile, flashcarduri și foldere',
   '- la „ce a făcut agentul / unde s-a salvat X” răspunsul e în istoricul conversației; dacă nu e acolo, spune sincer că nu ai detalii',
-  '- dacă un furnizor AI rămâne fără limită sau are probleme, aplicația trece singură pe următorul cu cheie (apoi pe AI-ul local, dacă e pornit)',
+  '- dacă un furnizor AI atinge limita sau are probleme, aplicația încearcă următorul furnizor configurat cu cheie',
   '- în acest chat NU poți crea, salva, muta sau șterge nimic: nu spune „am salvat/am creat/am mutat”; spune ce comandă să dea („Fă-mi 5 grile despre X în folderul Y”)',
   '- nu inventa meniuri; sigure: butonul „Reindexează cărțile” și cardul „Capitole pentru AI” (Rezidențiat › Cărțile tale); dacă nu ești sigur, spune-o',
 ].join('\n');
+
+/** Varianta scurtă, trimisă la fiecare mesaj: doar regulile care previn greșeli grave (pretinsa salvare, „folder” de pe disc). */
+export const APP_CONTEXT_CORE =
+  'APLICAȚIA: ești în StudyX; „folder” = folder din aplicație, nu de pe disc. În acest chat NU creezi, salvezi, muți sau ștergi nimic: nu spune „am salvat/am creat”, ci ce comandă să dea („Fă-mi 5 grile despre X în folderul Y”).';
+
+/** Întrebarea atinge aplicația (foldere, agent, furnizori, meniuri)? Atunci se trimite blocul complet, altfel doar nucleul. */
+export function mentionsApp(message?: string): boolean {
+  if (!message) return false;
+  return /(folder|agent|salv|aplica[tț]i|studyx|meniu|buton|setăr|setar|furnizor|chei[ae]?\b|limit|token|reindex|bibliotec|unde (?:e|este|a fost|l-ai|ai pus))/i.test(message);
+}
 
 /* ── Blocuri dinamice ─────────────────────────────────────────────────────────────────────── */
 
@@ -239,7 +250,7 @@ export interface ChatPromptInput {
 /** Partea stabilă a promptului de chat (fără blocuri dinamice). */
 export function buildChatBase(
   mode: PromptChatMode,
-  options: { book?: boolean; diagrams?: boolean; math?: boolean } = {},
+  options: { book?: boolean; diagrams?: boolean; math?: boolean; app?: boolean } = {},
 ): string {
   const sections = [
     `${PERSONA_CORE} Ești asistentul din StudyX: clar, riguros și uman.`,
@@ -251,7 +262,7 @@ export function buildChatBase(
     CHAT_FORMAT_RULES,
     ...((options.diagrams ?? mode === 'diagram') ? [DIAGRAM_RULES] : []),
     ...(options.math ? [MATH_RULES] : []),
-    APP_CONTEXT_RULES,
+    options.app === false ? APP_CONTEXT_CORE : APP_CONTEXT_RULES,
     chatModeModule(mode),
     ...(options.book ? [BOOK_MODULE] : []),
   ];
@@ -274,8 +285,11 @@ export function composeChatSystemPrompt(input: ChatPromptInput): string {
   const tone = toneInstructions(input.tone);
   const diagrams = input.includeDiagramRules ?? (mode === 'diagram' || suggestsDiagram(input.userMessage));
   const math = input.includeMathRules ?? suggestsMath(input.userMessage);
+  // ~190 de tokeni economisiți la fiecare mesaj medical: blocul complet despre aplicație doar când întrebarea o atinge.
+  const app = Boolean(input.appQuestion) || mentionsApp(input.userMessage) || Boolean(summary);
 
   const live: string[] = [];
+  if (diagrams) live.push(diagramLayoutHint(input.userMessage));
   if (input.appQuestion) {
     live.push('ÎNTREBARE DESPRE APLICAȚIE: răspunde direct și scurt despre cum funcționează StudyX; fără „capcană de examen”, fără structură de curs, fără exemple clinice; dacă nu ești sigur, spune-o.');
   }
@@ -296,7 +310,7 @@ ${contextSummary}`
       : 'NU EXISTĂ CONTEXT din biblioteca utilizatorului: răspunde natural din cunoștințe medicale, fără meta-comentarii despre bibliotecă, documente sau folder („nu am găsit…”, „nu e din biblioteca ta”); doar dacă a cerut explicit ceva din documentele lui, spune scurt că nu ai găsit.',
   );
 
-  return [buildChatBase(mode, { book, diagrams, math }), ...live].join('\n\n');
+  return [buildChatBase(mode, { book, diagrams, math, app }), ...live].join('\n\n');
 }
 
 /* ── Roluri de sistem pentru funcțiile din groq.ts (getMedicalSystemPrompt) ───────────────── */
@@ -330,40 +344,3 @@ export function buildRolePrompt(role: MedicalRole, extraBlocks: string[] = []): 
   const prose = role === 'examiner' ? [] : [STRUCTURED_OUTPUT_RULES];
   return [intro, ...common, ...prose, ...extraBlocks].filter(Boolean).join('\n\n');
 }
-
-/* ── Varianta COMPACTĂ pentru modele mici locale (1.5–4B, context ~4–6k tokeni) ───────────── */
-/* Aceleași reguli critice (limbă, terminologie, siguranță medicală, onestitate despre surse,
-   fără scheme ASCII), dar scurte și imperative; fără Mermaid, tabele complexe sau module lungi. */
-
-export const LANGUAGE_RULE_COMPACT = 'Răspunde doar în română, cu diacritice cu virgulă (ș, ț, ă, â, î), nu cu sedilă.';
-
-export const TERMINOLOGY_RULE_COMPACT = 'Folosește termeni medicali românești standard; latina sau engleza doar dacă clarifică.';
-
-export const MEDICAL_SAFETY_RULES_COMPACT =
-  'SIGURANȚĂ: nu inventa doze, valori, diagnostice, ghiduri, pagini sau statistici. Dacă nu ești sigur, scrie „verifică în sursă / ghidul actual”. Dacă premisa e greșită, corecteaz-o politicos.';
-
-export const SOURCE_RULES_COMPACT =
-  'SURSE: citează [n] doar din contextul dat. Ce nu e în context marchează „din cunoștințe generale”. Fără context nu pomeni cărți sau cursuri; dacă nu știi, spune sincer.';
-
-export const CHAT_FORMAT_RULES_COMPACT =
-  'FORMAT: răspuns scurt (1-5 propoziții; liste scurte cu ➔ la enumerări). **Bold** pentru termeni-cheie. Fără scheme ASCII, tabele sau cod; un flux scrie-l ca listă cu ➔.';
-
-const COMPACT_TONE_EXAMPLE = 'Ton: direct și cald, ca un coleg mai mare. Ex.: „Da, e stenoză mitrală. ➔ Semn-cheie: …”.';
-
-/** Promptul de sistem compact (~300-400 tokeni) pentru chat pe modelul local. */
-export function buildCompactChatSystem(options: { hasContext?: boolean; scopedSourceName?: string } = {}): string {
-  const scope = options.scopedSourceName ? `Document țintă: ${cleanPromptBlock(options.scopedSourceName)}.` : '';
-  return [
-    'Ești medic senior care îi ajută pe studenții români la medicină (examene, rezidențiat) în StudyX.',
-    `${LANGUAGE_RULE_COMPACT} ${TERMINOLOGY_RULE_COMPACT}`,
-    MEDICAL_SAFETY_RULES_COMPACT,
-    SOURCE_RULES_COMPACT,
-    CHAT_FORMAT_RULES_COMPACT,
-    COMPACT_TONE_EXAMPLE,
-    scope,
-    options.hasContext
-      ? 'Răspunde din fragmentele [n] de mai jos.'
-      : 'Nu ai context din bibliotecă: răspunde din cunoștințe medicale, fără meta-comentarii.',
-  ].filter(Boolean).join('\n');
-}
-

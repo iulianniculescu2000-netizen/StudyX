@@ -15,11 +15,13 @@ import {
   Gauge,
   History,
   ListChecks,
+  MousePointer,
   RotateCcw,
   ShieldCheck,
   Sparkles,
   Trash2,
 } from 'lucide-react';
+import { useCursorStore } from '../store/cursorStore';
 import BackupExport from '../components/BackupExport';
 import AISettings from '../components/AISettings';
 import AIKeyGuide from '../tutorial/AIKeyGuide';
@@ -46,9 +48,11 @@ import { useUpdateStore } from '../store/updateStore';
 import { useUserStore } from '../store/userStore';
 import { useTheme } from '../theme/ThemeContext';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import { useScrollLock } from '../hooks/useScrollLock';
 import PageHeader from '../components/ui/PageHeader';
 import SectionLabel from '../components/ui/SectionLabel';
-import { dur, ease } from '../theme/motion';
+import { Z_LAYERS } from '../theme/zLayers';
+import { plural } from '../lib/plural';
 
 function ConfirmResetModal({
   open,
@@ -60,7 +64,9 @@ function ConfirmResetModal({
   onConfirm: () => void;
 }) {
   const theme = useTheme();
+  const { calmMotion, t } = useAdaptiveMotion();
   const dialogRef = useFocusTrap(open, onCancel);
+  useScrollLock(open);
   const titleId = useId();
   const descId = useId();
 
@@ -73,9 +79,10 @@ function ConfirmResetModal({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: dur.fast }}
+            transition={t.modal}
             onClick={onCancel}
-            className="fixed inset-0 z-[1000] bg-[var(--overlay)] backdrop-blur-sm"
+            className="fixed inset-0 bg-[var(--overlay)] backdrop-blur-sm"
+            style={{ zIndex: Z_LAYERS.settingsDialog.backdrop }}
           />
           <motion.div
             ref={dialogRef}
@@ -83,22 +90,22 @@ function ConfirmResetModal({
             aria-modal="true"
             aria-labelledby={titleId}
             aria-describedby={descId}
-            initial={{ opacity: 0, y: 8, scale: 0.985 }}
-            animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: dur.base, ease: ease.emphasized } }}
-            exit={{ opacity: 0, y: 8, scale: 0.985, transition: { duration: 0.16, ease: ease.snap } }}
-            className="fixed left-1/2 top-1/2 z-[1001] w-[calc(100vw-1.5rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-[var(--r-xl)] p-6 elev-4 sm:p-8"
-            style={{ background: theme.modalBg, border: '1px solid var(--hairline)' }}
+            initial={calmMotion ? false : { opacity: 0, y: 8, scale: 0.985 }}
+            animate={{ opacity: 1, y: 0, scale: 1, transition: t.modal }}
+            exit={{ opacity: 0, y: calmMotion ? 0 : 8, scale: calmMotion ? 1 : 0.985, transition: t.modalExit }}
+            className="fixed left-1/2 top-1/2 w-[calc(100vw-1.5rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-[var(--r-lg)] p-6 elev-4"
+            style={{ background: theme.modalBg, border: '1px solid var(--hairline)', zIndex: Z_LAYERS.settingsDialog.panel }}
           >
-            <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-[var(--r-md)]" style={{ background: `${theme.danger}18`, color: theme.danger }}>
-              <AlertTriangle size={28} />
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-[var(--r-md)]" style={{ background: `${theme.danger}18`, color: theme.danger }}>
+              <AlertTriangle size={24} />
             </div>
-            <h3 id={titleId} className="mb-3 text-xl font-black" style={{ color: theme.text }}>
+            <h3 id={titleId} className="mb-1.5 text-[16px] font-semibold leading-snug" style={{ color: theme.text }}>
               Resetare totală?
             </h3>
-            <p id={descId} className="mb-8 text-sm leading-relaxed opacity-60" style={{ color: theme.text }}>
+            <p id={descId} className="mb-5 text-[13px] leading-relaxed" style={{ color: theme.text3 }}>
               Toate datele, grilele și progresul tău vor fi șterse definitiv. Această acțiune nu poate fi anulată.
             </p>
-            <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <button
                 onClick={onCancel}
                 data-autofocus
@@ -112,7 +119,7 @@ function ConfirmResetModal({
                 className="focus-ring flex-1 rounded-[var(--r-sm)] py-3 text-sm font-bold text-white"
                 style={{ background: theme.danger, boxShadow: 'var(--elev-1)' }}
               >
-                Reset
+                Resetează
               </button>
             </div>
           </motion.div>
@@ -271,6 +278,8 @@ export default function Settings() {
   const { activeProfileId } = useUserStore();
   const { screenshotProtection, setContentProtection } = useFocusModeStore();
   const { hasKey } = useAIStore();
+  const clearAIMemory = useAIStore((state) => state.clearAIMemory);
+  const [confirmMemory, setConfirmMemory] = useState(false);
   const { localVersion } = useUpdateStore();
   const performanceMode = useRuntimeStore((state) => state.performanceMode);
   const lowPowerMode = useRuntimeStore((state) => state.lowPowerMode);
@@ -278,6 +287,8 @@ export default function Settings() {
   const setPerformanceMode = useRuntimeStore((state) => state.setPerformanceMode);
   const setLowPowerMode = useRuntimeStore((state) => state.setLowPowerMode);
   const setFeatureFlag = useRuntimeStore((state) => state.setFeatureFlag);
+  const cursorEnabled = useCursorStore((state) => state.enabled);
+  const setCursorEnabled = useCursorStore((state) => state.setEnabled);
   const [aiDebug, setAiDebug] = useState(() => isAIDebugEnabled());
   const healthStatus = useDiagnosticsStore((state) => state.healthStatus);
   const checks = useDiagnosticsStore((state) => state.checks);
@@ -381,7 +392,7 @@ export default function Settings() {
         <PageHeader title="Setări" subtitle="Configurarea experienței tale StudyX." tour={{ id: 'settings', label: 'Vezi turul Setărilor' }} />
 
         <div className="pointer-events-none sticky top-2 z-10 mb-6">
-          <div data-tutorial="settings-tabs" className="pointer-events-auto overflow-x-auto rounded-2xl p-1.5" style={{ scrollbarWidth: 'none', background: 'color-mix(in srgb, var(--bg) 94%, transparent)', backdropFilter: 'blur(22px) saturate(1.2)', WebkitBackdropFilter: 'blur(22px) saturate(1.2)', boxShadow: 'var(--hairline-ring), var(--elev-2)' }}>
+          <div data-tutorial="settings-tabs" className="pointer-events-auto rounded-2xl p-1.5" style={{ background: 'color-mix(in srgb, var(--bg) 94%, transparent)', backdropFilter: 'blur(22px) saturate(1.2)', WebkitBackdropFilter: 'blur(22px) saturate(1.2)', boxShadow: 'var(--hairline-ring), var(--elev-2)' }}>
             <SegmentedTabs
               tabs={SETTINGS_SECTIONS}
               value={active}
@@ -397,9 +408,19 @@ export default function Settings() {
         {active === 'aspect' && (
         <Section id="aspect" title="Aspect">
           <p className="mb-3 text-[13px] leading-relaxed" style={{ color: theme.text2 }}>
-            Alege între tema luminoasă, cea întunecată sau lasă aplicația să urmeze sistemul (se schimbă singură seara).
+            Alege între tema luminoasă, cea întunecată sau lasă aplicația să urmeze setarea sistemului tău de operare.
           </p>
           <ThemeModeSwitcher />
+
+          <Divider />
+
+          <ToggleRow
+            icon={<MousePointer size={16} />}
+            label="Cursor fin StudyX"
+            description="Activează cursorul fin și elegant (săgeată și pointer stil Windows, micuț și precis, fără urmă)."
+            checked={cursorEnabled}
+            onChange={setCursorEnabled}
+          />
         </Section>
         )}
 
@@ -587,7 +608,7 @@ export default function Settings() {
               <ActionRow
                 icon={<History size={16} />}
                 label="Restaurează dinaintea ultimei instalări"
-                description={`${snapshot.label} · ${formatSnapshotDate(snapshot.savedAt)} · ${snapshot.quizzes.length} seturi`}
+                description={`${snapshot.label} · ${formatSnapshotDate(snapshot.savedAt)} · ${plural(snapshot.quizzes.length, 'set', 'seturi')}`}
                 buttonLabel={restoring ? 'Se restaurează...' : 'Restaurează'}
                 onClick={handleRestoreSnapshot}
                 danger
@@ -638,6 +659,18 @@ export default function Settings() {
               <AIKeyGuide />
             </div>
           )}
+          <Divider />
+          <ActionRow
+            icon={<Trash2 size={16} />}
+            label="Memoria AI"
+            description="Ce a reținut asistentul despre cum înveți (subiecte, ritm, preferințe), doar pentru acest profil. Grilele, cardurile și statisticile nu se șterg."
+            buttonLabel={confirmMemory ? 'Sigur? Apasă din nou' : 'Șterge memoria'}
+            onClick={() => {
+              if (!confirmMemory) { setConfirmMemory(true); return; }
+              if (activeProfileId) clearAIMemory(activeProfileId);
+              setConfirmMemory(false);
+            }}
+          />
         </Section>
         )}
 
@@ -647,7 +680,7 @@ export default function Settings() {
           <ActionRow
             icon={<Clapperboard size={16} />}
             label="Filmul de bun venit"
-            description="Un film de 40 de secunde despre tot ce poți face în StudyX."
+            description="O prezentare de aproximativ un minut, cu voce în română și scene pe care le poți relua."
             buttonLabel="Vezi"
             onClick={() => window.dispatchEvent(new CustomEvent(WELCOME_FILM_OPEN_EVENT))}
           />
@@ -700,7 +733,7 @@ export default function Settings() {
           <ActionRow
             icon={<RotateCcw size={16} />}
             label="Actualizări"
-            description={`Versiunea curentă: ${localVersion}`}
+            description={localVersion && localVersion !== '-' ? `Versiunea curentă: ${localVersion}` : 'Actualizările funcționează doar în aplicația desktop'}
             buttonLabel="Caută update"
             onClick={() => useUpdateStore.getState().setShowUpdateModal(true)}
           />
@@ -721,7 +754,7 @@ export default function Settings() {
         </Section>
         )}
 
-        <div className="py-10 text-center text-[10px] font-bold uppercase tracking-[0.3em] opacity-20" style={{ color: theme.text }}>
+        <div className="py-10 text-center text-[10px] font-bold uppercase tracking-[0.3em]" style={{ color: theme.text3 }}>
           StudyX Premium • 2026
         </div>
       </div>

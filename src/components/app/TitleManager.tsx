@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useLocation as useRouterLocation } from 'react-router-dom';
 import { useQuizStore } from '../../store/quizStore';
 import { useStatsStore } from '../../store/statsStore';
+import { useFolderStore } from '../../store/folderStore';
 
 function getQuizId(path: string, segment: number) {
   return path.split('/')[segment] ?? '';
@@ -11,6 +12,7 @@ export default function TitleManager() {
   const location = useRouterLocation();
   const { quizzes } = useQuizStore();
   const { streak } = useStatsStore();
+  const folders = useFolderStore((s) => s.folders);
 
   useEffect(() => {
     let title = 'StudyX';
@@ -27,6 +29,19 @@ export default function TitleManager() {
     } else if (path === '/create') {
       title = searchParams.has('edit') ? 'StudyX - Editare grilă' : 'StudyX - Grilă nouă';
       icon = '\u{1F4DD}';
+    } else if (path.startsWith('/folder/')) {
+      const folder = folders.find((item) => item.id === getQuizId(path, 2));
+      title = folder ? `StudyX - ${folder.name}` : 'StudyX - Folder';
+      icon = '\u{1F4C1}';
+    } else if (path === '/erori') {
+      title = 'StudyX - Caiet de erori';
+      icon = '\u{1F4D2}';
+    } else if (path === '/simulare') {
+      title = 'StudyX - Simulare de examen';
+      icon = '\u{1F393}';
+    } else if (path === '/aproape-examen') {
+      title = 'StudyX - Aproape de examen';
+      icon = '⏳';
     } else if (path.startsWith('/quiz/')) {
       const quiz = quizzes.find((item) => item.id === getQuizId(path, 2));
       title = quiz ? `StudyX - ${quiz.title}` : 'StudyX - Detalii grilă';
@@ -115,7 +130,7 @@ export default function TitleManager() {
       link.href = canvas.toDataURL();
       document.getElementsByTagName('head')[0].appendChild(link);
     }
-  }, [location.pathname, location.search, quizzes, streak.currentStreak]);
+  }, [location.pathname, location.search, quizzes, folders, streak.currentStreak]);
 
   return null;
 }

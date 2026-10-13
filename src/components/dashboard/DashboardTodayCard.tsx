@@ -7,8 +7,8 @@ import { daysUntil } from '../../lib/organizare';
 import { localDateStr } from '../../lib/studyPlan';
 import type { PlanSummary } from '../../lib/organizare/types';
 import SectionLabel from '../ui/SectionLabel';
+import { plural } from '../../lib/plural';
 
-const plural = (n: number, one: string, many: string) => `${n.toLocaleString('ro-RO')} ${n === 1 ? one : many}`;
 
 export interface DashboardTodayCardProps {
   /** Întrebările scadente, numărate exact ca în pagina de Recapitulare (`buildDueItems`). */
@@ -49,43 +49,47 @@ export default function DashboardTodayCard({ dueCount, plan, today }: DashboardT
   return (
     <section aria-label="Azi" className={`mb-5 ${calmMotion ? '' : 'fx-rise'}`} style={{ '--i': 1 } as CSSProperties}>
       <SectionLabel className="mb-2">Azi</SectionLabel>
-      <div className="glass-panel fx-spot overflow-hidden rounded-[var(--r-lg)]" style={{ boxShadow: 'var(--elev-1)' }}>
+      <div className="glass-panel overflow-hidden rounded-[var(--r-lg)]" style={{
+        background: 'linear-gradient(125deg, var(--accent-soft), transparent 65%), var(--glass-panel-strong)',
+        borderColor: 'color-mix(in srgb, var(--accent) 28%, var(--glass-border))',
+      }}>
         {dueCount > 0 && (
-          <div className="flex items-center gap-3 px-4 py-3.5">
+          <div className="grid grid-cols-[40px_minmax(0,1fr)] items-center gap-x-3 gap-y-3 px-4 py-5 sm:grid-cols-[40px_minmax(0,1fr)_auto] sm:px-5">
             <div
               className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[var(--r-sm)]"
               style={{ background: `${theme.accent}18`, color: theme.accentText }}
             >
               <RefreshCw size={18} aria-hidden="true" />
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-[15px] font-semibold tabular-nums" style={{ color: theme.text }}>
+            <div className="min-w-0">
+              <div className="text-lg font-semibold leading-snug tracking-tight tabular-nums sm:text-xl" style={{ color: theme.text }}>
                 {plural(dueCount, 'întrebare', 'întrebări')} de recapitulat
               </div>
-              <div className="truncate text-[12px]" style={{ color: theme.text3 }}>Din coada zilnică de recapitulare</div>
+              <div className="mt-1 text-[12px] leading-relaxed" style={{ color: theme.text3 }}>Din coada zilnică de recapitulare</div>
             </div>
-            <Link to="/daily-review" className={primary} style={{ background: theme.accent }}>Recapitulează</Link>
+            <Link to="/daily-review" className={`${primary} col-start-2 text-center sm:col-start-auto`} style={{ background: theme.accent }}>Recapitulează</Link>
           </div>
         )}
         {plan && (
           <div
-            className="flex items-center gap-3 px-4 py-3.5"
+            className="grid grid-cols-[40px_minmax(0,1fr)] items-center gap-x-3 gap-y-3 px-4 py-3.5 sm:grid-cols-[40px_minmax(0,1fr)_auto] sm:px-5"
             style={{ borderTop: dueCount > 0 ? '1px solid var(--hairline)' : undefined }}
           >
             <div
               className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[var(--r-sm)]"
-              style={{ background: `${theme.accent}18`, color: theme.accentText }}
+              style={{ background: dueCount > 0 ? theme.fillSubtle : `${theme.accent}18`, color: dueCount > 0 ? theme.text3 : theme.accentText }}
             >
               <CalendarRange size={18} aria-hidden="true" />
             </div>
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0">
               <div className="text-[11.5px] font-medium" style={{ color: theme.text3 }}>
                 {examPassed ? 'Organizare' : inPass ? `Organizare · trecerea ${plan.phase} din 4` : 'Organizare · simulări'}
               </div>
-              <div className="truncate text-[15px] font-semibold" style={{ color: theme.text }}>{planTitle}</div>
-              <div className="truncate text-[12px]" style={{ color: theme.text3 }}>{planMeta}</div>
+              <div className="break-words text-[15px] font-semibold leading-snug" style={{ color: theme.text }}>{planTitle}</div>
+              <div className="mt-0.5 break-words text-[12px] leading-relaxed" style={{ color: theme.text3 }}>{planMeta}</div>
             </div>
-            <Link to="/rezidentiat/organizare" className={secondary} style={{ color: theme.accentText }}>Deschide planul</Link>
+            <Link to="/rezidentiat/organizare" className={`${dueCount > 0 ? secondary : primary} col-start-2 text-center sm:col-start-auto`}
+              style={dueCount > 0 ? { color: theme.accentText } : { background: theme.accent }}>Deschide planul</Link>
           </div>
         )}
       </div>

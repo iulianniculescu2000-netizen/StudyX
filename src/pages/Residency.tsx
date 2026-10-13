@@ -1,3 +1,4 @@
+import { plural } from '../lib/plural';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronRight, Layers, Loader2, MessageCircle, Play, Scissors, Stethoscope, Library, HeartPulse, BookOpen, CalendarRange } from 'lucide-react';
@@ -35,7 +36,6 @@ import PlanCard from '../components/residency/PlanCard';
 import ContinueChapter from '../components/residency/ContinueChapter';
 import { usePlanProgress } from '../components/residency/useResidencyData';
 
-const number = (value: number) => value.toLocaleString('ro-RO');
 
 function DisciplineIcon({ name, size = 20 }: { name: string; size?: number }) {
   const key = disciplineKey(name);
@@ -104,7 +104,7 @@ export default function Residency() {
   const plan = useOrganizareStore((state) => state.byProfile[profileId]?.summary ?? null);
   const [today] = useState(() => new Date());
   const planDetail = plan
-    ? `${plan.phase <= 4 ? `Trecerea ${plan.phase} din 4 · ${plan.done} din ${plan.total} topicuri` : 'Simulări și menținere'} · ${daysUntil(plan.exam, today)} zile până la examen`
+    ? `${plan.phase <= 4 ? `Trecerea ${plan.phase} din 4 · ${plan.done} din ${plural(plan.total, 'topic', 'topicuri')}` : 'Simulări și menținere'} · ${plural(daysUntil(plan.exam, today), 'zi', 'zile')} până la examen`
     : 'Planul tău pe patru treceri, săptămâni și ritm zilnic';
 
   // Sets an AI agent filed straight into the section root are moved into "Grile" so none is stranded.
@@ -148,7 +148,7 @@ export default function Residency() {
         <PageHeader
           title="Rezidențiat"
           subtitle={hasBank
-            ? `${disciplines.filter((d) => d.specialties.some((s) => !s.loose)).length} discipline · ${totalSpecialties} specialități · ${number(totalQuestions)} grile`
+            ? `${plural(disciplines.filter((d) => d.specialties.some((s) => !s.loose)).length, 'disciplină', 'discipline')} · ${plural(totalSpecialties, 'specialitate', 'specialități')} · ${plural(totalQuestions, 'grilă', 'grile')}`
             : 'Grile reale, cărți și carduri, într-un singur loc.'}
           actions={(
             <>
@@ -211,7 +211,7 @@ export default function Residency() {
                     </div>
                     <div className="mt-3 text-[16px] font-semibold" style={{ color: theme.text }}>{discipline.folder.name}</div>
                     <div className="text-[12.5px]" style={{ color: theme.text3 }}>
-                      {discipline.specialties.length} specialități · {number(discipline.questionCount)} grile
+                      {plural(discipline.specialties.length, 'specialitate', 'specialități')} · {plural(discipline.questionCount, 'grilă', 'grile')}
                     </div>
                     <div className="mt-3.5 h-1 overflow-hidden rounded-full" style={{ background: 'var(--fill-subtle)' }}>
                       <div className="h-full rounded-full" style={{ width: `${discipline.progress}%`, background: theme.accent }} />
@@ -232,10 +232,11 @@ export default function Residency() {
               type="button"
               onClick={() => setShowDuplicates((open) => !open)}
               aria-expanded={showDuplicates}
-              className="press-feedback text-[12.5px] hover:underline"
-              style={{ color: theme.text3 }}
+              className="fine-chip press-feedback inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-semibold"
+              style={{ color: theme.accentText }}
             >
-              {duplicates.duplicateCount} întrebări duplicate · {showDuplicates ? 'Ascunde lista' : 'Vezi dublatele'}
+              {plural(duplicates.duplicateCount, 'întrebare duplicată', 'întrebări duplicate')} · {showDuplicates ? 'Ascunde lista' : 'Vezi dublatele'}
+              <ChevronRight size={13} aria-hidden style={{ transform: showDuplicates ? 'rotate(90deg)' : 'none', transition: 'transform 180ms ease' }} />
             </button>
           </div>
         )}

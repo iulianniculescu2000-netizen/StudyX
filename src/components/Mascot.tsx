@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import './Mascot.css';
 
 interface Props {
   /** Body colour; the darker shades are derived from it, so the mascot follows the app accent. */
@@ -8,6 +9,10 @@ interface Props {
   /** Calm motion (reduced motion / lite): no floating, no cursor tracking, no waving. */
   calm?: boolean;
   size?: number;
+  /** Conversation state. Controlled mascots animate once when the state changes. */
+  expression?: 'idle' | 'waiting' | 'streaming' | 'success' | 'error' | 'stopped' | 'unconfigured';
+  /** Message avatars keep their expression without motion or global event listeners. */
+  static?: boolean;
 }
 
 const SLEEP_AFTER_MS = 120_000;
@@ -19,13 +24,15 @@ const LOOK_RANGE = 2.6;
  * waves on hover (and once when the app opens), looks busy while the assistant works and dozes off when
  * left alone. The loops live in index.css (.pip-*) so the reduced-motion block can switch them off.
  */
-export default function Mascot({ accent, thinking = false, calm = false, size = 64 }: Props) {
+export default function Mascot({ accent, thinking = false, calm = false, size = 64, expression, static: isStatic = false }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const gazeRef = useRef<SVGGElement>(null);
   const [asleep, setAsleep] = useState(false);
   const [greeting, setGreeting] = useState(false);
+  const autonomous = expression === undefined && !isStatic && !calm;
 
   useEffect(() => {
+    if (!autonomous) return;
     let frame = 0;
     let sleepTimer = 0;
     const armSleep = () => {
@@ -59,11 +66,11 @@ export default function Mascot({ accent, thinking = false, calm = false, size = 
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('keydown', onKey);
     };
-  }, [calm]);
+  }, [calm, autonomous]);
 
   // One hello per session, a moment after the app settles; never when motion is reduced.
   useEffect(() => {
-    if (calm) return undefined;
+    if (!autonomous) return undefined;
     let greeted = false;
     try { greeted = sessionStorage.getItem(GREETED_KEY) === '1'; } catch { /* storage unavailable */ }
     if (greeted) return undefined;
@@ -73,10 +80,15 @@ export default function Mascot({ accent, thinking = false, calm = false, size = 
     }, 1800);
     const stop = window.setTimeout(() => setGreeting(false), 1800 + 2000);
     return () => { window.clearTimeout(start); window.clearTimeout(stop); };
-  }, [calm]);
+  }, [autonomous]);
 
   const dark = `color-mix(in srgb, ${accent} 72%, #000)`;
-  const state = thinking ? 'thinking' : asleep ? 'asleep' : 'idle';
+  const state = expression ?? (thinking ? 'thinking' : autonomous && asleep ? 'asleep' : 'idle');
+  const mouth = expression === 'error' ? 'M54 69 Q60 65 66 69'
+    : expression === 'stopped' || expression === 'unconfigured' ? 'M55 68 L65 68'
+    : expression === 'waiting' ? 'M56 68 Q60 70 64 68'
+    : expression === 'streaming' || expression === 'success' ? 'M52 65 Q60 76 68 65'
+    : 'M54 66 Q60 72 66 66';
 
   return (
     <svg
@@ -86,8 +98,9 @@ export default function Mascot({ accent, thinking = false, calm = false, size = 
       height={Math.round(size * (108 / 104))}
       aria-hidden="true"
       focusable="false"
-      className={`pip ${calm ? '' : 'pip-motion'}`}
+      className={`pip ${expression !== undefined ? 'pip-controlled' : ''} ${!calm && !isStatic ? expression !== undefined ? 'pip-expressive' : 'pip-motion' : ''}`}
       data-state={state}
+      data-static={isStatic || calm ? 'true' : undefined}
       style={{ overflow: 'visible', filter: 'drop-shadow(0 3px 5px rgba(0,0,0,0.28))' }}
     >
       <g className="pip-float">
@@ -96,6 +109,10 @@ export default function Mascot({ accent, thinking = false, calm = false, size = 
         <rect x="22" y="22" width="76" height="66" rx="30" fill={accent} />
         <rect x="30" y="32" width="60" height="44" rx="22" fill="#F2F7FF" />
         <g ref={gazeRef} className="pip-gaze">
+          {expression !== undefined && <g className="pip-brows" fill="none" stroke="#14233A" strokeWidth="2.5" strokeLinecap="round">
+            <path d={expression === 'error' ? 'M43 43 L52 40' : expression === 'waiting' ? 'M43 40 L52 42' : 'M43 41 Q48 38 53 41'} />
+            <path d={expression === 'error' ? 'M68 40 L77 43' : expression === 'waiting' ? 'M67 42 L76 39' : 'M67 41 Q72 38 77 41'} />
+          </g>}
           <g className="pip-eyes">
             <ellipse cx="48" cy="54" rx="6" ry="8" fill="#14233A" />
             <ellipse cx="72" cy="54" rx="6" ry="8" fill="#14233A" />
@@ -105,9 +122,9 @@ export default function Mascot({ accent, thinking = false, calm = false, size = 
         </g>
         <ellipse cx="40" cy="66" rx="5" ry="3" fill="#FF8FA3" opacity="0.7" />
         <ellipse cx="80" cy="66" rx="5" ry="3" fill="#FF8FA3" opacity="0.7" />
-        <path className="pip-mouth" d="M54 66 Q60 72 66 66" fill="none" stroke="#14233A" strokeWidth="2.5" strokeLinecap="round" />
+        <path className="pip-mouth" d={mouth} fill="none" stroke="#14233A" strokeWidth="2.5" strokeLinecap="round" />
         <circle cx="20" cy="56" r="6" fill={dark} />
-        <g className="pip-hand" data-wave={greeting ? 'true' : undefined}>
+        <g className="pip-hand" data-wave={autonomous && greeting ? 'true' : undefined}>
           <circle cx="100" cy="56" r="6" fill={dark} />
         </g>
         <rect x="44" y="86" width="32" height="14" rx="7" fill={dark} />

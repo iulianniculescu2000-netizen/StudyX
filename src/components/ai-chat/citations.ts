@@ -11,6 +11,7 @@ export interface OpenBookDetail {
   printedPage?: number;
   sourceId?: string;
   sourceName?: string;
+  excerpt?: string;
 }
 
 /** Citarea din UI pornind de la o sursă din contextul numerotat. */
@@ -35,7 +36,7 @@ export function citationLabel(citation: Pick<Citation, 'source' | 'page' | 'page
 }
 
 /** Cere cititorului să deschidă pagina citată. Nu face nimic dacă nu există `window`. */
-export function openBookCitation(citation: Pick<Citation, 'source' | 'sourceId' | 'page' | 'printedPage'>): void {
+export function openBookCitation(citation: Pick<Citation, 'source' | 'sourceId' | 'page' | 'printedPage' | 'excerpt'>): void {
   if (typeof window === 'undefined') return;
   const detail: OpenBookDetail = {
     book: bookOfSourceName(citation.source) ?? undefined,
@@ -43,6 +44,7 @@ export function openBookCitation(citation: Pick<Citation, 'source' | 'sourceId' 
     ...(citation.printedPage !== undefined ? { printedPage: citation.printedPage } : {}),
     ...(citation.sourceId ? { sourceId: citation.sourceId } : {}),
     sourceName: citation.source,
+    excerpt: citation.excerpt,
   };
   window.dispatchEvent(new CustomEvent<OpenBookDetail>(OPEN_BOOK_EVENT, { detail }));
 }
@@ -52,7 +54,12 @@ export function citationAriaLabel(citation: Citation): string {
   const where = citation.printedPage !== undefined
     ? `pagina ${citation.printedPage}`
     : citation.page !== undefined ? `pagina PDF ${citation.page}` : '';
-  return `Deschide sursa ${citation.n ?? ''} în carte: ${cleanName(citation.source)}${where ? `, ${where}` : ''}${citation.heading ? `, ${citation.heading}` : ''}`.replace(/\s+/g, ' ');
+  const destination = bookOfSourceName(citation.source) ? 'în carte' : 'în textul indexat';
+  return `Deschide sursa ${citation.n ?? ''} ${destination}: ${cleanName(citation.source)}${where ? `, ${where}` : ''}${citation.heading ? `, ${citation.heading}` : ''}`.replace(/\s+/g, ' ');
+}
+
+export function citationOpenLabel(citation: Pick<Citation, 'source'>): string {
+  return bookOfSourceName(citation.source) ? 'Deschide în carte' : 'Deschide sursa';
 }
 
 function cleanName(name: string) {

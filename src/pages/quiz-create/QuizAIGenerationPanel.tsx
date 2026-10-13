@@ -67,6 +67,7 @@ export function QuizAIGenerationPanel({
       {visible && (
         <motion.div
           key="ai-panel"
+          data-tutorial="create-ai-panel"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}

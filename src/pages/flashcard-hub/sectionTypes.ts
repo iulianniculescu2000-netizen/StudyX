@@ -52,6 +52,5 @@ export interface FlashcardHubActionsProps {
   onMistakeDeckCreate: () => void;
   onPhotoImport: () => void;
   onPdfImport: () => void;
-  onQuickDeckCreate: () => void;
   onTargetFolderChange: (folderId: string) => void;
 }

@@ -86,6 +86,11 @@ export const useUserStore = create<UserStore>()(
           ...(wasActive ? { activeProfileId: null, username: null } : {}),
           pendingTutorialProfileId: s.pendingTutorialProfileId === id ? null : s.pendingTutorialProfileId,
         }));
+        // Removes the profile's data everywhere (localStorage, desktop folder, organizare/tutorial entries).
+        // Imported lazily: the purge pulls in the data stores, which must not load before this one exists.
+        void import('./profilePurge')
+          .then((m) => m.purgeProfileData(id))
+          .catch((err) => console.error('[Profile] data purge failed:', err));
       },
 
       logout: () => set({ activeProfileId: null, username: null }),

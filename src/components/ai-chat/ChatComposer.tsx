@@ -111,6 +111,7 @@ function ChatComposer({
 
         <textarea
           ref={textareaRef}
+          data-autofocus
           rows={1}
           aria-label="Mesaj pentru AI"
           value={input}

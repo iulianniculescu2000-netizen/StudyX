@@ -2,11 +2,12 @@ import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuizStore } from '../../../store/quizStore';
 import { useAIStore } from '../../../store/aiStore';
+import { useToastStore } from '../../../store/toastStore';
 import { notesToFlashcards } from '../../../lib/groq';
 import { renderPdfPagesAsImages, renderPdfPagesWithText, resizeImageFile, type PdfFlashcardPageSnapshot } from '../../../lib/imageProcessing';
 import type { Difficulty, Question } from '../../../types';
 import { generateId, OPTION_IDS, VISUAL_FLASHCARD_IMAGE_MAX_EDGE, buildFlashcardQuestion, splitFlashcardAnswer } from '../cardBuilders';
-import { parseCsvFlashcards } from './csvCards';
+import { parseCsvFlashcardsDetailed } from './csvCards';
 import type { AiRun } from './useAiRun';
 import type { DeckTarget } from './useDeckTarget';
 
@@ -19,6 +20,7 @@ export function useDeckImport(
   const navigate = useNavigate();
   const addQuiz = useQuizStore((s) => s.addQuiz);
   const hasKey = useAIStore((s) => s.hasKey);
+  const addToast = useToastStore((s) => s.addToast);
   const { selectedFolder } = target;
   const [csvImporting, setCsvImporting] = useState(false);
   const [csvError, setCsvError] = useState('');
@@ -60,13 +62,13 @@ export function useDeckImport(
     setCsvError('');
 
     try {
-      const questions = parseCsvFlashcards(await file.text());
+      const { questions, skipped } = parseCsvFlashcardsDetailed(await file.text());
       const deckId = generateId();
       const fileName = file.name.replace(/\.[^.]+$/, '');
 
       addQuiz({
         id: deckId,
-        title: `Deck Anki · ${fileName}`,
+        title: `Deck CSV · ${fileName}`,
         description: `Importat din ${file.name} (${questions.length} carduri)`,
         emoji: '🗂️',
         color: selectedFolder?.color ?? 'teal',
@@ -75,11 +77,18 @@ export function useDeckImport(
         kind: 'flashcard',
         shuffleQuestions: true,
         shuffleAnswers: false,
-        tags: ['anki', 'import'],
+        tags: ['csv', 'import'],
         questions,
         createdAt: Date.now(),
       });
 
+      if (skipped > 0) {
+        addToast(
+          `${skipped} ${skipped === 1 ? 'linie a fost omisă' : 'linii au fost omise'} (fără separator sau fără față/spate). Verifică dacă fișierul amestecă separatori.`,
+          'warning',
+          7000,
+        );
+      }
       navigate(`/flashcards/session/${deckId}?mode=all`);
     } catch (error: unknown) {
       setCsvError(error instanceof Error ? error.message : 'Eroare la importul CSV.');

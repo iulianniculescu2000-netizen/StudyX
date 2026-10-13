@@ -11,9 +11,9 @@ const BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours (Daily)
 const LAST_BACKUP_KEY = 'studyx-last-auto-backup';
 
 /**
- * Runs a weekly auto-backup of all localStorage data to
+ * Runs a daily auto-backup of the active profile to
  * Documents/StudyX-Backups (Electron only).
- * The backup is triggered once per week, on app startup.
+ * The backup is triggered once per day, on app startup.
  *
  * @param activeProfileId – backup only fires when a profile is active
  */

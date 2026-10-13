@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Command } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
-import { useNavigate } from 'react-router-dom';
 import { useAdaptiveMotion } from '../hooks/useAdaptiveMotion';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 
@@ -10,6 +9,8 @@ const SHORTCUTS = [
   { category: 'General', items: [
     { keys: ['?'], description: 'Arată sau ascunde scurtăturile' },
     { keys: ['Ctrl', 'K'], description: 'Căutare în tot conținutul' },
+    { keys: ['Ctrl', '+ / -'], description: 'Mărește sau micșorează textul' },
+    { keys: ['Ctrl', '0'], description: 'Resetează mărimea textului' },
     { keys: ['Esc'], description: 'Închide fereastra deschisă' },
   ]},
   { category: 'Asistent AI', items: [
@@ -35,9 +36,7 @@ function Key({ label }: { label: string }) {
         border: `1px solid ${theme.border2}`,
         color: theme.text2,
         fontFamily: 'monospace',
-        boxShadow: theme.isDark
-          ? '0 2px 0 rgba(0,0,0,0.4)'
-          : '0 2px 0 rgba(0,0,0,0.12)',
+        boxShadow: 'var(--elev-1)',
       }}
     >
       {label}
@@ -48,21 +47,78 @@ function Key({ label }: { label: string }) {
 export default function KeyboardShortcuts() {
   const [open, setOpen] = useState(false);
   const theme = useTheme();
-  const navigate = useNavigate();
   const { calmMotion, performanceLite } = useAdaptiveMotion();
   const dialogRef = useFocusTrap(open, () => setOpen(false));
 
   // G + key navigation state - eliminat pentru a evita conflicte
 
+  // Restore persisted UI zoom on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('studyx_zoom_factor');
+      if (saved !== null) {
+        const parsed = Number(saved);
+        if (Number.isFinite(parsed) && parsed >= 0.75 && parsed <= 1.5) {
+          window.electronAPI?.setZoomFactor?.(parsed);
+        } else {
+          localStorage.removeItem('studyx_zoom_factor');
+          window.electronAPI?.setZoomFactor?.(1);
+        }
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement).tagName;
-      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target as HTMLElement).isContentEditable;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const isInput = Boolean(
+        target && (
+          tag === 'INPUT' ||
+          tag === 'TEXTAREA' ||
+          tag === 'SELECT' ||
+          target.isContentEditable ||
+          target.closest?.('input, textarea, select, [contenteditable="true"], [role="textbox"]')
+        )
+      );
 
       // Esc always closes modal
       if (e.key === 'Escape') { setOpen(false); return; }
 
+      // Nu interfera cu tastarea utilizatorului în câmpuri de text sau editor Markdown (e.g. caracterele +, -)
       if (isInput) return;
+
+      // Zoom in / out / reset shortcuts (doar Ctrl/Cmd fără Alt, pentru a nu intercepta taste AltGr)
+      if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+        const isZoomIn = e.key === '=' || e.key === '+' || e.code === 'NumpadAdd';
+        const isZoomOut = e.key === '-' || e.code === 'NumpadSubtract';
+        const isZoomReset = e.key === '0' || e.code === 'Numpad0';
+
+        if (isZoomIn) {
+          e.preventDefault();
+          const current = window.electronAPI?.getZoomFactor?.() ?? 1;
+          const safeCurrent = typeof current === 'number' && Number.isFinite(current) && current > 0 ? current : 1;
+          const next = Math.min(1.5, Math.round((safeCurrent + 0.1) * 10) / 10);
+          window.electronAPI?.setZoomFactor?.(next);
+          try { localStorage.setItem('studyx_zoom_factor', String(next)); } catch { /* ignore */ }
+          return;
+        }
+        if (isZoomOut) {
+          e.preventDefault();
+          const current = window.electronAPI?.getZoomFactor?.() ?? 1;
+          const safeCurrent = typeof current === 'number' && Number.isFinite(current) && current > 0 ? current : 1;
+          const next = Math.max(0.75, Math.round((safeCurrent - 0.1) * 10) / 10);
+          window.electronAPI?.setZoomFactor?.(next);
+          try { localStorage.setItem('studyx_zoom_factor', String(next)); } catch { /* ignore */ }
+          return;
+        }
+        if (isZoomReset) {
+          e.preventDefault();
+          window.electronAPI?.setZoomFactor?.(1);
+          try { localStorage.setItem('studyx_zoom_factor', '1'); } catch { /* ignore */ }
+          return;
+        }
+      }
 
       // ? → open shortcuts modal
       if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
@@ -70,19 +126,11 @@ export default function KeyboardShortcuts() {
         setOpen(v => !v);
         return;
       }
-
-      // Ctrl+K → global search (dispatched separately in GlobalSearch)
-
-      // G + [key] navigation - eliminat pentru a evita conflictele cu typing
-      // Folosim Ctrl+G + key în schimb
-
-      // N -> new quiz - eliminat pentru a evita conflictele
-      // Folosim Ctrl+N în schimb
     };
 
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [navigate]);
+  }, []);
 
   return (
     <AnimatePresence>
@@ -113,7 +161,7 @@ export default function KeyboardShortcuts() {
             style={{
               background: theme.modalBg,
               border: `1px solid ${theme.border2}`,
-              boxShadow: performanceLite ? '0 18px 42px rgba(0,0,0,0.28)' : '0 32px 80px rgba(0,0,0,0.45), 0 0 0 1px var(--hairline)',
+              boxShadow: performanceLite ? 'var(--elev-3)' : 'var(--elev-4), var(--hairline-ring)',
             }}
           >
             {/* Header */}

@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useToastStore } from '../../../store/toastStore';
 import type { Question } from '../../../types';
-import type { AIAnalysisResult, HintResult } from '../../../ai/types';
+import type { AIAnalysisResult, HintResult, RetrievedChunk } from '../../../ai/types';
 import {
   buildAnalysisFallback,
   buildHintFallback,
@@ -29,7 +28,6 @@ interface Options {
  * the mnemonic, the per-question analysis and the proactive Knowledge Vault toast.
  */
 export function useQuizAssist({ question, revealed, examMode, currentIdx, answers, selectedNow, activeProfileId }: Options) {
-  const navigate = useNavigate();
   const addToast = useToastStore((s) => s.addToast);
 
   const [aiText, setAiText] = useState<string | null>(null);
@@ -45,6 +43,8 @@ export function useQuizAssist({ question, revealed, examMode, currentIdx, answer
   const [hintData, setHintData] = useState<HintResult | null>(null);
   const [hintLoading, setHintLoading] = useState(false);
   const [showSmartNudge, setShowSmartNudge] = useState(false);
+  const [relevantDocChunk, setRelevantDocChunk] = useState<RetrievedChunk | null>(null);
+  const [relevantDocModalOpen, setRelevantDocModalOpen] = useState(false);
   /**
    * Generation token for in-flight AI requests. The AI helpers are plain promises with no abort
    * support, so bumping this invalidates any reply still in flight (otherwise a slow explanation
@@ -80,6 +80,7 @@ export function useQuizAssist({ question, revealed, examMode, currentIdx, answer
     setHintLevel(0);
     setHintData(null);
     setActiveAIPanel('explanation');
+    setRelevantDocModalOpen(false);
   }, []);
 
   /** Between questions: discard anything still in flight, then clear. */
@@ -215,24 +216,25 @@ export function useQuizAssist({ question, revealed, examMode, currentIdx, answer
         if (cancelled) return;
         const top = hits[0];
         // Require a confident match so we never surface an irrelevant document.
-        if (!top || top.score < 0.35 || !top.sourceId) return;
-        const sourceId = top.sourceId;
+        if (!top || top.score < 0.35 || !top.source) return;
+        setRelevantDocChunk(top);
         addToast(
           `Ai un document relevant: "${top.source}"`,
           'info',
-          7000,
-          { label: 'Deschide', onClick: () => navigate(`/vault?source=${encodeURIComponent(sourceId)}`) },
+          7500,
+          { label: 'Vezi fragmentul', onClick: () => setRelevantDocModalOpen(true) },
         );
       } catch {
         // Proactive nicety — never disrupt the session on failure.
       }
     })();
     return () => { cancelled = true; };
-  }, [revealed, examMode, question, answers, selectedNow, navigate, addToast]);
+  }, [revealed, examMode, question, answers, selectedNow, addToast]);
 
   return {
     aiText, aiLoading, mnemonicText, mnemonicLoading, activeAIPanel, setActiveAIPanel,
     analysisResult, nextTopicHint, hintLevel, hintData, hintLoading, showSmartNudge,
     handleGetHint, handleAIExplain, handleGenerateMnemonic, resetAssistiveState, resetForNewSet,
+    relevantDocChunk, relevantDocModalOpen, setRelevantDocModalOpen,
   };
 }

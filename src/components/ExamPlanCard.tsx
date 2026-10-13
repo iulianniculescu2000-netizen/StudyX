@@ -4,6 +4,7 @@
  * never sets an exam plan shows a one-line CTA, not a full card, so folders
  * that don't need this feature aren't burdened by it.
  */
+import { plural } from '../lib/plural';
 import ProgressBar from './fx/ProgressBar';
 import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -94,10 +95,10 @@ export default function ExamPlanCard({ folder, sources }: { folder: AILibraryFol
             </div>
             <div className="min-w-0">
               <div className="text-xs font-black" style={{ color: theme.text }}>
-                {examPast ? 'Examen încheiat' : `${daysLeft} ${daysLeft === 1 ? 'zi' : 'zile'} până la examen`}
+                {examPast ? 'Examen încheiat' : `${plural(daysLeft ?? 0, 'zi', 'zile')} până la examen`}
               </div>
               <div className="text-[11px] font-semibold" style={{ color: theme.text3 }}>
-                Notă țintă {plan.targetGrade} · {doneCount}/{totalCount} sesiuni bifate
+                Notă țintă {plan.targetGrade} · {doneCount}/{plural(totalCount, 'sesiune bifată', 'sesiuni bifate')}
               </div>
             </div>
           </motion.button>

@@ -144,6 +144,9 @@ export default function HelpTip({ id, size = 18, placement = 'bottom', className
           transition={{ duration: calmMotion ? 0 : 0.16, ease: [0.22, 1, 0.36, 1] }}
           className="glass-panel fixed overflow-y-auto rounded-[var(--r-lg)] border p-4 outline-none elev-3"
           style={{
+            // .glass-panel declares position: relative in the unlayered stylesheet,
+            // which otherwise overrides Tailwind's fixed utility and moves this portal away from its trigger.
+            position: 'fixed',
             zIndex: Z_LAYERS.assistant.popover,
             top: layout?.top ?? 0,
             left: layout?.left ?? 0,

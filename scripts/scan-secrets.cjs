@@ -8,6 +8,10 @@ const ignoredDirs = new Set([
   '.claude',
   '.cache',
   'node_modules',
+  '.venv-tools',
+  '.qa-results',
+  '.qa-results-brave',
+  '.qa-results-edge',
   'dist',
   'release',
   'studyx-releases',
@@ -27,6 +31,7 @@ const ignoredFiles = new Set([
 
 const binaryExtensions = new Set([
   '.bmp',
+  '.mp3',
   '.docx',
   '.exe',
   '.ico',

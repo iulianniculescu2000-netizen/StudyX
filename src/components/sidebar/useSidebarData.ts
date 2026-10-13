@@ -6,6 +6,7 @@ import { withoutFlashcardFolders } from '../../lib/folderScope';
 import { isFlashcardDeck } from '../../lib/deckKind';
 import { isRezidentiatQuiz } from '../../lib/rezidentiatBank';
 import { isRezidentiatRootFolder } from '../../lib/rezidentiatRoot';
+import { buildDueItems } from '../../lib/dueItems';
 
 /** Derived numbers and the flattened folder tree shown by the sidebar. */
 export function useSidebarData() {
@@ -13,7 +14,6 @@ export function useSidebarData() {
   const quizzes = useQuizStore((s) => s.quizzes);
   // Primitive selectors: the sidebar re-renders only when these numbers change,
   // not on every questionStats update.
-  const dueCount = useStatsStore((s) => s.getDueQuestions().length);
   const totalAnswered = useStatsStore((s) =>
     Object.values(s.questionStats).reduce((a, q) => a + q.timesCorrect + q.timesWrong, 0));
 
@@ -22,6 +22,10 @@ export function useSidebarData() {
     const interval = setInterval(() => setNow(Date.now()), 60000);
     return () => clearInterval(interval);
   }, []);
+
+  // Aceeași sursă ca /review și /daily-review: doar grile existente, fără intrări retrase, ascunse sau de pachete șterse.
+  // Selector primitiv: numărul scadent se recalculează la fiecare schimbare din statistici, dar sidebar-ul se redesenează doar dacă numărul diferă.
+  const dueCount = useStatsStore((s) => buildDueItems(s.questionStats, quizzes, now).length);
 
   // Rezidențiat content (real bank + exam-style AI packs) is browsed only from
   // the Rezidențiat page — every sidebar count for "Toate grilele"/folders

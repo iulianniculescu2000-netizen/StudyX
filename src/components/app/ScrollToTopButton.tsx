@@ -70,8 +70,8 @@ export default function ScrollToTopButton() {
       style={{
         background: 'var(--accent)',
         boxShadow: 'var(--elev-2)',
-        // Pe aceeași linie cu lansatorul AI (56px, right-6), în stânga lui: 24 + 56 + 20 = 100px de la dreapta (mascota depășește cu ~8px în stânga).
-        right: 100,
+        // Pe aceeași linie cu lansatorul AI (56px, right-6), în stânga lui: 24 + 56 + 8 (mascota depășește) + 24 aer = 112px de la dreapta.
+        right: 112,
         bottom: 28,
       }}
     >

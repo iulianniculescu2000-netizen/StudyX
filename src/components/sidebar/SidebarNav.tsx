@@ -6,6 +6,8 @@ import {
   StickyNote, CreditCard, Database, Stethoscope, Trophy, TrendingUp, Brain,
 } from 'lucide-react';
 import { useTheme } from '../../theme/ThemeContext';
+import { useStatsStore } from '../../store/statsStore';
+import { todayProgressPercent } from '../../lib/todayProgress';
 import { NAV_HUE } from './constants';
 import NavItem from './NavItem';
 import Tip from './Tip';
@@ -26,12 +28,17 @@ export default function SidebarNav({ collapsed, compact, dueCount, activeQuizCou
   const navigate = useNavigate();
   // Same "cleared vs. still due today" ratio the Dashboard hero ring shows —
   // reusing it here (smaller) so the two rings read as the same signal, not two.
-  const ringTotalToday = Math.max(dueCount, 10);
-  const ringCompletedToday = Math.max(0, ringTotalToday - dueCount);
-  const ringPercent = Math.round((ringCompletedToday / ringTotalToday) * 100);
+  // Procent real: făcute azi / (făcute azi + restante). Fără date (nimic făcut, nimic restant) inelul rămâne gol și textul dispare.
+  const doneToday = useStatsStore((state) => {
+    const startOfDay = new Date().setHours(0, 0, 0, 0);
+    let n = 0;
+    for (const stat of Object.values(state.questionStats)) if (!stat.retired && stat.lastSeen >= startOfDay) n += 1;
+    return n;
+  });
+  const ringPercent = todayProgressPercent(doneToday, dueCount);
   const ringRadius = 13;
   const ringCircumference = 2 * Math.PI * ringRadius;
-  const ringOffset = ringCircumference * (1 - ringPercent / 100);
+  const ringOffset = ringCircumference * (1 - (ringPercent ?? 0) / 100);
 
   return (
     <div
@@ -53,10 +60,10 @@ export default function SidebarNav({ collapsed, compact, dueCount, activeQuizCou
           <button
             type="button"
             onClick={() => navigate('/daily-review')}
-            className="mb-2.5 flex w-full items-center gap-2.5 rounded-2xl px-2.5 py-2 text-left press-feedback"
+            className="mb-2 flex w-full items-center gap-2 rounded-[var(--r-md)] px-2 py-1.5 text-left press-feedback"
             style={{ background: 'var(--accent-soft)', border: `1px solid ${theme.accent}24` }}
           >
-            <svg width={34} height={34} viewBox="0 0 40 40" style={{ transform: 'rotate(-90deg)', flexShrink: 0 }}>
+            <svg width={26} height={26} viewBox="0 0 40 40" style={{ transform: 'rotate(-90deg)', flexShrink: 0 }}>
               <circle cx="20" cy="20" r={ringRadius} fill="none" stroke={theme.surface2} strokeWidth="5" />
               <motion.circle cx="20" cy="20" r={ringRadius} fill="none" stroke={theme.accent2} strokeWidth="5" strokeLinecap="round" strokeDasharray={ringCircumference} initial={false} animate={{ strokeDashoffset: ringOffset }} transition={{ duration: 0.6, ease: 'easeOut' }} />
             </svg>
@@ -64,9 +71,11 @@ export default function SidebarNav({ collapsed, compact, dueCount, activeQuizCou
               <div className="truncate text-[11.5px] font-bold" style={{ color: theme.text }}>
                 {dueCount > 0 ? `${dueCount} de recapitulat` : 'Recapitulări la zi'}
               </div>
-              <div className="text-[9.5px] font-semibold" style={{ color: theme.text3 }}>
-                {ringPercent}% din azi, gata
-              </div>
+              {ringPercent !== null && (
+                <div className="text-[9.5px] font-semibold" style={{ color: theme.text3 }}>
+                  {ringPercent}% din azi, gata
+                </div>
+              )}
             </div>
           </button>
         )}
@@ -140,7 +149,7 @@ export default function SidebarNav({ collapsed, compact, dueCount, activeQuizCou
             </Tip>
             <Tip label="Biblioteca AI">
               <div data-tutorial="nav-vault">
-                <NavItem to="/vault" icon={<Database size={16} />} label="Biblioteca AI" collapsed={collapsed} hue={NAV_HUE.vault} />
+                <NavItem to="/vault" icon={<Database size={15} />} label="Biblioteca AI" collapsed={collapsed} hue={NAV_HUE.vault} />
               </div>
             </Tip>
             <Tip label="Rezidențiat">
@@ -159,10 +168,10 @@ export default function SidebarNav({ collapsed, compact, dueCount, activeQuizCou
             <div className="mb-1 px-2.5 text-[10px] font-black uppercase tracking-[0.16em]" style={{ color: theme.text3, opacity: 0.55 }}>
               Studiu
             </div>
-            <NavItem to="/" icon={<LayoutDashboard size={16} />} label="Panou" end collapsed={false} hue={NAV_HUE.dashboard} />
+            <NavItem to="/" icon={<LayoutDashboard size={15} />} label="Panou" end collapsed={false} hue={NAV_HUE.dashboard} />
             <NavItem
               to="/quizzes"
-              icon={<BookOpen size={16} />}
+              icon={<BookOpen size={15} />}
               label="Toate grilele"
               collapsed={false}
               hue={NAV_HUE.quizzes}
@@ -182,7 +191,7 @@ export default function SidebarNav({ collapsed, compact, dueCount, activeQuizCou
             <div data-tutorial="nav-review">
               <NavItem
                 to="/review"
-                icon={<RefreshCw size={16} />}
+                icon={<RefreshCw size={15} />}
                 label="Recapitulare"
                 collapsed={false}
                 hue={NAV_HUE.review}
@@ -198,7 +207,7 @@ export default function SidebarNav({ collapsed, compact, dueCount, activeQuizCou
             <div data-tutorial="nav-daily-review">
               <NavItem
                 to="/daily-review"
-                icon={<Brain size={16} />}
+                icon={<Brain size={15} />}
                 label="Sesiune zilnică"
                 collapsed={false}
                 hue={NAV_HUE.dailyReview}
@@ -211,25 +220,25 @@ export default function SidebarNav({ collapsed, compact, dueCount, activeQuizCou
                 ) : undefined}
               />
             </div>
-            <div data-tutorial="nav-stats"><NavItem to="/stats" icon={<BarChart3 size={16} />} label="Statistici" collapsed={false} hue={NAV_HUE.stats} /></div>
-            <NavItem to="/gamification" icon={<Trophy size={16} />} label="Realizări" collapsed={false} hue={NAV_HUE.gamification} />
-            <NavItem to="/analytics" icon={<TrendingUp size={16} />} label="Perspective AI" collapsed={false} hue={NAV_HUE.analytics} />
+            <div data-tutorial="nav-stats"><NavItem to="/stats" icon={<BarChart3 size={15} />} label="Statistici" collapsed={false} hue={NAV_HUE.stats} /></div>
+            <NavItem to="/gamification" icon={<Trophy size={15} />} label="Realizări" collapsed={false} hue={NAV_HUE.gamification} />
+            <NavItem to="/analytics" icon={<TrendingUp size={15} />} label="Perspective AI" collapsed={false} hue={NAV_HUE.analytics} />
 
             <div className="mb-1 mt-4 px-2.5 text-[10px] font-black uppercase tracking-[0.16em]" style={{ color: theme.text3, opacity: 0.55 }}>
               Resurse
             </div>
             <div data-tutorial="nav-notes">
-              <NavItem to="/notes" icon={<StickyNote size={16} />} label="Notițe" collapsed={false} hue={NAV_HUE.notes} />
+              <NavItem to="/notes" icon={<StickyNote size={15} />} label="Notițe" collapsed={false} hue={NAV_HUE.notes} />
             </div>
 
             <div data-tutorial="nav-vault">
-              <NavItem to="/vault" icon={<Database size={16} />} label="Biblioteca AI" collapsed={false} hue={NAV_HUE.vault} />
+              <NavItem to="/vault" icon={<Database size={15} />} label="Biblioteca AI" collapsed={false} hue={NAV_HUE.vault} />
             </div>
-            <div data-tutorial="nav-rezidentiat"><NavItem to="/rezidentiat" icon={<Stethoscope size={16} />} label="Rezidențiat" collapsed={false} hue={NAV_HUE.rezidentiat} /></div>
+            <div data-tutorial="nav-rezidentiat"><NavItem to="/rezidentiat" icon={<Stethoscope size={15} />} label="Rezidențiat" collapsed={false} hue={NAV_HUE.rezidentiat} /></div>
             <div data-tutorial="nav-flashcards">
               <NavItem
                 to="/flashcards"
-                icon={<CreditCard size={16} />}
+                icon={<CreditCard size={15} />}
                 label="Flashcarduri"
                 collapsed={false}
                 hue={NAV_HUE.flashcards}

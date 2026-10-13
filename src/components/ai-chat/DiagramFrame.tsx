@@ -135,11 +135,11 @@ export default function DiagramFrame({ svg, code, onCreateFlashcards }: DiagramF
       />
       {error && <div role="alert" className="px-3 pb-2 text-[11.5px]" style={{ color: theme.danger }}>{error}</div>}
       {open && (
-          <ZoomModal title="Schemă" mode="pan" onClose={() => setOpen(false)} actions={actions}>
+          <ZoomModal title="Schemă" mode="pan" onClose={() => setOpen(false)} actions={actions} contentSize={size}>
             <div
               ref={viewerRef}
               className={`ai-md-diagram-viewer${interactive ? ' sx-host' : ''}`}
-              style={{ ...(interactive ? schemaVars(theme) : {}), width: `${Math.min(size.width * 1.4, 1800)}px`, maxWidth: '92vw' }}
+              style={{ ...(interactive ? schemaVars(theme) : {}), width: `min(${Math.min(size.width * 1.4, 1220)}px, calc(100vw - 96px))` }}
               dangerouslySetInnerHTML={{ __html: safe }}
             />
           </ZoomModal>

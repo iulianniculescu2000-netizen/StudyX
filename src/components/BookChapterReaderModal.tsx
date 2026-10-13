@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import Portal from './Portal';
 import { motion } from 'framer-motion';
 import { FileText, Image as ImageIcon, X } from 'lucide-react';
@@ -8,10 +8,13 @@ import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useScrollLock } from '../hooks/useScrollLock';
 import BookPdfReader, { type BookViewRequest } from './pdf/BookPdfReader';
 import { canReadBookPdf } from './pdf/bridge';
+import { BOOK_FILES, type BookCode } from '../lib/bookPages';
+import { PAGE_HEADING, bookTextFor } from '../lib/bookText';
 
 interface Props {
   title: string;
   pageLabel?: string;
+  modeLabel?: string;
   /** Textul extras (modul text). Lipsește când se arată doar PDF-ul. */
   loading?: boolean;
   content?: string;
@@ -22,8 +25,59 @@ interface Props {
   loadText?: () => Promise<string>;
 }
 
+/** Cartea din care vine cererea: ultima sursă e mereu PDF-ul compilat al cărții (vezi `topicSources`). */
+function bookOfRequest(request: BookViewRequest): BookCode | null {
+  const file = request.sources[request.sources.length - 1]?.file;
+  return (Object.keys(BOOK_FILES) as BookCode[]).find((code) => BOOK_FILES[code] === file) ?? null;
+}
+
+/** Textul organizat al cărții (`## titlu`, `- listă`, `§ pagină`, paragrafe), desenat ca o pagină de citit, nu ca text brut. */
+function BookText({ content, focusPage }: { content: string; focusPage?: number }) {
+  const theme = useTheme();
+  const focusRef = useRef<HTMLDivElement>(null);
+  // Se deschide la pagina cerută (citare, topic), nu la începutul capitolului.
+  useEffect(() => { focusRef.current?.scrollIntoView({ block: 'start' }); }, [content, focusPage]);
+  const blocks = content.split(/\n{2,}/).map((b) => b.trim()).filter(Boolean);
+  const out: React.ReactNode[] = [];
+  let list: string[] = [];
+  const flushList = () => {
+    if (!list.length) return;
+    out.push(
+      <ul key={`l${out.length}`} className="my-2 list-disc space-y-1 pl-5 text-[14.5px] leading-7" style={{ color: theme.text }}>
+        {list.map((item, i) => <li key={i}>{item}</li>)}
+      </ul>,
+    );
+    list = [];
+  };
+  for (const block of blocks) {
+    if (block.startsWith('- ')) { list.push(block.slice(2)); continue; }
+    flushList();
+    if (block.startsWith(PAGE_HEADING)) {
+      out.push(
+        <div key={`p${out.length}`} ref={Number(block.slice(PAGE_HEADING.length)) === focusPage ? focusRef : undefined} className="mb-3 mt-8 flex scroll-mt-4 items-center gap-3 first:mt-0" aria-label={`Pagina ${block.slice(PAGE_HEADING.length)}`}>
+          <span className="h-px flex-1" style={{ background: 'var(--hairline)' }} />
+          <span className="text-[10.5px] font-semibold uppercase tracking-[0.14em]" style={{ color: theme.text3 }}>pagina {block.slice(PAGE_HEADING.length)}</span>
+          <span className="h-px flex-1" style={{ background: 'var(--hairline)' }} />
+        </div>,
+      );
+    } else if (block.startsWith('## ')) {
+      out.push(<h3 key={`h${out.length}`} className="mb-1 mt-5 text-[16px] font-semibold tracking-tight" style={{ color: theme.text }}>{block.slice(3)}</h3>);
+    } else {
+      out.push(<p key={`t${out.length}`} className="my-2 text-[14.5px] leading-7" style={{ color: theme.text }}>{block}</p>);
+    }
+  }
+  flushList();
+  return <article className="mx-auto max-w-[68ch]">{out}</article>;
+}
+
 /** Full chapter reading view — mirrors KnowledgeVault.tsx's "Vizualizare document" modal chrome. */
-export default function BookChapterReaderModal({ title, pageLabel, loading: loadingProp = false, content: contentProp = '', onClose, request, loadText }: Props) {
+export default function BookChapterReaderModal({ title, pageLabel, modeLabel, loading: loadingProp = false, content: contentProp = '', onClose, request, loadText: loadTextProp }: Props) {
+  // Cărțile incluse în aplicație au textul organizat pe pagini: se citește direct, fără bibliotecă AI și fără reindexare.
+  const book = request ? bookOfRequest(request) : null;
+  const loadText = useMemo(
+    () => (request && book ? () => bookTextFor(book, request.topic, request.pdfPage) : loadTextProp),
+    [request, book, loadTextProp],
+  );
   const [mode, setMode] = useState<'pdf' | 'text'>(request && (canReadBookPdf() || !loadText) ? 'pdf' : 'text');
   const [lazy, setLazy] = useState<{ loading: boolean; content: string } | null>(() => (mode === 'text' && loadText ? { loading: true, content: '' } : null));
   const textRequested = useRef(false);
@@ -61,7 +115,7 @@ export default function BookChapterReaderModal({ title, pageLabel, loading: load
         animate={{ opacity: 1, transition: t.modal }}
         exit={{ opacity: 0, transition: t.modalExit }}
         onClick={onClose}
-        className="fixed inset-0 z-[200] bg-[var(--overlay)]"
+        className="fixed inset-0 z-[10010] bg-[var(--overlay)]"
         style={{ backdropFilter: 'blur(var(--blur-1))' }}
       />
       <motion.div
@@ -72,12 +126,12 @@ export default function BookChapterReaderModal({ title, pageLabel, loading: load
         initial={{ opacity: 0, y: 8, scale: 0.985 }}
         animate={{ opacity: 1, y: 0, scale: 1, transition: t.modal }}
         exit={{ opacity: 0, y: 8, scale: 0.985, transition: t.modalExit }}
-        className="premium-modal fixed inset-x-3 top-16 bottom-3 z-[201] mx-auto flex max-w-5xl flex-col overflow-hidden rounded-[var(--r-xl)] sm:inset-x-4 sm:top-20 sm:bottom-4"
+        className="premium-modal fixed inset-x-3 top-16 bottom-3 z-[10011] mx-auto flex max-w-5xl flex-col overflow-hidden rounded-[var(--r-xl)] sm:inset-x-4 sm:top-20 sm:bottom-4"
       >
         <div className="flex flex-wrap items-start justify-between gap-4 border-b px-5 py-4 sm:px-6 sm:py-5" style={{ borderColor: theme.border }}>
           <div className="min-w-0">
             <div className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: theme.text3 }}>
-              {mode === 'pdf' ? 'Carte · pagini ca în PDF' : 'Cuprins'} {pageLabel ? `· ${pageLabel}` : ''}
+              {modeLabel ?? (mode === 'pdf' ? 'Carte · pagini ca în PDF' : book ? 'Carte · text organizat' : 'Cuprins')} {pageLabel ? `· ${pageLabel}` : ''}
             </div>
             <h2 id={titleId} className="mt-1 truncate text-2xl font-black tracking-tight" style={{ color: theme.text }}>{title}</h2>
           </div>
@@ -116,10 +170,12 @@ export default function BookChapterReaderModal({ title, pageLabel, loading: load
               <div className="skeleton-block h-4 w-full rounded-full" />
             </div>
           ) : content ? (
-            <div className="glass-panel rounded-[var(--r-xl)] p-6">
-              <pre className="whitespace-pre-wrap break-words text-sm leading-7" style={{ color: theme.text, fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>
-                {content}
-              </pre>
+            <div className="glass-panel rounded-[var(--r-xl)] p-6 sm:p-8">
+              {book ? <BookText content={content} focusPage={request?.pdfPage} /> : (
+                <pre className="whitespace-pre-wrap break-words text-sm leading-7" style={{ color: theme.text, fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>
+                  {content}
+                </pre>
+              )}
             </div>
           ) : (
             <p className="text-sm" style={{ color: theme.text3 }}>

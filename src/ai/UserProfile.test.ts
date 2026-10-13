@@ -282,3 +282,46 @@ describe('migrateLegacyUserMemory', () => {
     expect(p.streak).toBe(3);
   });
 });
+
+describe('retired stats and structural tags', () => {
+  it('skips retired split-source stats in topic and global accuracy', () => {
+    const questions = [q('a', ['Aritmii']), q('b', ['Aritmii'])];
+    const retired = { ...stat('b', 0, 10), retired: true };
+    const profile = recordQuizSession('r', {
+      stats: { a: stat('a', 4, 0), b: retired }, questions, streak: 0, durationSeconds: 0, finishedAt: FINISHED, sessionItems: [],
+    });
+    expect(profile.globalAccuracy).toBe(100);
+    expect(profile.topicAccuracy.Aritmii).toMatchObject({ correct: 4, total: 4, accuracy: 100 });
+  });
+
+  it('uses the category instead of structural tags (rezidentiat, lawrence, test-1) as topic', () => {
+    const questions = [
+      q('a', ['rezidentiat', 'lawrence', 'test-1', 'book:L', 'chapter:3', 'mistake-bank'], 'Chirurgie'),
+      q('b', ['rezidentiat', 'Hernii']),
+    ];
+    const profile = recordQuizSession('t', {
+      stats: { a: stat('a', 1, 3), b: stat('b', 0, 2) }, questions, streak: 0, durationSeconds: 0, finishedAt: FINISHED, sessionItems: [],
+    });
+    expect(Object.keys(profile.topicAccuracy).sort()).toEqual(['Chirurgie', 'Hernii']);
+  });
+
+  it('falls back to "Topic general" when only structural tags and no category exist', () => {
+    const profile = recordQuizSession('g', {
+      stats: { a: stat('a', 1, 1) }, questions: [q('a', ['rezidentiat', 'test-2'])], streak: 0, durationSeconds: 0, finishedAt: FINISHED, sessionItems: [],
+    });
+    expect(Object.keys(profile.topicAccuracy)).toEqual(['Topic general']);
+  });
+
+  it('reports a trend only from at least 10 recent answers', () => {
+    const questions = [q('a', ['Aritmii'])];
+    const run = (id: string, outcomes: boolean[]) => {
+      recordQuizSession(id, {
+        stats: { a: stat('a', 1, 5) }, questions, streak: 0, durationSeconds: 0, finishedAt: FINISHED,
+        sessionItems: outcomes.map((correct) => ({ questionId: 'a', correct })),
+      });
+      return getProfileSummaryText(id);
+    };
+    expect(run('few', [true, true, false, false, false, false])).toContain('Aritmii (5 greșeli, stabil)');
+    expect(run('many', [true, true, true, true, true, false, false, false, false, false])).toContain('în scădere');
+  });
+});

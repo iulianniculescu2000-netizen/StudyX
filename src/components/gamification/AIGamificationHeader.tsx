@@ -9,7 +9,7 @@ export default function AIGamificationHeader({ username }: AIGamificationHeaderP
   return (
     <PageHeader
       title="Realizări"
-      help="page-gamification"
+      tour={{ id: 'gamification', label: 'Ghid pentru Realizări' }}
       subtitle={name ? `Progres calculat din sesiunile tale, ${name}` : 'Progres calculat din sesiunile tale'}
     />
   );

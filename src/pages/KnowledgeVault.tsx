@@ -1,5 +1,5 @@
-import TourHelpButton from '../tutorial/TourHelpButton';
-import { AnimatePresence, motion } from 'framer-motion';
+import PageHeader from '../components/ui/PageHeader';
+import { AnimatePresence } from 'framer-motion';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -33,6 +33,7 @@ import { useReindexSources } from '../hooks/useReindexSources';
 import ReindexNameConfirm from '../components/residency/ReindexNameConfirm';
 import EmptyState from '../components/ui/EmptyState';
 import { suggestFolderAppearance } from '../lib/folderAppearance';
+import { isBundledLibraryBookName } from '../lib/rezidentiatLibrary';
 import { FILTERS, filterByType, plainSearchText, scopeVaultToGeneral, type TypeFilter } from './knowledge-vault/helpers';
 import FolderRow from './knowledge-vault/FolderRow';
 import SourceRow, { type MenuPos } from './knowledge-vault/SourceRow';
@@ -54,6 +55,7 @@ export default function KnowledgeVault() {
   );
   const addLibraryFolder = useAIStore((state) => state.addLibraryFolder);
   const deleteLibraryFolder = useAIStore((state) => state.deleteLibraryFolder);
+  const renameLibraryFolder = useAIStore((state) => state.renameLibraryFolder);
   const moveSourceToLibraryFolder = useAIStore((state) => state.moveSourceToLibraryFolder);
   const addToast = useToastStore((state) => state.addToast);
   const setChatOpen = useUIStore((state) => state.setChatOpen);
@@ -196,8 +198,8 @@ export default function KnowledgeVault() {
   }), [knowledgeSources]);
 
   const selectedSource = useMemo(
-    () => knowledgeSources.find((s) => s.id === selectedSourceId) ?? null,
-    [knowledgeSources, selectedSourceId],
+    () => allKnowledgeSources.find((s) => s.id === selectedSourceId) ?? null,
+    [allKnowledgeSources, selectedSourceId],
   );
 
   const { chapters: sourceChapters } = useSourceChapters(readerOpen ? selectedSourceId : null);
@@ -273,7 +275,10 @@ export default function KnowledgeVault() {
   useEffect(() => {
     let cancelled = false;
     void findSourcesWithoutPages().then((ids) => {
-      if (!cancelled) setSourcesWithoutPages(new Set(ids));
+      if (cancelled) return;
+      // Cărțile incluse în aplicație sunt text simplu, fără pagini: nu le semnalăm.
+      const bundled = new Set(useAIStore.getState().knowledgeSources.filter((source) => isBundledLibraryBookName(source.name)).map((source) => source.id));
+      setSourcesWithoutPages(new Set(ids.filter((id) => !bundled.has(id))));
     }).catch(() => {
       if (!cancelled) setSourcesWithoutPages(new Set());
     });
@@ -313,12 +318,14 @@ export default function KnowledgeVault() {
     }
   };
 
-  // Deep-link from the proactive RAG toast (Task 7): /vault?source=<id> opens
+  // Deep-link from external triggers: /vault?source=<id> opens
   // that document's reader once, then clears the param.
   useEffect(() => {
     const sourceId = searchParams.get('source');
     if (!sourceId || deepLinkedSourceRef.current === sourceId) return;
-    const source = knowledgeSources.find((s) => s.id === sourceId);
+    const source = allKnowledgeSources.find(
+      (s) => s.id === sourceId || s.name.toLowerCase() === sourceId.toLowerCase()
+    );
     if (!source) return;
     deepLinkedSourceRef.current = sourceId;
     void openReader(source);
@@ -326,7 +333,7 @@ export default function KnowledgeVault() {
     next.delete('source');
     setSearchParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, knowledgeSources]);
+  }, [searchParams, allKnowledgeSources]);
 
   // Deep-link from other pages (e.g. the Residency bookshelf's "Adaugă carte" button):
   // /vault?folder=<id> selects that folder once, then clears the param.
@@ -453,6 +460,7 @@ export default function KnowledgeVault() {
       fragments={knowledgeSources.reduce((sum, s) => (s.folderId === folder.id ? sum + (s.chunkCount ?? 0) : sum), 0)}
       onOpen={onOpen}
       onDelete={() => setFolderToDelete({ id: folder.id, name: folder.name })}
+      onRename={(name) => renameLibraryFolder(folder.id, name)}
     />
   );
 
@@ -460,9 +468,13 @@ export default function KnowledgeVault() {
     <div className="h-full overflow-y-auto px-4 py-6 sm:px-8 sm:py-10">
       <div className="mx-auto max-w-4xl space-y-6">
         {/* Header */}
-        <motion.header initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-          {!isTopLevel && (
-            <div className="mb-2 flex flex-wrap items-center gap-0.5 text-[13.5px] font-medium">
+        <div>
+          <PageHeader
+            title={headerTitle}
+            subtitle={headerSubtitle}
+            tour={isTopLevel ? { id: 'vault', label: 'Vezi turul Bibliotecii AI' } : undefined}
+            breadcrumbs={!isTopLevel && (
+            <div className="flex flex-wrap items-center gap-0.5 text-[13.5px] font-medium">
               <button
                 type="button"
                 onClick={() => { setActiveFolderId(null); setSearch(''); setTypeFilter('all'); }}
@@ -485,15 +497,7 @@ export default function KnowledgeVault() {
               ))}
             </div>
           )}
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2.5">
-                <h1 className="page-title-compact" style={{ color: theme.text }}>{headerTitle}</h1>
-                {isTopLevel && <TourHelpButton tour="vault" label="Vezi turul Bibliotecii AI" />}
-              </div>
-              <p className="mt-1 text-[13px]" style={{ color: theme.text3 }}>{headerSubtitle}</p>
-            </div>
-            <div className="flex flex-shrink-0 items-center gap-2">
+          actions={<>
               {!isTopLevel && activeFolder && !creatingSubfolder && (
                 <button
                   type="button"
@@ -533,14 +537,14 @@ export default function KnowledgeVault() {
               >
                 {loading ? <><Loader2 size={14} className="animate-spin" /> Procesăm…</> : <><Plus size={14} /> {isTopLevel ? 'Adaugă' : 'Adaugă în folder'}</>}
               </button>
-            </div>
-          </div>
+          </>}
+          />
           {loading && processStep && (
             <div role="status" className="mt-3 inline-flex max-w-full rounded-full px-3.5 py-1.5 text-[12px] font-medium" style={{ background: `${theme.accent}12`, color: theme.accentText }}>
               <span className="truncate">{processStep}</span>
             </div>
           )}
-        </motion.header>
+        </div>
 
         <input {...reindex.inputProps} />
         <ReindexNameConfirm check={reindex.renameCheck} onAnswer={reindex.answerRename} />
@@ -610,7 +614,8 @@ export default function KnowledgeVault() {
                 <button
                   key={source.id}
                   type="button"
-                  onClick={() => source.indexStatus !== 'indexing' && source.indexStatus !== 'error' && void openReader(source)}
+                  onClick={() => void openReader(source)}
+                  aria-label={`${source.indexStatus === 'indexing' || source.indexStatus === 'error' ? 'Vezi starea pentru' : 'Deschide'} ${source.name}`}
                   className="fine-card press-feedback min-w-0 rounded-[var(--r-md)] p-3 text-left"
                   style={{ background: theme.surface }}
                 >
@@ -632,12 +637,22 @@ export default function KnowledgeVault() {
           <section>
             <SectionLabel className="mb-2">Foldere</SectionLabel>
             {showEmptyHint && !creatingFolder ? (
+              // While the first file is being read the library is empty only for a moment: say that, not "add files".
+              loading ? (
+                <EmptyState
+                  icon={Loader2}
+                  busy
+                  title="Pregătim documentul"
+                  body="Îl citim și îl împărțim pe fragmente pentru AI. Apare aici imediat ce e gata."
+                />
+              ) : (
               <EmptyState
                 icon={Library}
                 title="Biblioteca e goală"
                 body="Adaugă PDF-uri, documente Word sau imagini, iar AI-ul le folosește ca sursă pentru răspunsuri."
                 primary={{ label: 'Adaugă fișiere', onClick: () => fileInputRef.current?.click() }}
               />
+              )
             ) : (
               <div className="glass-panel overflow-hidden rounded-[var(--r-md)]">
                 {folderCounts.unfiled > 0 && (

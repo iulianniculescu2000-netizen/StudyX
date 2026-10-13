@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Play, X } from 'lucide-react';
+import { Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
+import { ArrowLeft, ArrowRight, Pause, Play, RotateCcw, Volume2, VolumeX, X } from 'lucide-react';
 import { useUserStore } from '../../store/userStore';
 import { useTutorialStore } from '../../store/tutorialStore';
 import { useAdaptiveMotion } from '../../hooks/useAdaptiveMotion';
@@ -10,238 +10,189 @@ import { useScrollLock } from '../../hooks/useScrollLock';
 import { WELCOME_FILM_OPEN_EVENT } from './filmEvents';
 import { FILM_SCENES } from './scenes';
 import { STAGE } from './stage';
+import FilmAtmosphere from './FilmAtmosphere';
+import FilmShortcuts from './FilmShortcuts';
+import { FilmTime, fraction } from './useTimeline';
+import { scenePosition, usePlayback } from './usePlayback';
+import { BUNDLED_NARRATION, parseNarration, SCRIPT_NARRATION } from './narration';
+import type { NarrationEntry } from './narration';
+import { useNarration } from './useNarration';
 
-const SCENE_HEIGHT = 330;
+const COLORS = [STAGE.blue, STAGE.blue, STAGE.violet, STAGE.blue, STAGE.green, STAGE.amber, STAGE.blue];
+const BUTTON = 'focus-ring flex min-h-9 min-w-9 items-center justify-center gap-1.5 rounded-full border px-3 text-xs font-semibold disabled:opacity-30';
+const buttonStyle = { borderColor: STAGE.line, color: STAGE.text2, background: STAGE.panel };
 
-const GLOW: Record<string, string> = {
-  intro: STAGE.blue,
-  quiz: STAGE.blue,
-  cards: STAGE.violet,
-  ai: STAGE.blue,
-  plan: STAGE.green,
-  exam: STAGE.amber,
-  finish: STAGE.blue,
-};
+/** Suspense commits this only after the selected visual is ready. */
+function ReadyVisual({ id, ready, children }: { id: string; ready: (id: string) => void; children: ReactNode }) {
+  useEffect(() => { ready(id); }, [id, ready]);
+  return children;
+}
 
-/**
- * Filmul de bun venit: șapte scene animate (~40 de secunde) care arată ce poate StudyX.
- * La prima pornire se deschide singur, înaintea turului de bun venit (turul așteaptă să se termine);
- * din Setări poate fi revăzut oricând. Se poate sări peste el cu Esc sau „Sari peste”.
- */
+/** First-run ownership and seen-state handoff remain outside the playback session. */
 export default function WelcomeFilm() {
-  const { calmMotion } = useAdaptiveMotion();
-  const titleId = useId();
   const profileId = useUserStore((state) => state.activeProfileId);
   const hydrated = useTutorialStore((state) => state._hasHydrated);
   const onboardingRunning = useTutorialStore((state) => state.activeTour === 'onboarding');
   const seen = useTutorialStore((state) => state.seen);
   const [replay, setReplay] = useState(false);
-  const [index, setIndex] = useState(0);
-  // Scenele sunt desenate pentru ~330 px înălțime; în ferestre scunde se micșorează în loc să iasă din cadru.
-  const stageRef = useRef<HTMLDivElement>(null);
-  const [fit, setFit] = useState(1);
-
+  const [session, setSession] = useState(0);
   const firstRun = hydrated && !!profileId && onboardingRunning && !seen[profileId]?.welcomeFilm;
   const open = firstRun || replay;
   useOverlayFlag(open);
   useScrollLock(open);
-
   useEffect(() => {
-    const handler = () => { setIndex(0); setReplay(true); };
+    const handler = () => { setSession((value) => value + 1); setReplay(true); };
     window.addEventListener(WELCOME_FILM_OPEN_EVENT, handler);
     return () => window.removeEventListener(WELCOME_FILM_OPEN_EVENT, handler);
   }, []);
+  const close = useCallback(() => {
+    setReplay(false);
+    // Defer the handoff: the same Escape must not also dismiss onboarding.
+    if (profileId) window.setTimeout(() => useTutorialStore.getState().markSeen(profileId, 'welcomeFilm'), 0);
+  }, [profileId]);
+  return open ? <FilmSession key={`${profileId}-${session}`} firstRun={firstRun} close={close} /> : null;
+}
+
+function FilmSession({ firstRun, close }: { firstRun: boolean; close: () => void }) {
+  const { calmMotion } = useAdaptiveMotion();
+  const titleId = useId();
+  const [manifest, setManifest] = useState<NarrationEntry[]>(BUNDLED_NARRATION);
+  const [manifestReady, setManifestReady] = useState(BUNDLED_NARRATION.length > 0);
+  const [readyId, setReadyId] = useState<string | null>(null);
+  const [sound, setSound] = useState(false);
+  const [restart, setRestart] = useState(0);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [fit, setFit] = useState(1);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let alive = true;
+    // Local optional metadata must never prevent captions-only playback.
+    const timeout = window.setTimeout(() => { controller.abort(); if (alive) setManifestReady(true); }, 1500);
+    fetch(`${import.meta.env.BASE_URL}audio/intro/manifest.json`, { signal: controller.signal })
+      .then((response) => response.ok ? response.json() : null)
+      .then((value: unknown) => { const entries = parseNarration(value); if (alive && entries.length) setManifest(entries); })
+      .catch(() => { /* Missing local assets: use the scene captions and default timing. */ })
+      .finally(() => { if (alive) setManifestReady(true); window.clearTimeout(timeout); });
+    return () => { alive = false; controller.abort(); window.clearTimeout(timeout); };
+  }, []);
+
+  const durations = useMemo(() => FILM_SCENES.map((scene) => {
+    const measured = manifest.find((entry) => entry.id === scene.id)?.durationMs ?? 0;
+    const scripted = SCRIPT_NARRATION.find((entry) => entry.id === scene.id)?.durationMs ?? 0;
+    return measured || scripted ? Math.max(measured, scripted) + 150 : scene.durationMs;
+  }), [manifest]);
+  const total = durations.reduce((sum, duration) => sum + duration, 0);
+  const clock = usePlayback(manifestReady, total, (elapsed) => readyId === FILM_SCENES[scenePosition(elapsed, durations).index].id, calmMotion ? 100 : 1000 / 30);
+  const { seek, reset, toggle } = clock;
+  const position = scenePosition(clock.elapsedMs, durations);
+  const scene = FILM_SCENES[position.index];
+  const isLast = position.index === FILM_SCENES.length - 1;
+  const finished = clock.elapsedMs >= total;
+  const caption = SCRIPT_NARRATION.find((entry) => entry.id === scene.id)?.text
+    ?? manifest.find((entry) => entry.id === scene.id)?.text ?? scene.text;
+  const { audioRef, unavailable } = useNarration(scene.id, position.elapsed, clock.running, sound);
+  const dialogRef = useFocusTrap(true, close);
 
   useEffect(() => {
     const el = stageRef.current;
-    if (!open || !el || typeof ResizeObserver === 'undefined') return undefined;
-    const measure = () => setFit(Math.min(1, Math.max(0.55, el.clientHeight / SCENE_HEIGHT)));
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const measure = () => setFit(Math.min(1, el.clientHeight / 330, el.clientWidth / 520));
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [open]);
-
-  const close = useCallback(() => {
-    setReplay(false);
-    // Marcat ca văzut și când e sărit: nu îl mai cerem la fiecare pornire a turului. Abia după evenimentul curent:
-    // turul de bun venit apare imediat ce filmul e marcat, iar același Esc l-ar închide și pe el.
-    if (profileId) window.setTimeout(() => useTutorialStore.getState().markSeen(profileId, 'welcomeFilm'), 0);
-  }, [profileId]);
-
-  const scene = FILM_SCENES[index];
-  const isLast = index === FILM_SCENES.length - 1;
-
-  // Trece singur la scena următoare; ultima rămâne pe ecran, cu butonul de început.
-  useEffect(() => {
-    if (!open || isLast) return undefined;
-    const timer = window.setTimeout(() => setIndex((current) => Math.min(FILM_SCENES.length - 1, current + 1)), calmMotion ? scene.durationMs + 1500 : scene.durationMs);
-    return () => window.clearTimeout(timer);
-  }, [calmMotion, isLast, open, scene.durationMs, index]);
-
-  const go = useCallback((delta: number) => {
-    setIndex((current) => Math.min(FILM_SCENES.length - 1, Math.max(0, current + delta)));
   }, []);
 
+  const selectScene = useCallback((index: number) => {
+    const selected = Math.max(0, Math.min(FILM_SCENES.length - 1, index));
+    seek(durations.slice(0, selected).reduce((sum, duration) => sum + duration, 0));
+    setRestart((value) => value + 1);
+    setReadyId(null);
+  }, [seek, durations]);
+  const replayFilm = useCallback(() => {
+    reset(); setRestart((value) => value + 1); setReadyId(null);
+  }, [reset]);
+
   useEffect(() => {
-    if (!open) return undefined;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'ArrowRight') go(1);
-      else if (event.key === 'ArrowLeft') go(-1);
+      const target = event.target instanceof Element ? event.target : null;
+      if (event.repeat || event.ctrlKey || event.metaKey || event.altKey || target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      if (event.key === 'ArrowRight') { event.preventDefault(); selectScene(position.index + 1); }
+      else if (event.key === 'ArrowLeft') { event.preventDefault(); selectScene(position.index - 1); }
+      else if (/^[1-7]$/.test(event.key)) { event.preventDefault(); selectScene(Number(event.key) - 1); }
+      else if ((event.key === ' ' || event.code === 'Space') && !target?.closest('button, a, [role="button"]')) {
+        event.preventDefault(); if (finished) replayFilm(); else toggle();
+      } else if (event.key.toLowerCase() === 'r' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        // Works whichever control has focus (Enter/Space belong to the button, R does not); Ctrl+R stays reload.
+        event.preventDefault(); replayFilm();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [go, open]);
+  }, [toggle, finished, position.index, replayFilm, selectScene]);
 
-  const dialogRef = useFocusTrap(open, close);
-  const glow = GLOW[scene.id] ?? STAGE.blue;
-
-  return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: calmMotion ? 0 : 0.35 }}
-          className="fixed inset-0 flex items-center justify-center p-4"
-          style={{ zIndex: 10012, background: 'rgba(3,4,8,0.9)', backdropFilter: 'blur(18px) saturate(120%)' }}
-        >
-          <motion.div
-            ref={dialogRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={titleId}
-            initial={{ opacity: 0, scale: 0.97, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.98 }}
-            transition={{ duration: calmMotion ? 0 : 0.5, ease: [0.22, 1, 0.36, 1] }}
-            className="relative flex w-full max-w-[880px] flex-col overflow-hidden rounded-[28px] border"
-            style={{
-              background: STAGE.bg,
-              borderColor: STAGE.line,
-              boxShadow: 'var(--elev-4)',
-              maxHeight: '96vh',
-            }}
-          >
-            {/* lumina scenei */}
-            <motion.div
-              aria-hidden="true"
-              className="pointer-events-none absolute -top-40 left-1/2 h-[380px] w-[620px] -translate-x-1/2 rounded-full"
-              animate={{ background: glow, opacity: 0.22 }}
-              transition={{ duration: 1.2 }}
-              style={{ filter: 'blur(110px)' }}
-            />
-
-            <div className="relative z-10 flex items-center justify-between px-6 pt-5">
-              <span className="text-[10.5px] font-black uppercase tracking-[0.22em]" style={{ color: STAGE.text3 }}>
-                Film de bun venit
-              </span>
-              <button
-                type="button"
-                onClick={close}
-                className="press-feedback focus-ring flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11.5px] font-semibold"
-                style={{ borderColor: STAGE.line, color: STAGE.text2, background: STAGE.panel }}
-              >
-                {isLast ? 'Închide' : 'Sari peste'} <X size={12} />
-              </button>
-            </div>
-
-            <div ref={stageRef} className="relative z-10 flex-shrink-0 px-6" style={{ height: 'clamp(230px, 46vh, 350px)' }}>
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={scene.id}
-                  className="h-full"
-                  initial={{ opacity: 0, scale: 0.98 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 1.015 }}
-                  transition={{ duration: calmMotion ? 0 : 0.4 }}
-                >
-                  <div className="flex h-full items-center justify-center">
-                    <div className="flex w-full items-center justify-center" style={{ height: SCENE_HEIGHT, transform: `scale(${fit})`, flexShrink: 0 }}><scene.Visual /></div>
-                  </div>
-                </motion.div>
-              </AnimatePresence>
-            </div>
-
-            <div className="relative z-10 px-8 pb-2 pt-4 text-center" aria-live="polite">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={scene.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: calmMotion ? 0 : 0.4 }}
-                  className="min-h-[104px]"
-                >
-                  <div className="text-[10.5px] font-black uppercase tracking-[0.22em]" style={{ color: glow }}>{scene.kicker}</div>
-                  <h2 id={titleId} className="display mt-1.5 text-[1.6rem] font-extrabold leading-tight tracking-tight" style={{ color: STAGE.text }}>
-                    {scene.title}
-                  </h2>
-                  <p className="mx-auto mt-2 max-w-[520px] text-[13.5px] font-medium leading-relaxed" style={{ color: STAGE.text2 }}>{scene.text}</p>
-                </motion.div>
-              </AnimatePresence>
-            </div>
-
-            <div className="relative z-10 flex items-center gap-4 px-6 pb-5 pt-1">
-              <button
-                type="button"
-                onClick={() => go(-1)}
-                disabled={index === 0}
-                aria-label="Scena anterioară"
-                className="press-feedback focus-ring flex h-9 w-9 items-center justify-center rounded-full border disabled:opacity-30"
-                style={{ borderColor: STAGE.line, color: STAGE.text2, background: STAGE.panel }}
-              >
-                <ArrowLeft size={15} />
-              </button>
-              <div className="flex flex-1 items-center gap-1.5" role="group" aria-label="Scenele filmului">
-                {FILM_SCENES.map((entry, i) => (
-                  <button
-                    key={entry.id}
-                    type="button"
-                    onClick={() => setIndex(i)}
-                    aria-label={`Scena ${i + 1}: ${entry.kicker}`}
-                    aria-current={i === index ? 'step' : undefined}
-                    className="group relative h-4 flex-1"
-                  >
-                    <span className="absolute inset-x-0 top-1/2 h-[3px] -translate-y-1/2 overflow-hidden rounded-full" style={{ background: STAGE.line }}>
-                      <motion.span
-                        key={i === index ? `run-${index}` : `done-${i < index}`}
-                        className="block h-full rounded-full"
-                        style={{ background: i === index ? glow : STAGE.text2 }}
-                        initial={{ width: i < index ? '100%' : '0%' }}
-                        animate={{ width: i < index ? '100%' : i === index ? '100%' : '0%' }}
-                        transition={{ duration: i === index && !isLast && !calmMotion ? scene.durationMs / 1000 : 0.2, ease: 'linear' }}
-                      />
-                    </span>
-                  </button>
-                ))}
-              </div>
-              {isLast ? (
-                <button
-                  type="button"
-                  onClick={close}
-                  className="press-feedback focus-ring flex h-9 items-center gap-2 rounded-full px-5 text-[12.5px] font-bold text-white"
-                  style={{ background: STAGE.blue, boxShadow: 'var(--elev-2)' }}
-                  data-autofocus
-                >
-                  {firstRun ? 'Începe turul' : 'Gata'} <Play size={13} fill="currentColor" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => go(1)}
-                  aria-label="Scena următoare"
-                  className="press-feedback focus-ring flex h-9 w-9 items-center justify-center rounded-full text-white"
-                  style={{ background: STAGE.blue }}
-                >
-                  <ArrowRight size={15} />
-                </button>
-              )}
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
+  const fade = calmMotion ? 1 : fraction(position.elapsed, 0, 400);
+  // pt-12: butoanele ferestrei (Electron) stau deasupra filmului, nu peste „Sari peste”.
+  return <div className="fixed inset-0 flex items-center justify-center px-3 pb-3 pt-12" style={{ zIndex: 10012, background: 'rgba(3,4,8,0.92)', backdropFilter: 'blur(18px)' }}>
+    <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId}
+      data-film-scene={scene.id} data-film-elapsed-ms={Math.round(clock.elapsedMs)}
+      data-film-scene-elapsed-ms={Math.round(position.elapsed)} data-film-playing={clock.running}
+      className="relative flex w-full max-w-[880px] flex-col overflow-hidden rounded-[28px] border"
+      style={{ background: STAGE.bg, borderColor: STAGE.line, boxShadow: 'var(--elev-4)', maxHeight: 'calc(100dvh - 60px)', color: STAGE.text }}>
+      <FilmAtmosphere />
+      <div className="relative flex flex-shrink-0 items-center justify-between px-5 pt-4">
+        <div><span className="text-base font-bold">Study<span style={{ color: STAGE.blue }}>X</span></span>
+          <span className="ml-3 text-[10px] font-semibold uppercase tracking-widest" style={{ color: STAGE.text3 }}>Film de bun venit</span></div>
+        <button type="button" onClick={close} className={BUTTON} style={buttonStyle}>{isLast ? 'Închide' : 'Sari peste'} <X size={12} /></button>
+      </div>
+      <div className="relative min-h-0 overflow-y-auto">
+        <div ref={stageRef} className="flex items-center justify-center px-4" style={{ height: 'clamp(140px, min(43vh, calc(100dvh - 420px)), 350px)' }}>
+          <div className="flex flex-shrink-0 items-center justify-center" aria-hidden="true" style={{ width: 520, height: 330, transform: `scale(${fit})`, opacity: fade }}>
+            <FilmTime.Provider value={{ elapsedMs: position.elapsed, calm: calmMotion }}>
+              <Suspense fallback={<p className="text-sm text-white/60">Pregătim scena…</p>}>
+                <ReadyVisual key={`${scene.id}-${restart}`} id={scene.id} ready={setReadyId}><scene.Visual /></ReadyVisual>
+              </Suspense>
+            </FilmTime.Provider>
+          </div>
+        </div>
+        <div className="px-6 pb-3 text-center" aria-live="polite" aria-atomic="true">
+          <div className="text-[11px] font-bold uppercase tracking-wider" style={{ color: COLORS[position.index] }}>{scene.kicker}</div>
+          <h2 id={titleId} className="display mt-2 text-2xl font-extrabold leading-tight">{scene.title}</h2>
+          <p className="mx-auto mt-2 min-h-[60px] max-w-[600px] text-[13px] leading-relaxed" style={{ color: STAGE.text2 }}>{caption}</p>
+        </div>
+      </div>
+      <div className="relative flex-shrink-0 px-5 pb-4">
+        <p className="mb-1 text-center text-[10px] font-semibold uppercase tracking-widest" style={{ color: STAGE.text3 }}>
+          {position.index + 1} / {FILM_SCENES.length} · {scene.kicker}
+        </p>
+        <div className="mb-3 flex items-center gap-3">
+          <button type="button" onClick={() => selectScene(position.index - 1)} disabled={position.index === 0} aria-label="Scena anterioară" className={BUTTON} style={buttonStyle}><ArrowLeft size={15} /></button>
+          <div className="flex flex-1 gap-2" role="group" aria-label="Scenele filmului">{FILM_SCENES.map((entry, index) => {
+            const progress = index < position.index ? 1 : index === position.index ? fraction(position.elapsed, 0, durations[index]) : 0;
+            return <button key={entry.id} type="button" onClick={() => selectScene(index)} aria-label={`Scena ${index + 1}: ${entry.kicker}`} aria-current={index === position.index ? 'step' : undefined} className="focus-ring flex h-9 flex-1 items-center">
+              <span className="h-1 w-full overflow-hidden rounded-full" style={{ background: STAGE.line }}><span className="block h-full rounded-full" style={{ width: `${progress * 100}%`, background: COLORS[index] }} /></span>
+            </button>;
+          })}</div>
+          {isLast ? <button type="button" onClick={close} className={BUTTON} style={{ ...buttonStyle, background: '#0A84FF', color: '#fff' }}>{firstRun ? 'Începe turul' : 'Gata'} <Play size={13} /></button>
+            : <button type="button" onClick={() => selectScene(position.index + 1)} aria-label="Scena următoare" className={BUTTON} style={buttonStyle}><ArrowRight size={15} /></button>}
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <button type="button" data-autofocus onClick={finished ? replayFilm : clock.toggle} aria-label={finished ? 'Reia filmul' : clock.paused ? 'Continuă filmul' : 'Pauză film'} aria-pressed={clock.paused} className={BUTTON} style={buttonStyle}>
+            {clock.paused || finished ? <Play size={14} /> : <Pause size={14} />}{finished ? 'Reia' : clock.paused ? 'Continuă' : 'Pauză'}
+          </button>
+          <button type="button" onClick={replayFilm} aria-label="Reia de la început" className={BUTTON} style={buttonStyle}><RotateCcw size={14} /></button>
+          <button type="button" onClick={() => setSound((value) => !value)} aria-label={sound ? 'Oprește narațiunea' : 'Pornește narațiunea'} aria-pressed={sound} className={BUTTON} style={buttonStyle}>{sound ? <Volume2 size={14} /> : <VolumeX size={14} />}{sound ? 'Cu voce' : 'Fără sunet'}</button>
+          <span role="progressbar" aria-label="Progres film" aria-valuemin={0} aria-valuemax={total}
+            aria-valuenow={Math.round(clock.elapsedMs)} aria-valuetext={`${Math.floor(clock.elapsedMs / 1000)} din ${Math.ceil(total / 1000)} secunde`}
+            className="text-[11px] tabular-nums" style={{ color: STAGE.text3 }}>{Math.floor(clock.elapsedMs / 1000)} / {Math.ceil(total / 1000)} s</span>
+        </div>
+        <FilmShortcuts />
+        <p role="status" className="text-center text-[11px] empty:hidden" style={{ color: STAGE.text3 }}>
+          {unavailable ? 'Vocea nu este disponibilă pentru această scenă. Poți citi textul.' : clock.hidden ? 'Filmul așteaptă revenirea în fereastră.' : !manifestReady ? 'Pregătim filmul…' : ''}
+        </p>
+      </div>
+      <audio ref={audioRef} preload="none" aria-hidden="true" />
+    </div>
+  </div>;
 }

@@ -60,7 +60,9 @@ describe('useDeckCreation - caracterizare', () => {
     const { result } = setup();
     await act(() => result.current.processCsvFile(txt('mat.csv', '# c\nq1;a1\nq2;a2\nbad')));
     expect(decks()).toHaveLength(1);
-    expect(decks()[0].title).toBe('Deck Anki · mat');
+    expect(decks()[0].title).toBe('Deck CSV · mat');
+    expect(decks()[0].tags).toEqual(['csv', 'import']);
+    expect(toasts().some((t) => t.type === 'warning' && /1 linie/.test(t.message))).toBe(true);
     expect(decks()[0].questions).toHaveLength(2);
     expect(navigate).toHaveBeenCalledWith(`/flashcards/session/${decks()[0].id}?mode=all`);
     expect(result.current.csvImporting).toBe(false);
@@ -159,11 +161,8 @@ describe('useDeckCreation - caracterizare', () => {
     expect(result.current.photoError).toMatch(/imagini valide/);
   });
 
-  it('pachet rapid și pachet de greșeli', () => {
+  it('pachet de greșeli', () => {
     const { result } = setup();
-    act(() => result.current.createQuickDeck());
-    expect(decks()[0].questions).toHaveLength(6);
-    expect(navigate).toHaveBeenCalledTimes(1);
     act(() => result.current.createMistakeDeck());
     expect(result.current.aiError).toMatch(/greșeli/);
     useUserStore.setState({ activeProfileId: null });

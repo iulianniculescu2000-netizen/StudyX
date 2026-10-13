@@ -28,6 +28,8 @@ import { useToastStore } from '../store/toastStore';
 import { useAgentJobsStore } from '../store/agentJobsStore';
 import Mascot from './Mascot';
 import { useAdaptiveMotion } from '../hooks/useAdaptiveMotion';
+import { useFocusTrap } from '../hooks/useFocusTrap';
+import { useLauncherDock } from './ai-chat/useLauncherDock';
 import { useViewportProfile } from '../hooks/useViewportProfile';
 import { buildUserContextString } from '../lib/aiContext';
 import { buildScopedPerformanceSummary, scopedWeakTopics } from '../lib/ai/studyScope';
@@ -56,7 +58,7 @@ import {
   touchThreadActivity,
 } from '../ai/chatMemory';
 import type { Question, Quiz } from '../types';
-import AIOrb from './ai-chat/AIOrb';
+import { advanceChatVisualRun, deriveChatVisualState, type ChatVisualRun, type ChatVisualState } from './ai-chat/chatVisualState';
 import FreeKeysNotice from './ai-chat/FreeKeysNotice';
 import { diversifyChunks, extractRelevantExcerpt } from './ai-chat/chatHelpers';
 import ChatMessageBubble, { type ChatMessageActions } from './ai-chat/ChatMessageBubble';
@@ -187,6 +189,53 @@ export default function AIChatDrawer() {
 
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [visualRun, setVisualRun] = useState<ChatVisualRun | null>(null);
+  const visualRunId = useRef(0);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const visualContext = `${activeProfileId ?? ''}:${chatThread}`;
+  const visualState = deriveChatVisualState(visualRun, visualContext, hasKey);
+  const beginVisualRun = () => {
+    if (successTimerRef.current) {
+      clearTimeout(successTimerRef.current);
+      successTimerRef.current = null;
+    }
+    const id = ++visualRunId.current;
+    setVisualRun({ id, context: visualContext, state: 'waiting' });
+    return id;
+  };
+  const updateVisualRun = (id: number, state: ChatVisualState) => {
+    if (successTimerRef.current) {
+      clearTimeout(successTimerRef.current);
+      successTimerRef.current = null;
+    }
+    setVisualRun((run) => advanceChatVisualRun(run, id, state));
+    if (state === 'success') {
+      successTimerRef.current = setTimeout(() => {
+        setVisualRun((run) => (run?.id === id && run?.state === 'success' ? { ...run, state: 'idle' } : run));
+      }, 3500);
+    }
+  };
+
+  useEffect(() => {
+    if (successTimerRef.current) {
+      clearTimeout(successTimerRef.current);
+      successTimerRef.current = null;
+    }
+    setVisualRun(null);
+  }, [activeProfileId, chatThread, open]);
+
+  useEffect(() => {
+    return () => {
+      if (streamAbortRef.current) {
+        streamAbortRef.current.abort();
+        streamAbortRef.current = null;
+      }
+      if (successTimerRef.current) {
+        clearTimeout(successTimerRef.current);
+        successTimerRef.current = null;
+      }
+    };
+  }, []);
   const [thinkingPhase, setThinkingPhase] = useState<string | null>(null);
   const [mode, setMode] = useState<ChatMode>('grounded');
   const [manualMode, setManualMode] = useState(false);
@@ -458,6 +507,7 @@ export default function AIChatDrawer() {
   };
 
   const stopGeneration = () => {
+    updateVisualRun(visualRunId.current, 'stopped');
     // Abort the streaming chat if one is live…
     streamAbortRef.current?.abort();
     streamAbortRef.current = null;
@@ -602,6 +652,10 @@ export default function AIChatDrawer() {
     const text = (overrideText || input).trim();
     if ((!text && !pastedImage) || loading) return;
     generationAbortedRef.current = false;
+    const visualId = beginVisualRun();
+    // Delegated commands handle their own outcome; only a completed answer is celebrated.
+    let visualOutcome: ChatVisualState = 'idle';
+    let chunkFrame = 0;
 
     // Auto-detect the conversational mode from the message unless the user has
     // explicitly pinned one (manualMode) or an override is passed in. We apply it
@@ -667,6 +721,7 @@ export default function AIChatDrawer() {
         const { groqVisionRequest, supportsVision } = await import('../lib/groq');
         const { useAIStore: store } = await import('../store/aiStore');
         if (!supportsVision(store.getState().provider)) {
+          visualOutcome = 'error';
           addToast('Vision necesită Groq. Schimbă providerul în Setări AI.', 'warning');
           setMessages((prev) => [...prev, {
             role: 'assistant',
@@ -679,6 +734,8 @@ export default function AIChatDrawer() {
           ? `${text}\n\nContextul imaginii atașate:`
           : 'Analizează această imagine medicală/clinică. Descrie ce observi, ce diagnostic sau interpretare sugerezi, și ce aspecte sunt relevante pentru un student la medicină.';
         const visionResponse = await groqVisionRequest(imageSnapshot, visionPrompt, abortCtrl.signal);
+        visualOutcome = 'success';
+        updateVisualRun(visualId, 'streaming');
         const words = visionResponse.split(' ');
         let current = '';
         for (let i = 0; i < words.length; i += 10) {
@@ -768,7 +825,7 @@ export default function AIChatDrawer() {
       // Tokens arrive dozens of times a second; the list is repainted at most once per frame with everything
       // that arrived since, and flushed synchronously when the stream ends or is stopped.
       let pendingChunk = '';
-      let chunkFrame = 0;
+      chunkFrame = 0;
       const flushChunk = () => {
         chunkFrame = 0;
         const piece = pendingChunk;
@@ -787,12 +844,17 @@ export default function AIChatDrawer() {
       // `as`: variabilele se schimbă în callback-uri, iar TypeScript le-ar îngusta la `null`.
       let servedInfo = null as ServedInfo | null;
       let finishReason = null as string | null;
+      let hasStreamed = false;
       const finalText = await generateChatResponseStream(
         text,
         `${chapterPrefix}${quizContextPrefix}${scopePrefix}${contextSummary}`,
         historyForAI,
         (chunk) => {
           if (abortCtrl.signal.aborted) return;
+          if (chunk && !hasStreamed) {
+            hasStreamed = true;
+            updateVisualRun(visualId, 'streaming');
+          }
           streamedAnswer += chunk;
           pendingChunk += chunk;
           if (!chunkFrame) chunkFrame = requestAnimationFrame(flushChunk);
@@ -857,6 +919,8 @@ export default function AIChatDrawer() {
         flushChunk();
       }
 
+      visualOutcome = streamedAnswer.trim() ? 'success' : 'error';
+
       // If stream finished but produced no content (API hiccup), show a fallback.
       if (!abortCtrl.signal.aborted) {
         setMessages((prev) => {
@@ -884,7 +948,9 @@ export default function AIChatDrawer() {
         }
       }
     } catch (err: unknown) {
+      visualOutcome = 'error';
       if (err instanceof Error && (err.name === 'AbortError' || err.message.includes('aborted'))) {
+        visualOutcome = 'stopped';
         // Stopped before the first chunk: don't leave an empty bubble behind (it was also being saved).
         setMessages((prev) => {
           const last = prev[prev.length - 1];
@@ -904,13 +970,25 @@ export default function AIChatDrawer() {
         return [...prev, errorBubble];
       });
     } finally {
-      streamAbortRef.current = null;
-      setLoading(false);
-      setThinkingPhase(null);
+      if (chunkFrame) {
+        cancelAnimationFrame(chunkFrame);
+        chunkFrame = 0;
+      }
+      updateVisualRun(visualId, abortCtrl.signal.aborted ? 'stopped' : visualOutcome);
+      if (streamAbortRef.current === abortCtrl) {
+        streamAbortRef.current = null;
+        setLoading(false);
+        setThinkingPhase(null);
+      }
     }
   };
 
   const closeChat = () => {
+    if (successTimerRef.current) {
+      clearTimeout(successTimerRef.current);
+      successTimerRef.current = null;
+    }
+    setVisualRun(null);
     setChatOpen(false);
     setScopedSource(null);
     setActiveCitationKey(null);
@@ -920,6 +998,7 @@ export default function AIChatDrawer() {
   };
 
   const clearConversation = () => {
+    setVisualRun(null);
     setMessages([]);
     setActiveCitationKey(null);
     conversationSummaryRef.current = '';
@@ -1034,6 +1113,8 @@ export default function AIChatDrawer() {
     }
     setLoading(true);
     setThinkingPhase('Generez un set din răspuns…');
+    const visualId = beginVisualRun();
+    let visualOutcome: ChatVisualState = 'success';
     try {
       const { generateQuestions, getUserProfile } = await import('../ai/AIEngine');
       const profile = activeProfileId ? getUserProfile(activeProfileId) : undefined;
@@ -1045,6 +1126,7 @@ export default function AIChatDrawer() {
         mode: 'standard',
       });
       if (result.questions.length === 0) {
+        visualOutcome = 'error';
         addToast('Nu am putut genera un set din acest subiect.', 'error');
         return;
       }
@@ -1071,8 +1153,10 @@ export default function AIChatDrawer() {
         openRoute: { route: `/play/${quizId}`, label: 'Începe testul' },
       }]);
     } catch (error) {
+      visualOutcome = 'error';
       addToast(error instanceof Error ? error.message : 'Generarea a eșuat.', 'error');
     } finally {
+      updateVisualRun(visualId, visualOutcome);
       setLoading(false);
       setThinkingPhase(null);
     }
@@ -1128,6 +1212,58 @@ export default function AIChatDrawer() {
   useEffect(() => {
     if (!open || !immersive) setGlassPanelOpen(false);
   }, [open, immersive]);
+
+  // Dialog behaviour: focus moves into the sheet on open and back out on close, Tab stays inside.
+  // Esc is handled below (the trap's own Esc handling is left off) because it must yield to the layers
+  // that have their own Esc: the zoom viewer, popovers, the clear confirmation, Studio and full-window mode.
+  const sheetRef = useFocusTrap(open);
+  const launcherRef = useRef<HTMLButtonElement>(null);
+  const [launcherPeek, setLauncherPeek] = useState(false);
+  const launcherDocked = useLauncherDock(!open && !floatingUiSuppressed) && !launcherPeek;
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      // IME composition uses Esc to cancel the candidate, not to leave the chat.
+      if (event.isComposing || event.keyCode === 229) return;
+      if (immersive || view !== 'chat' || zoomedBlock || glassPanelOpen || overflowMenuOpen || confirmClearOpen) return;
+      if (document.querySelector('[data-tour-keyboard-layer]')) return;
+      const selection = window.getSelection();
+      if (selection && !selection.isCollapsed && sheetRef.current?.contains(selection.anchorNode)) {
+        // First Esc only drops the text selection.
+        selection.removeAllRanges();
+        return;
+      }
+      closeChat();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+    // closeChat only touches state setters and refs, so it is safe to read the latest one through the closure.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, immersive, view, zoomedBlock, glassPanelOpen, overflowMenuOpen, confirmClearOpen]);
+
+  // The launcher is unmounted while the chat is open, so the trap cannot give focus back to it:
+  // do it once it is mounted again (unless the user already moved focus somewhere real).
+  const launcherWasOpenRef = useRef(open);
+  useEffect(() => {
+    const wasOpen = launcherWasOpenRef.current;
+    launcherWasOpenRef.current = open;
+    if (!wasOpen || open) return;
+    // The launcher mounts again only after the drawer's exit animation, so retry for up to ~1 s.
+    let tries = 0;
+    let timer = 0;
+    const restore = () => {
+      const active = document.activeElement;
+      // Focus still inside the exiting drawer (or nowhere) counts as lost; anything else the user picked is kept.
+      const lost = !active || active === document.body || !active.isConnected || !!active.closest('[role="dialog"]');
+      if (!lost) return;
+      if (launcherRef.current && active?.closest('[role="dialog"]') == null) { launcherRef.current.focus({ preventScroll: true }); return; }
+      if (++tries < 20) timer = window.setTimeout(restore, 50);
+    };
+    timer = window.setTimeout(restore, 0);
+    return () => window.clearTimeout(timer);
+  }, [open]);
 
   /**
    * Message bodies are injected as HTML, so schemas and wide tables can't carry
@@ -1355,7 +1491,7 @@ export default function AIChatDrawer() {
           {loading && threadMessages[threadMessages.length - 1]?.role === 'user' && (
             <div className="flex items-start gap-2.5 justify-start">
               <div className="mt-0.5">
-                <AIOrb theme={theme} size={26} active calm={calmMotion} />
+                <Mascot accent={theme.accent} size={28} static expression="waiting" calm={calmMotion} />
               </div>
               <div
                 className="flex items-center gap-2.5 rounded-[var(--r-lg)] border px-4 py-3"
@@ -1430,10 +1566,15 @@ export default function AIChatDrawer() {
       {!open && (
         <motion.button
           initial={calmMotion ? { opacity: 0 } : { scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
+          animate={{ scale: 1, opacity: 1, x: launcherDocked ? 60 : 0 }}
           transition={t.panel}
           whileHover={calmMotion ? undefined : { scale: 1.04 }}
           whileTap={calmMotion ? undefined : { scale: 0.95 }}
+          ref={launcherRef}
+          onPointerEnter={() => setLauncherPeek(true)}
+          onPointerLeave={() => setLauncherPeek(false)}
+          onFocus={() => setLauncherPeek(true)}
+          onBlur={() => setLauncherPeek(false)}
           onClick={() => setChatOpen(true)}
           aria-label="Deschide chatul AI"
           data-tutorial="ai-chat-button"
@@ -1471,6 +1612,10 @@ export default function AIChatDrawer() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.985 }}
               transition={t.modal}
+              ref={sheetRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Asistent AI StudyX"
               className={`assistant-sheet fixed z-[9999] flex flex-col overflow-hidden${immersive ? ' immersive-chat' : ''}${calmMotion ? '' : ' chat-panel-morph'}`}
               style={immersive ? {
                 ...panelGeometry,
@@ -1496,6 +1641,7 @@ export default function AIChatDrawer() {
                   popTransition={t.pop}
                   chatThread={chatThread}
                   loading={loading}
+                  visualState={visualState}
                   immersive={immersive}
                   mobile={mobile}
                   view={view}

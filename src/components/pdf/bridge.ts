@@ -15,5 +15,8 @@ export interface PdfBridge {
 /** Puntea Electron pentru citirea PDF-urilor (preload.cjs); lipsește în varianta web. */
 export const bridge = (): PdfBridge | undefined => (typeof window === 'undefined' ? undefined : (window.electronAPI as unknown as PdfBridge | undefined));
 
+/** Rădăcina-sentinelă pentru cărțile livrate cu aplicația (Electron o traduce în resources/books). */
+export const BUNDLED_ROOT = 'studyx:bundled';
+
 /** True când aplicația desktop poate citi PDF-uri din folderul ales. */
 export const canReadBookPdf = () => !!bridge()?.organizareReadPdf;

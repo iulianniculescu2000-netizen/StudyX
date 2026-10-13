@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Trophy } from 'lucide-react';
+import TourHelpButton from '../../tutorial/TourHelpButton';
 import { useAdaptiveMotion } from '../../hooks/useAdaptiveMotion';
 import { tallyByGroup } from '../../lib/flashcardDueQueue';
 import type { Theme } from '../../theme/themes';
@@ -32,7 +33,10 @@ export function SessionSummary({ theme, calmMotion, t, isDue, cards, ratings, el
         >
           <Trophy size={36} className="text-white" />
         </div>
-        <h2 className="text-3xl font-black tracking-tight mb-2" style={{ color: theme.text }}>Sesiune încheiată</h2>
+        <div className="mb-2 flex items-center justify-center gap-2">
+          <h2 className="text-3xl font-black tracking-tight" style={{ color: theme.text }}>Sesiune încheiată</h2>
+          <TourHelpButton tour="flashcardSession" label="Ghid pentru sesiunea de flashcarduri" />
+        </div>
         <p className={`text-sm font-medium opacity-60 ${isDue ? 'mb-6' : 'mb-10'}`} style={{ color: theme.text }}>
           Ai parcurs {cards.length} flashcarduri în {Math.floor(elapsed / 60)}m {elapsed % 60}s.
         </p>

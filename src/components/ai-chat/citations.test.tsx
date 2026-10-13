@@ -35,7 +35,7 @@ describe('chip-uri de citare în răspuns', () => {
     window.removeEventListener(OPEN_BOOK_EVENT, handler as EventListener);
     expect(handler).toHaveBeenCalledTimes(1);
     const detail = (handler.mock.calls[0][0] as CustomEvent).detail;
-    expect(detail).toEqual({ book: 'K', pdfPage: 1180, printedPage: 1136, sourceId: 's1', sourceName: 'Kumar' });
+    expect(detail).toEqual({ book: 'K', pdfPage: 1180, printedPage: 1136, sourceId: 's1', sourceName: 'Kumar', excerpt: 'HTA se tratează cu IECA.' });
   });
 
   it('o sursă fără pagină sau carte nu e buton; numerele necunoscute rămân text; fără citări nu se schimbă nimic', () => {

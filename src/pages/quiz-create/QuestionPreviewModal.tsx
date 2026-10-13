@@ -1,6 +1,8 @@
 import Portal from '../../components/Portal';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, X } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import type { Question } from '../../types';
 import type { Theme } from '../../theme/themes';
 
@@ -8,6 +10,25 @@ interface QuestionPreviewModalProps {
   previewQ: Question | null;
   theme: Theme;
   onClose: () => void;
+}
+
+/** Panou de dialog: focus în el, Tab rămâne înăuntru, Esc închide, focusul revine la butonul de previzualizare. */
+function PreviewPanel({ onClose, children }: { onClose: () => void; children: ReactNode }) {
+  const ref = useFocusTrap(true, onClose);
+  return (
+    <motion.div
+      ref={ref}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Previzualizare întrebare"
+      initial={{ opacity: 0, scale: 0.95, y: -20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      className="fixed top-[8%] left-1/2 z-[201] w-full max-w-xl -translate-x-1/2 px-4"
+    >
+      {children}
+    </motion.div>
+  );
 }
 
 export function QuestionPreviewModal({ previewQ, theme, onClose }: QuestionPreviewModalProps) {
@@ -24,12 +45,7 @@ export function QuestionPreviewModal({ previewQ, theme, onClose }: QuestionPrevi
             className="fixed inset-0 z-[200]"
             style={{ background: 'var(--overlay)', backdropFilter: 'blur(6px)' }}
           />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: -20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed top-[8%] left-1/2 z-[201] w-full max-w-xl -translate-x-1/2 px-4"
-          >
+          <PreviewPanel onClose={onClose}>
             <div
               className="rounded-[var(--r-lg)] p-6"
               style={{
@@ -42,7 +58,7 @@ export function QuestionPreviewModal({ previewQ, theme, onClose }: QuestionPrevi
                 <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: theme.accentText }}>
                   Previzualizare
                 </span>
-                <button onClick={onClose} aria-label="Închide previzualizarea" style={{ color: theme.text3 }}>
+                <button data-autofocus onClick={onClose} aria-label="Închide previzualizarea" className="focus-ring rounded-lg p-1" style={{ color: theme.text3 }}>
                   <X size={16} />
                 </button>
               </div>
@@ -93,7 +109,7 @@ export function QuestionPreviewModal({ previewQ, theme, onClose }: QuestionPrevi
                 </div>
               )}
             </div>
-          </motion.div>
+          </PreviewPanel>
         </>
       )}
     </AnimatePresence>

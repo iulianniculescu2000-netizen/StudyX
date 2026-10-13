@@ -59,11 +59,6 @@ describe('insigna „cine a răspuns”', () => {
     expect(screen.getByText('Groq · gpt-oss-120b')).toBeTruthy();
   });
 
-  it('la local arată viteza, iar la completare cu cloud o spune', () => {
-    mount(answer({ served: { provider: 'local', model: 'qwen3:4b', local: true, tokensPerSec: 9.5 }, localAnswer: true, completedWithCloud: true }));
-    expect(screen.getByText('Local · qwen3:4b · 9,5 tok/s → completat cu cloud')).toBeTruthy();
-  });
-
   it('nu apare pe mesaje fără informație, în timpul scrierii sau pe erori', () => {
     const { unmount } = mount(answer());
     expect(screen.queryByTitle('Cine a scris acest răspuns')).toBeNull();

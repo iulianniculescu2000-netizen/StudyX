@@ -4,7 +4,7 @@
  * (components/ai-chat/schemaDsl.ts). Constanta e independentă de promptKit: se leagă acolo.
  */
 export const DIAGRAM_RULES_COMPACT = [
-  'SCHEME: bloc ```schema, o linie pe pas, indentare = ramificare, max 14 pași.',
+  'SCHEME: bloc ```schema, un nod pe linie, indentare = ramificare, max 12 noduri per bloc.',
   'Marcaje: ? decizie, ! urgență, + tratament, ~ investigație, . pas, = rezultat. Ramuri: da> / nu> / [etichetă]>. Lanț: A -> B -> C. Notă scurtă după |. Titlu: # Titlu.',
   '```schema',
   '# Durere toracică',

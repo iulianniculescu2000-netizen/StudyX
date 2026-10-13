@@ -34,4 +34,26 @@ describe('ErrorNotebook', () => {
     expect(screen.getByText(/DOAC/)).toBeTruthy();
     expect(screen.getByRole('searchbox', { name: 'Caută în greșeli' })).toBeTruthy();
   });
+
+  it('închide explicația la al doilea click (expandare/colapsare)', () => {
+    useQuizStore.setState({ quizzes: [quiz] });
+    useStatsStore.setState({ questionStats: { 'z:q1': { quizId: 'z', questionId: 'q1', timesCorrect: 0, timesWrong: 2, lastSeen: 1, nextReview: 0, interval: 1 } } });
+    renderPage();
+    const trigger = screen.getByRole('button', { name: /Tratament în FiA/ });
+    fireEvent.click(trigger);
+    expect(screen.getByText('Anticoagulare.')).toBeTruthy();
+    fireEvent.click(trigger);
+    expect(screen.queryByText('Anticoagulare.')).toBeNull();
+  });
+
+  it('filtrează greșelile prin căutare și resetează lista', () => {
+    useQuizStore.setState({ quizzes: [quiz] });
+    useStatsStore.setState({ questionStats: { 'z:q1': { quizId: 'z', questionId: 'q1', timesCorrect: 0, timesWrong: 2, lastSeen: 1, nextReview: 0, interval: 1 } } });
+    renderPage();
+    const searchInput = screen.getByRole('searchbox', { name: 'Caută în greșeli' });
+    fireEvent.change(searchInput, { target: { value: 'termen_inexistent' } });
+    expect(screen.getByText('Nicio greșeală nu se potrivește căutării.')).toBeTruthy();
+    fireEvent.change(searchInput, { target: { value: '' } });
+    expect(screen.getByText(/Tratament în FiA/)).toBeTruthy();
+  });
 });

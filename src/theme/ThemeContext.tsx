@@ -76,6 +76,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         '--accent2': theme.accent2,
         '--accent-text': theme.accentText,
         '--success': theme.success,
+        '--success-fill': theme.successFill,
         '--danger': theme.danger,
         '--warning': theme.warning,
         '--nav-bg': theme.navBg,
@@ -96,7 +97,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         '--glass-border': theme.glassBorder ?? (theme.isDark ? 'rgba(255,255,255,0.12)' : `color-mix(in srgb, ${theme.border2} 74%, rgba(255,255,255,0.55))`),
         '--glass-highlight': theme.glassHighlight ?? (theme.isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.9)'),
         // Faint sheen for gradients drawn OVER content (never the 90%-white highlight line, which would veil text).
-        '--glass-sheen': theme.isDark ? 'rgba(255,255,255,0.09)' : 'rgba(255,255,255,0.10)',
+        '--glass-sheen': theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.10)',
         '--shadow-color': `rgb(var(--shadow-rgb) / ${theme.isDark ? 0.42 : 0.12})`,
         '--shadow-color-soft': `rgb(var(--shadow-rgb) / ${theme.isDark ? 0.24 : 0.075})`,
         '--focus-ring': theme.isDark ? 'rgba(10,132,255,0.7)' : `color-mix(in srgb, ${theme.accent} 60%, transparent)`,

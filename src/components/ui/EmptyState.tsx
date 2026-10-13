@@ -11,10 +11,12 @@ export interface EmptyStateProps {
   body?: string;
   primary?: EmptyStateAction;
   secondary?: EmptyStateAction;
+  /** Work in progress (e.g. the first document being read): the icon spins and the block is announced politely. */
+  busy?: boolean;
 }
 
 /** Starea „nimic aici încă”: pictogramă, titlu, explicație și cel mult două acțiuni (link sau buton). */
-export default function EmptyState({ icon: Icon, title, body, primary, secondary }: EmptyStateProps) {
+export default function EmptyState({ icon: Icon, title, body, primary, secondary, busy = false }: EmptyStateProps) {
   const theme = useTheme();
   const { calmMotion } = useAdaptiveMotion();
 
@@ -30,12 +32,12 @@ export default function EmptyState({ icon: Icon, title, body, primary, secondary
   };
 
   return (
-    <div className={`glass-panel rounded-2xl px-6 py-10 text-center ${calmMotion ? '' : 'fx-rise'}`}>
+    <div className={`glass-panel rounded-[var(--r-lg)] px-6 py-10 text-center ${calmMotion ? '' : 'fx-rise'}`} {...(busy ? { role: 'status', 'aria-live': 'polite' as const } : {})}>
       <div
-        className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-[14px]"
+        className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-[var(--r-md)]"
         style={{ background: `${theme.accent}18`, color: theme.accentText }}
       >
-        <Icon size={24} aria-hidden="true" />
+        <Icon size={24} aria-hidden="true" className={busy ? 'animate-spin' : undefined} />
       </div>
       <h2 className="text-[16px] font-semibold" style={{ color: theme.text }}>{title}</h2>
       {body && <p className="mx-auto mt-1.5 max-w-md text-[13px]" style={{ color: theme.text3 }}>{body}</p>}

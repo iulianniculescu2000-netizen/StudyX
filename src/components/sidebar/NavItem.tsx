@@ -46,13 +46,13 @@ export default function NavItem({
             cursor: 'pointer',
             borderRadius: 'var(--r-md)',
           } : {
-            gap: 10,
-            padding: '6px 10px',
+            gap: 9,
+            padding: '4px 8px',
             justifyContent: 'flex-start' as const,
             border: `1px solid ${isActive ? 'var(--accent-glow)' : 'transparent'}`,
             color: isActive ? theme.text : theme.text2,
-            fontSize: 13.5,
-            fontWeight: isActive ? 700 : 600,
+            fontSize: 13,
+            fontWeight: isActive ? 650 : 500,
             cursor: 'pointer',
             borderRadius: 'var(--r-md)',
           }}
@@ -83,7 +83,7 @@ export default function NavItem({
               />
             </>
           )}
-          <IconChip icon={icon} hue={hue} active={isActive} size={collapsed ? 30 : 27} />
+          <IconChip icon={icon} hue={hue} active={isActive} size={collapsed ? 30 : 24} />
           {!collapsed && (
             <>
               <span className="flex-1 truncate" style={{ transition: 'font-weight var(--dur-base) var(--ease-emphasized)' }}>{label}</span>

@@ -11,6 +11,16 @@ import { residencyTour } from './tours/residency';
 import { settingsTour } from './tours/settings';
 import { simulationTour } from './tours/simulation';
 import { vaultTour } from './tours/vault';
+import { reviewTour } from './tours/review';
+import { dailyTour } from './tours/daily';
+import { notesTour } from './tours/notes';
+import { statsTour } from './tours/stats';
+import { flashcardSessionTour } from './tours/flashcardSession';
+import { quizSessionTour } from './tours/quizSession';
+import { quizResultsTour } from './tours/quizResults';
+import { gamificationTour } from './tours/gamification';
+import { analyticsTour } from './tours/analytics';
+import { crunchTour } from './tours/crunch';
 import type { TourId } from './tourMeta';
 import type { TourDefinition } from './types';
 
@@ -31,6 +41,16 @@ export const TOURS: Record<SpotlightTourId, TourDefinition> = {
   organizare: organizareTour,
   residencyFlashcards: residencyFlashcardsTour,
   chat: chatTour,
+  review: reviewTour,
+  daily: dailyTour,
+  notes: notesTour,
+  stats: statsTour,
+  flashcardSession: flashcardSessionTour,
+  quizSession: quizSessionTour,
+  quizResults: quizResultsTour,
+  gamification: gamificationTour,
+  analytics: analyticsTour,
+  crunch: crunchTour,
 };
 
 export const isSpotlightTour = (id: TourId): id is SpotlightTourId => id in TOURS;

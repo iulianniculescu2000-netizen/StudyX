@@ -19,7 +19,15 @@ describe('organizare:read-pdf validation', () => {
   writeFileSync(path.join(root, 'Carti', 'a.pdf'), '%PDF-1.4 test');
   writeFileSync(path.join(root, 'Carti', 'a.txt'), 'x');
   writeFileSync(path.join(outside, 'secret.pdf'), 'secret');
-  symlinkSync(path.join(outside, 'secret.pdf'), path.join(root, 'Carti', 'link.pdf'));
+  // Sandboxed Windows hosts may deny even junction creation. Run the remaining
+  // path checks there and mark only the filesystem-link scenario unavailable.
+  let canCreateLink = false;
+  try {
+    symlinkSync(outside, path.join(root, 'Carti', 'external'), process.platform === 'win32' ? 'junction' : 'dir');
+    canCreateLink = true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EPERM') throw error;
+  }
 
   it('reads a pdf inside the root', async () => {
     const r = await readPdfInsideRoot(root, 'Carti/a.pdf');
@@ -34,8 +42,10 @@ describe('organizare:read-pdf validation', () => {
     expect((await readPdfInsideRoot('', 'a.pdf')).ok).toBe(false);
     expect((await readPdfInsideRoot(root, undefined as never)).ok).toBe(false);
   });
-  it('rejects a symlink that leaves the root and reports missing files', async () => {
-    expect((await readPdfInsideRoot(root, 'Carti/link.pdf')).code).toBe('invalid');
+  it.skipIf(!canCreateLink)('rejects a symlink that leaves the root', async () => {
+    expect((await readPdfInsideRoot(root, 'Carti/external/secret.pdf')).code).toBe('invalid');
+  });
+  it('reports missing files', async () => {
     expect((await readPdfInsideRoot(root, 'Carti/nope.pdf')).code).toBe('missing');
   });
 });

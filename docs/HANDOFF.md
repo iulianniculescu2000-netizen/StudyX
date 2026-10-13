@@ -1,6 +1,8 @@
-# StudyX — stare curentă și predare (1.0.0, 2026-10-09)
+# StudyX — stare curentă și predare (1.0.0, 2026-10-11)
 
 Pentru cine (om sau chat nou) reia lucrul. Citește întâi secțiunile 0–2; restul e referință.
+
+Implementarea intro/UI/ghiduri și optimizarea AI din 11 octombrie sunt descrise în [StudyX-1.0-VALIDARE.md](StudyX-1.0-VALIDARE.md). Filmul are circa 65 s cu voce feminină română locală. Toate cele 13 ghiduri sunt adaptate la profil. Helperii AI sunt `src/ai/contextBudget.ts` și `src/lib/groqCore/studyPrompts.ts`. Datele și backupurile testelor Electron sunt izolate prin `STUDYX_USER_DATA`; `scripts/qa-desktop.cjs` verifică varianta live sau împachetată. Testul PDF folosește junction pe Windows și nu mai cere privilegiul de symlink. Fără push, tag sau publicare.
 
 ## 0. Unde suntem
 - **StudyX 1.0.0 este forma finală**; versiunile anterioare (2.x) au fost beta și nu mai sunt întreținute. Linia de versiuni pornește de la 1.0.0.
@@ -45,3 +47,11 @@ Vezi `RELEASE.md`. Pe scurt: ridici versiunea (3 segmente), actualizezi „Ce e 
 
 ## 6. Preferințe ale proprietarului
 Română, concis; stil Apple, aerisit, cu detalii fine; previzualizare înainte de schimbări mari de UI; nu lansează versiuni fără să spună; îi plac organizarea clară (disciplină → specialitate) și comportamentul „inteligent” (iconițe, plasări automate, sugestii de folder). Preferă să discute ideile mari înainte să le implementăm.
+
+## 7. 2026-10-12 audit + fixes (agent E: cod mort, text, documentație)
+- **Cod mort scos:** `WeaknessAnalyzer`, `LearningStrategist`, `AITutorSession`, `ExamSimulator` din `AIEngine.ts` (`getAdaptiveDifficulty` are acum logica proprie); `buildCompactChatSystem`, `buildCompactContext`, `compactHistory` (rămase de la modelul local); din `src/ai/helpers/` au rămas doar ajutătorii conectați (`rewriteQuery`, `shouldClarify`, `neutralizeActionClaims`, `looksTruncated`, `resolveHelperFlags(storage?)` fără parametrul `localInUse`); `OpenAISettings.tsx`, `hasAnyCloudKey`, `extractJsonArray`, `canResolveRoot`, `pageEnter`, `HELP_TIPS_PENDING`, `replayPrompt`, ramura `local` din `providerRetry` și `servedBadge`; setteri nefolosiți din `cursorStore`, `focusModeStore` (`examMode`) și `aiStore`. Formatul persistat nu s-a schimbat.
+- **Text:** „Resetează” în resetarea totală; `src/lib/plural.ts` (`plural(n, one, many)`, cu „de” de la 20); „Folder țintă”; titluri de pagină pentru `/folder`, `/erori`, `/simulare`, `/aproape-examen` (`TitleManager.tsx`); în browser, Centrul de actualizări spune că actualizările merg doar în aplicația desktop; nume duplicat de folder respins în „Folder nou” (`hasSiblingFolderNamed`); confirmare inline „Ștergi notița?” în Notițe.
+- **Documentație:** `FEATURES.md` cu căi reale; `scripts/dev-commands.js` fără rest Storybook; `.gitignore` ignoră artefactele de dezvoltare din `public/` în git, DAR Vite le copiază în build cât timp fișierele sunt pe disc (verificat 13 oct): mută-le în afara `public/` înainte de installer.
+
+## 8. Unde am rămas (audit + reparații, 12-13 oct 2026)
+Citește [UNDE-AM-RAMAS-2026-10-12.md](UNDE-AM-RAMAS-2026-10-12.md): ce s-a reparat, ce a rămas, deciziile tale și pașii următori.

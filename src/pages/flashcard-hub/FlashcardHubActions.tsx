@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
-import { AlertCircle, BookOpen, Bot, Brain, Image as ImageIcon, Layers, Loader2, Plus, Sparkles, Upload } from 'lucide-react';
+import { AlertCircle, BookOpen, Bot, Brain, Image as ImageIcon, Layers, Loader2, Sparkles, Upload } from 'lucide-react';
 import { SectionLabel, ResourceRow } from './sectionParts';
 import HelpTip from '../../components/ui/HelpTip';
 import { FolderTargetSelect } from './FolderTargetSelect';
@@ -32,7 +32,6 @@ export function FlashcardHubActions({
   onMistakeDeckCreate,
   onPhotoImport,
   onPdfImport,
-  onQuickDeckCreate,
   onTargetFolderChange,
 }: FlashcardHubActionsProps) {
   const [librarySourceId, setLibrarySourceId] = useState('');
@@ -248,15 +247,6 @@ export function FlashcardHubActions({
           iconColor={theme.accent}
           theme={theme}
           onClick={onAnkiImport}
-        />
-        <ResourceRow
-          icon={<Plus size={18} />}
-          title="Pachet rapid"
-          detail="6 carduri demo pentru test"
-          iconBg={`${theme.accent}14`}
-          iconColor={theme.accent}
-          theme={theme}
-          onClick={onQuickDeckCreate}
         />
       </div>
     </motion.section>

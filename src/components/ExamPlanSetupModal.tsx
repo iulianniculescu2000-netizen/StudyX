@@ -1,4 +1,5 @@
 /** Set an exam date + target grade for a Knowledge Vault folder and preview/confirm the generated study plan — mirrors ExamSplitModal.tsx's chrome and date-input pattern. */
+import { plural } from '../lib/plural';
 import { useMemo, useState, useId } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CalendarDays, Check, Trash2, X } from 'lucide-react';
@@ -57,7 +58,7 @@ export default function ExamPlanSetupModal({ folder, chapters, onClose }: Props)
     const persisted = toExamPlan(plan, examDate, targetGrade, generateId);
     const merged = mergeExamPlanProgress(persisted, folder.examPlan);
     setFolderExamPlan(folder.id, merged);
-    addToast(`Plan de examen creat — ${plan.sessions.length} sesiuni până pe ${SESSION_DATE_FMT.format(examDate)}.`, 'success', 5000);
+    addToast(`Plan de examen creat — ${plural(plan.sessions.length, 'sesiune', 'sesiuni')} până pe ${SESSION_DATE_FMT.format(examDate)}.`, 'success', 5000);
     onClose();
   };
 
@@ -155,7 +156,7 @@ export default function ExamPlanSetupModal({ folder, chapters, onClose }: Props)
                 >
                   → {new Intl.DateTimeFormat('ro-RO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(examDate)}
                 </motion.p>
-                <p className="mt-0.5 text-[11px]" style={{ color: theme.text3 }}>{days} zile rămase</p>
+                <p className="mt-0.5 text-[11px]" style={{ color: theme.text3 }}>{plural(days, 'zi rămasă', 'zile rămase')}</p>
               </div>
 
               {/* Nota țintă */}
@@ -196,7 +197,7 @@ export default function ExamPlanSetupModal({ folder, chapters, onClose }: Props)
                     >
                       <span style={{ color: theme.text2 }}>{passLabel(session.kind, session.passIndex)}</span>
                       <span style={{ color: theme.text3 }}>
-                        {session.chapters.length} {session.chapters.length === 1 ? 'capitol' : 'capitole'} · {SESSION_DATE_FMT.format(session.date)}
+                        {plural(session.chapters.length, 'capitol', 'capitole')} · {SESSION_DATE_FMT.format(session.date)}
                       </span>
                     </motion.div>
                   ))}
@@ -220,7 +221,7 @@ export default function ExamPlanSetupModal({ folder, chapters, onClose }: Props)
                 className="elev-1 flex w-full items-center justify-center gap-2 rounded-[var(--r-md)] py-2.5 text-sm font-semibold text-white transition-colors"
                 style={{ background: theme.accent }}
               >
-                <Check size={14} /> {folder.examPlan ? 'Actualizează planul' : `Creează ${plan.sessions.length} sesiuni`}
+                <Check size={14} /> {folder.examPlan ? 'Actualizează planul' : `Creează ${plural(plan.sessions.length, 'sesiune', 'sesiuni')}`}
               </motion.button>
 
               {/* Delete */}

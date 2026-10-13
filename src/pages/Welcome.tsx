@@ -58,19 +58,22 @@ export default function Welcome({ onBack }: Props) {
         <ThemeModeSwitcher variant="compact" />
       </div>
 
-      {/* Ambient orbs */}
-      <motion.div className="absolute rounded-full pointer-events-none"
-        style={{ width: 700, height: 700, top: '-25%', left: '-20%', background: `radial-gradient(circle, ${theme.orb1} 0%, transparent 65%)`, filter: 'blur(80px)' }}
-        {...orbMotion({ x: [0, 40, 0], y: [0, -30, 0] }, 14)}
-      />
-      <motion.div className="absolute rounded-full pointer-events-none"
-        style={{ width: 600, height: 600, bottom: '-15%', right: '-15%', background: `radial-gradient(circle, ${theme.orb2} 0%, transparent 65%)`, filter: 'blur(80px)' }}
-        {...orbMotion({ x: [0, -30, 0], y: [0, 25, 0] }, 17, 3)}
-      />
-      <motion.div className="absolute rounded-full pointer-events-none"
-        style={{ width: 400, height: 400, top: '40%', left: '60%', background: `radial-gradient(circle, ${theme.orb3} 0%, transparent 65%)`, filter: 'blur(60px)' }}
-        {...orbMotion({ x: [0, 20, 0], y: [0, -15, 0] }, 10, 6)}
-      />
+      {/* Ambient orbs, clipped in their own layer: left in the flow they made the page ~120 px wider and taller than the
+          window, and the name field's autoFocus then scrolled it, cutting the logo and pushing the card off-centre. */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+        <motion.div className="absolute rounded-full pointer-events-none"
+          style={{ width: 700, height: 700, top: '-25%', left: '-20%', background: `radial-gradient(circle, ${theme.orb1} 0%, transparent 65%)`, filter: 'blur(80px)' }}
+          {...orbMotion({ x: [0, 40, 0], y: [0, -30, 0] }, 14)}
+        />
+        <motion.div className="absolute rounded-full pointer-events-none"
+          style={{ width: 600, height: 600, bottom: '-15%', right: '-15%', background: `radial-gradient(circle, ${theme.orb2} 0%, transparent 65%)`, filter: 'blur(80px)' }}
+          {...orbMotion({ x: [0, -30, 0], y: [0, 25, 0] }, 17, 3)}
+        />
+        <motion.div className="absolute rounded-full pointer-events-none"
+          style={{ width: 400, height: 400, top: '40%', left: '60%', background: `radial-gradient(circle, ${theme.orb3} 0%, transparent 65%)`, filter: 'blur(60px)' }}
+          {...orbMotion({ x: [0, 20, 0], y: [0, -15, 0] }, 10, 6)}
+        />
+      </div>
 
       <div className="w-full max-w-md relative z-10">
         <AnimatePresence mode="wait">
@@ -183,7 +186,7 @@ export default function Welcome({ onBack }: Props) {
                         onFocus={() => setInputFocused(true)}
                         onBlur={() => setInputFocused(false)}
                         autoFocus
-                        className="w-full text-xl font-semibold bg-transparent"
+                        className="input-bare w-full text-xl font-semibold"
                         style={{ color: theme.text, outline: 'none', border: 'none' }}
                       />
                       {/* Focus glow — grows from the center instead of a static line, so

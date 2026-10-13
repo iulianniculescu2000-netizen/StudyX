@@ -11,7 +11,28 @@ export interface TourContext {
   deckCount: number;
   /** Documents in the AI library. */
   sourceCount: number;
+  /** Saved configuration, not a guarantee the provider accepts requests. */
+  aiReady: boolean;
+  readySourceCount: number;
+  indexingSourceCount: number;
+  failedSourceCount: number;
+  dueQuizCount: number;
+  dueCardCount: number;
+  newCardCount: number;
+  errorCount: number;
+  hasPlan: boolean;
+  planDoneCount: number;
+  planTopicCount: number;
+  generalDeckCount: number;
+  generalDueCardCount: number;
+  generalNewCardCount: number;
+  residencyQuizCount: number;
+  residencyDeckCount: number;
+  residencyDueCardCount: number;
+  residencyNewCardCount: number;
+  simulationQuestionCount: number;
   pathname: string;
+  search: string;
 }
 
 export type TourPlacement = 'top' | 'bottom' | 'left' | 'right' | 'center';

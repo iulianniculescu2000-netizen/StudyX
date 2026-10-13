@@ -14,6 +14,8 @@ declare global {
       destroy: () => void;
       isMaximized: () => Promise<boolean>;
       onMaximized: (cb: (v: boolean) => void) => () => void;
+      setZoomFactor?: (factor: number) => void;
+      getZoomFactor?: () => number;
       appReady: () => void;
       autoBackup: (data: string) => Promise<{ success: boolean; path?: string; error?: string }>;
       isElectron: boolean;
@@ -44,6 +46,7 @@ declare global {
       hardReset: () => Promise<void>;
       storageSave: (profileId: string, namespace: string, serialized: string) => Promise<boolean>;
       storageLoad: (profileId: string, namespace: string) => Promise<unknown>;
+      storageDeleteProfile?: (profileId: string) => Promise<boolean>;
       onAppClose: (cb: () => void) => () => void;
       notify: (opts: { title: string; body?: string }) => Promise<boolean>;
     };

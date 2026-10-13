@@ -39,7 +39,7 @@ export function CardFront({ theme, current, frontPanelPaddingClass, frontUsesSpl
           </div>
         </div>
       ) : (
-        <div className={`custom-scrollbar mx-auto flex max-h-full ${hasMedia ? 'w-full' : ''} ${frontContentWidthClass} flex-col items-center justify-center overflow-y-auto px-1`}>
+        <div tabIndex={0} role="region" aria-label="Conținutul cardului" className={`custom-scrollbar mx-auto flex max-h-full ${hasMedia ? 'w-full' : ''} ${frontContentWidthClass} flex-col items-center justify-center overflow-y-auto px-1`}>
           <h2 className={`${frontCopyTone} whitespace-pre-wrap break-words`} style={{ color: theme.text }}>
             {cleanFlashcardText(current.question.text)}
           </h2>

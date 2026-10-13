@@ -1,3 +1,5 @@
+import { plural } from '../../lib/plural';
+import { libraryStatus, aiStatus } from '../contextText';
 import { BookOpen, Filter, MousePointerClick, Plus, Upload } from 'lucide-react';
 import type { TourDefinition } from '../types';
 
@@ -8,7 +10,7 @@ export const quizzesTour: TourDefinition = {
     {
       id: 'quizzes-intro',
       title: 'Biblioteca ta de grile',
-      body: 'Aici stau toate grilele tale, într-un singur loc: cele create de tine, cele importate și cele generate cu AI.',
+      body: (ctx) => ctx.quizCount === 0 ? 'Nu ai grile încă. Folosește Grilă nouă pentru editor sau Import grile pentru un fișier JSON.' : `Ai ${plural(ctx.quizCount, 'grilă', 'grile')} în profil. Caută după titlu sau filtrează lista pentru a găsi setul dorit.`,
       icon: <BookOpen size={22} />,
       placement: 'center',
       route: '/quizzes',
@@ -38,6 +40,7 @@ export const quizzesTour: TourDefinition = {
     },
     {
       id: 'quizzes-card',
+      when: (ctx) => ctx.quizCount > 0,
       title: 'O grilă, la îndemână',
       body: 'Apeși pe grilă ca să vezi detaliile și să alegi modul de lucru. Cu mouse-ul deasupra apar „Joacă”, fixarea sus, editarea și ștergerea (cu confirmare).',
       icon: <MousePointerClick size={22} />,
@@ -51,7 +54,7 @@ export const quizzesTour: TourDefinition = {
     {
       id: 'quizzes-more',
       title: 'Ai cursuri, nu grile gata făcute?',
-      body: 'Încarcă-le în Biblioteca AI, iar AI Studio generează grile din ele. Din chat poți cere direct: „fă-mi 10 grile din capitolul acesta”.',
+      body: (ctx) => `${libraryStatus(ctx)} ${aiStatus(ctx)}`,
       icon: <Upload size={22} />,
       placement: 'center',
       accent: '#64D2FF',

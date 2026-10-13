@@ -5,8 +5,8 @@ import { useTheme } from '../../theme/ThemeContext';
 import { useAdaptiveMotion } from '../../hooks/useAdaptiveMotion';
 import { useExamCrunch } from '../../lib/examCrunchHook';
 import SectionLabel from '../ui/SectionLabel';
+import { plural } from '../../lib/plural';
 
-const plural = (n: number, one: string, many: string) => `${n.toLocaleString('ro-RO')} ${n === 1 ? one : many}`;
 
 /**
  * Planul „aproape de examen”: apare când examenul e în cel mult 30 de zile sau când utilizatorul îl

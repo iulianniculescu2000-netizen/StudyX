@@ -124,7 +124,15 @@ function writeRoots(userDataDir, roots) {
   fs.renameSync(tmp, file);
 }
 
-function registerOrganizareIPC({ ipcMain, dialog, shell, getWindow, userDataDir }) {
+/** Rădăcina-sentinelă pentru cărțile livrate cu aplicația (resources/books în installer, build/books în dezvoltare). */
+const BUNDLED_ROOT = 'studyx:bundled';
+
+/** `studyx:bundled` → folderul real al cărților incluse; orice altă rădăcină rămâne neschimbată. */
+function realRoot(root, bundledBooksDir) {
+  return root === BUNDLED_ROOT ? bundledBooksDir : root;
+}
+
+function registerOrganizareIPC({ ipcMain, dialog, shell, getWindow, userDataDir, bundledBooksDir }) {
   ipcMain.handle('organizare:list-pdfs', async (_, payload) => listPdfsInsideRoot(payload && payload.root, payload && payload.sub));
   ipcMain.handle('organizare:pickRoot', async () => {
     const result = await dialog.showOpenDialog(getWindow(), {
@@ -135,7 +143,7 @@ function registerOrganizareIPC({ ipcMain, dialog, shell, getWindow, userDataDir 
   });
 
   ipcMain.handle('organizare:open', async (_, { root, relPath }) => {
-    const full = resolveInsideRoot(root, relPath);
+    const full = resolveInsideRoot(realRoot(root, bundledBooksDir), relPath);
     if (!full) return { ok: false, error: 'Fișier invalid.' };
     // openPath resolves to '' on success and to an error message otherwise (e.g. the file is missing).
     const error = await shell.openPath(full);
@@ -167,7 +175,7 @@ function registerOrganizareIPC({ ipcMain, dialog, shell, getWindow, userDataDir 
       return false;
     }
   });
-  ipcMain.handle('organizare:read-pdf', async (_, payload) => readPdfInsideRoot(payload && payload.root, payload && payload.relPath));
+  ipcMain.handle('organizare:read-pdf', async (_, payload) => readPdfInsideRoot(realRoot(payload && payload.root, bundledBooksDir), payload && payload.relPath));
 }
 
-module.exports = { resolveInsideRoot, resolvePdfInsideRoot, readPdfInsideRoot, listPdfsInsideRoot, readRoots, writeRoots, MAX_PDF_BYTES, registerOrganizareIPC };
+module.exports = { BUNDLED_ROOT, realRoot, resolveInsideRoot, resolvePdfInsideRoot, readPdfInsideRoot, listPdfsInsideRoot, readRoots, writeRoots, MAX_PDF_BYTES, registerOrganizareIPC };

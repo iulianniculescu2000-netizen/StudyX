@@ -20,8 +20,3 @@ export function logAIDebug(label: string, payload: unknown) {
   if (!isAIDebugEnabled()) return;
   console.log(`[StudyX AI] ${label}`, payload);
 }
-
-export function replayPrompt(prompt: string) {
-  logAIDebug('replayPrompt', prompt);
-  return prompt;
-}

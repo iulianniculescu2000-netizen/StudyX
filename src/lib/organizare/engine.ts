@@ -4,6 +4,7 @@
  * as arguments and returns new values, so it can be tested and reused (the Rezidențiat card and the
  * AI assistant read the same summary the plan page does).
  */
+import { plural } from '../plural';
 import type { DayLog, Plan, PlanState, PlanSummary, RawPlan, Status, Topic, Week } from './types';
 
 // ── Dates (always YYYY-MM-DD, anchored at noon so a daylight-saving hour never moves a day) ──────────
@@ -252,7 +253,13 @@ export function focusNow(plan: Plan, s: PlanState, win: Windows, today: string):
   return { kind: 'topic', ix, ph, label };
 }
 
-/** The next few topics to come, not counting the one already shown as the focus. */
+/** A topic whose planned start is already in the past and that is not finished yet is „restant”. */
+export const isOverdueStart = (plannedStart: string, today: string) => plannedStart < today;
+
+/**
+ * The next few topics to come, not counting the one already shown as the focus.
+ * Ordered by planned date, with the overdue ones (planned start already past) first.
+ */
 export function upNext(plan: Plan, s: PlanState, win: Windows, today: string, limit = 4): number[] {
   const ph = Math.min(activePhase(plan, today), 4);
   const A = win.a[ph - 1];
@@ -265,7 +272,12 @@ export function upNext(plan: Plan, s: PlanState, win: Windows, today: string, li
   for (const c of plan.topics) {
     if (c.pages > 0 && statusOf(s, ph, c.index) < 2 && B[c.index] >= today) candidates.push(c.index);
   }
-  candidates.sort((x, y) => (A[x] < A[y] ? -1 : A[x] > A[y] ? 1 : x - y));
+  candidates.sort((x, y) => {
+    const ox = isOverdueStart(A[x], today) ? 0 : 1;
+    const oy = isOverdueStart(A[y], today) ? 0 : 1;
+    if (ox !== oy) return ox - oy;
+    return A[x] < A[y] ? -1 : A[x] > A[y] ? 1 : x - y;
+  });
   return candidates.filter((i) => !skip.has(i)).slice(0, limit);
 }
 
@@ -359,7 +371,7 @@ export function insights(plan: Plan, s: PlanState, today: string): Segment[][] {
     { b: `${st.t7 ? Math.round((st.h7 / st.t7) * 100) : 0}%` }, ').',
   ]);
   out.push(st.streak
-    ? ['Regularitate: ', { b: `${st.streak} ${st.streak === 1 ? 'zi' : 'zile'}` }, ' la rând (duminica liberă nu rupe seria).']
+    ? ['Regularitate: ', { b: plural(st.streak, 'zi', 'zile') }, ' la rând (duminica liberă nu rupe seria).']
     : ['Seria s-a întrerupt. Pornește-o din nou cu o zi scurtă, chiar și 1 h.']);
 
   if (st.last14.p !== null) {
@@ -383,7 +395,7 @@ export function insights(plan: Plan, s: PlanState, today: string): Segment[][] {
     const done = donePages(plan, s, ph);
     const planned = plan.topics.reduce((a, c) => a + (c.b[ph - 1] <= today ? c.pages : 0), 0);
     out.push([
-      `Față de plan, Faza ${ph}: ai `, { b: num(done, 0) }, ' pagini terminate, planul cerea până azi ', { b: num(planned, 0) },
+      `Față de plan, Faza ${ph}: ai `, { b: plural(Math.round(done), 'pagină terminată', 'pagini terminate') }, ', planul cerea până azi ', { b: num(planned, 0) },
       planned ? ` (${done >= planned ? `cu ${num(done - planned, 0)} în față` : `în urmă cu ${num(planned - done, 0)}`}).` : '.',
     ]);
     const elapsed = daysBetween(plan.starts[ph - 1], today);
@@ -395,7 +407,7 @@ export function insights(plan: Plan, s: PlanState, today: string): Segment[][] {
       out.push([
         `La ritmul actual (${num(rate * 7, 0)} pagini/săptămână) termini Faza ${ph} pe `,
         { b: parseDay(finish).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long', year: 'numeric' }) },
-        `, adică ${late === 0 ? 'exact la termen' : late > 0 ? `${late} zile după plan` : `${Math.abs(late)} zile înaintea planului`}.`,
+        `, adică ${late === 0 ? 'exact la termen' : late > 0 ? `${plural(late, 'zi', 'zile')} după plan` : `${plural(Math.abs(late), 'zi', 'zile')} înaintea planului`}.`,
       ]);
     }
   }

@@ -275,7 +275,7 @@ function ProfileAvatar({ profile, index, isHovered, isSelected, isRemoving, isCo
 
         {/* Name */}
         <span
-          className="text-sm font-semibold text-center max-w-[84px] truncate"
+          className="inline-block text-sm font-semibold text-center max-w-[84px] truncate"
           style={{ color: theme.text, opacity: isHovered ? 1 : 0.7, transition: 'opacity 0.18s' }}>
           {profile.username}
         </span>
@@ -298,8 +298,8 @@ function ProfileAvatar({ profile, index, isHovered, isSelected, isRemoving, isCo
             exit={{ opacity: 0, scale: 0.8 }}
             transition={{ duration: dur.fast, ease: ease.snap }}
             onClick={(e) => onRemove(e, profile.id)}
-            title={isConfirmingRemove ? 'Confirmă ștergerea profilului' : 'Șterge profilul'}
-            aria-label={isConfirmingRemove ? `Confirmă ștergerea profilului ${profile.username}` : `Șterge profilul ${profile.username}`}
+            title={isConfirmingRemove ? 'Confirmă: grilele, notițele și statisticile acestui profil se șterg definitiv' : 'Șterge profilul'}
+            aria-label={isConfirmingRemove ? `Confirmă ștergerea profilului ${profile.username}: toate datele lui se șterg definitiv` : `Șterge profilul ${profile.username}`}
             className="focus-ring absolute -top-2 z-20 flex items-center justify-center rounded-full"
             style={{
               right: isConfirmingRemove ? -12 : -6,
@@ -315,7 +315,7 @@ function ProfileAvatar({ profile, index, isHovered, isSelected, isRemoving, isCo
               letterSpacing: '0.04em',
               whiteSpace: 'nowrap',
             }}>
-            {isConfirmingRemove ? 'Șterge?' : <X size={10} strokeWidth={3} aria-hidden="true" />}
+            {isConfirmingRemove ? 'Șterge tot?' : <X size={10} strokeWidth={3} aria-hidden="true" />}
           </motion.button>
         )}
       </AnimatePresence>

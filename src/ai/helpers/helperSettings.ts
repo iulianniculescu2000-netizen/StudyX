@@ -1,31 +1,16 @@
 /**
- * Flagurile ajutătorilor, așa cum le vede aplicația (Setări AI + chat).
- *
- * `readHelperFlags` (shared.ts) rămâne „totul oprit”. Aici se adaugă implicitele conștiente de AI-ul local:
- *   - `queryRewrite` și `answerChecklist`: pornite DOAR cât timp AI-ul local e utilizabil (cost 0, ajută modelul mic);
- *   - `clarifyGate`: pornit (conservator, 0 tokeni, economisește un răspuns întreg);
- *   - restul: oprite.
+ * Flagurile ajutătorilor, așa cum le vede aplicația.
+ * Implicit: `clarifyGate` pornit (conservator, 0 tokeni, economisește un răspuns întreg), `queryRewrite` oprit.
  * O valoare scrisă explicit de utilizator (în `studyx.aiHelpers`) bate întotdeauna implicitul.
  */
 import { HELPER_FLAGS_STORAGE_KEY, type HelperFlags } from './shared';
 
 type FlagStorage = Pick<Storage, 'getItem' | 'setItem'>;
 
-const FLAG_KEYS: readonly (keyof HelperFlags)[] = [
-  'queryRewrite', 'queryRewriteLlm', 'answerChecklist', 'clarifyGate', 'itemJudge', 'itemRewriteLlm', 'styleAdapter', 'selfCritique',
-];
+const FLAG_KEYS: readonly (keyof HelperFlags)[] = ['queryRewrite', 'clarifyGate'];
 
-export function defaultHelperFlags(localInUse: boolean): HelperFlags {
-  return {
-    queryRewrite: localInUse,
-    queryRewriteLlm: false,
-    answerChecklist: localInUse,
-    clarifyGate: true,
-    itemJudge: false,
-    itemRewriteLlm: false,
-    styleAdapter: false,
-    selfCritique: false,
-  };
+export function defaultHelperFlags(): HelperFlags {
+  return { queryRewrite: false, clarifyGate: true };
 }
 
 function storageOrNull(storage?: FlagStorage | null): FlagStorage | null {
@@ -49,9 +34,9 @@ function readExplicit(storage: FlagStorage | null): Partial<HelperFlags> {
   }
 }
 
-/** Flagurile efective: implicitul (după `localInUse`) peste care se aplică ce a ales explicit utilizatorul. */
-export function resolveHelperFlags(localInUse: boolean, storage?: FlagStorage | null): HelperFlags {
-  return { ...defaultHelperFlags(localInUse), ...readExplicit(storageOrNull(storage)) };
+/** Flagurile efective: implicitul peste care se aplică ce a ales explicit utilizatorul. */
+export function resolveHelperFlags(storage?: FlagStorage | null): HelperFlags {
+  return { ...defaultHelperFlags(), ...readExplicit(storageOrNull(storage)) };
 }
 
 /** Salvează alegerea explicită a unui flag (celelalte alegeri explicite rămân). Eșuează în tăcere. */

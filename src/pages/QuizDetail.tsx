@@ -1,7 +1,9 @@
+import { plural } from '../lib/plural';
 import { folderHref } from '../lib/rezidentiatRoutes';
 import { useBack } from '../hooks/useBack';
 import { motion } from 'framer-motion';
-import { lazy, Suspense, useEffect, useState, type CSSProperties } from 'react';
+import { lazy, Suspense, useEffect, useState, useRef, useMemo, type CSSProperties } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   Archive,
@@ -114,6 +116,71 @@ export default function QuizDetail() {
     };
   }, [lockFloatingUI, setChatOpen, showChat, unlockFloatingUI]);
 
+  const questionsParentRef = useRef<HTMLDivElement>(null);
+  const filteredQuestions = useMemo(() => {
+    if (!quiz) return [];
+    return quiz.questions
+      .map((question, actualIndex) => ({ question, actualIndex }))
+      .filter(({ question }) => !qSearch.trim() || matchesQuery(question.text, qSearch));
+  }, [quiz, qSearch]);
+
+  const questionsVirtualizer = useVirtualizer({
+    count: filteredQuestions.length,
+    getScrollElement: () => questionsParentRef.current,
+    estimateSize: () => 88,
+    overscan: 4,
+    initialRect: { width: 600, height: 400 },
+    getItemKey: (index) => filteredQuestions[index]?.question.id ?? index,
+    measureElement: (element, entry, instance) => {
+      if (entry?.borderBoxSize?.[0]?.blockSize) {
+        return Math.round(entry.borderBoxSize[0].blockSize);
+      }
+      const measured = element.getBoundingClientRect().height || (element instanceof HTMLElement ? element.offsetHeight : 0);
+      if (measured > 0) return measured;
+      const index = instance.indexFromElement(element);
+      return instance.options.estimateSize(index);
+    },
+    observeElementRect: (instance, cb) => {
+      const element = instance.scrollElement;
+      if (!element) return;
+      const targetWindow = instance.targetWindow;
+      const handler = () => {
+        const rect = element.getBoundingClientRect();
+        const width = rect.width > 0 ? rect.width : 600;
+        const height = rect.height > 0 ? rect.height : 400;
+        cb({ width, height });
+      };
+      handler();
+      let ro: ResizeObserver | null = null;
+      if (typeof targetWindow !== 'undefined' && targetWindow?.ResizeObserver) {
+        ro = new targetWindow.ResizeObserver((entries) => {
+          const entry = entries[0];
+          if (entry?.borderBoxSize?.[0]) {
+            const box = entry.borderBoxSize[0];
+            const width = box.inlineSize > 0 ? Math.round(box.inlineSize) : 600;
+            const height = box.blockSize > 0 ? Math.round(box.blockSize) : 400;
+            cb({ width, height });
+          } else {
+            handler();
+          }
+        });
+        ro.observe(element, { box: 'border-box' });
+      }
+      targetWindow?.addEventListener('resize', handler, { passive: true });
+      return () => {
+        ro?.disconnect();
+        targetWindow?.removeEventListener('resize', handler);
+      };
+    },
+  });
+
+  useEffect(() => {
+    if (questionsParentRef.current) {
+      questionsParentRef.current.scrollTop = 0;
+    }
+    questionsVirtualizer.scrollToOffset(0);
+  }, [qSearch]);
+
   if (!hydrated) return <PageSkeleton blocks={3} />;
 
   if (!quiz) {
@@ -184,7 +251,7 @@ export default function QuizDetail() {
 
     addLine(`${quiz.emoji} ${quiz.title}`, 18, true, [10, 100, 255]);
     addLine(quiz.description, 11, false, [80, 80, 80]);
-    addLine(`Categorie: ${quiz.category} · ${quiz.questions.length} întrebări`, 10, false, [120, 120, 120]);
+    addLine(`Categorie: ${quiz.category} · ${plural(quiz.questions.length, 'întrebare', 'întrebări')}`, 10, false, [120, 120, 120]);
     y += 4;
 
     quiz.questions.forEach((question, questionIndex) => {
@@ -346,7 +413,7 @@ export default function QuizDetail() {
                 </div>
                 <div className="flex items-center gap-2 text-white/90 text-xs font-bold uppercase tracking-wider">
                   <BookOpen size={16} className="opacity-70" />
-                  {quiz.questions.length} întrebări
+                  {plural(quiz.questions.length, 'întrebare', 'întrebări')}
                 </div>
                 {multipleCount > 0 && (
                   <div className="flex items-center gap-2 text-white/90 text-xs font-bold uppercase tracking-wider">
@@ -372,6 +439,7 @@ export default function QuizDetail() {
           </motion.div>
 
           <motion.div
+            data-tutorial="quiz-session-controls"
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={t.page}
@@ -475,7 +543,7 @@ export default function QuizDetail() {
               <RotateCcw size={16} />
               Greșeli ({wrongCount})
             </button>
-            <div className="flex flex-shrink-0 items-center"><HelpTip id="quiz-modes" size={20} /></div>
+            <HelpTip id="quiz-modes" size={20} />
           </motion.div>
 
               {hasKey ? (
@@ -570,7 +638,7 @@ export default function QuizDetail() {
               <div>
                 <h2 className="text-base font-black tracking-tight" style={{ color: theme.text }}>Conținut grilă</h2>
                 <p className="text-[10px] font-bold uppercase tracking-wider opacity-50" style={{ color: theme.text }}>
-                  {quiz.questions.length} întrebări totale
+                  {plural(quiz.questions.length, 'întrebare totală', 'întrebări totale')}
                 </p>
               </div>
               {quiz.questions.length > 5 && (
@@ -584,57 +652,85 @@ export default function QuizDetail() {
                     placeholder="Caută în întrebări..."
                     value={qSearch}
                     onChange={(event) => setQSearch(event.target.value)}
-                    className="flex-1 text-xs font-medium bg-transparent"
+                    className="input-bare min-w-0 flex-1 text-xs font-medium"
                     style={{ color: theme.text, outline: 'none', border: 'none' }}
                   />
                 </div>
               )}
             </div>
 
-            <div className="space-y-3 max-h-[min(400px,50vh)] overflow-y-auto pr-2 custom-scrollbar">
-              {quiz.questions
-                .map((question, actualIndex) => ({ question, actualIndex }))
-                .filter(({ question }) => !qSearch || matchesQuery(question.text, qSearch))
-                .map(({ question, actualIndex }) => (
-                  <div
-                    key={question.id}
-                    className="glass-panel p-4 rounded-2xl transition-[background-color,border-color,color,opacity,transform] hover:bg-[var(--hover-fill)] border border-transparent hover:border-[var(--border2)]"
-                  >
-                    <div className="flex items-start gap-3">
-                      <span className="text-[10px] font-black opacity-30 mt-1" style={{ color: theme.text }}>
-                        {String(actualIndex + 1).padStart(2, '0')}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium leading-relaxed" style={{ color: theme.text2 }}>
-                          {question.text}
-                        </p>
-                        {question.imageUrl && (
-                          <div className="mt-3 rounded-xl overflow-hidden shadow-md">
-                            <QuizImage src={question.imageUrl} maxHeight={120} />
+            <div ref={questionsParentRef} tabIndex={0} role="region" aria-label="Lista întrebărilor" className="max-h-[min(400px,50vh)] overflow-y-auto pr-2 custom-scrollbar">
+              {filteredQuestions.length === 0 ? (
+                <p className="py-8 text-center text-xs" style={{ color: theme.text3 }}>Nicio întrebare nu corespunde căutării.</p>
+              ) : (
+                <div
+                  style={{
+                    height: `${questionsVirtualizer.getTotalSize()}px`,
+                    width: '100%',
+                    position: 'relative',
+                  }}
+                >
+                  {questionsVirtualizer.getVirtualItems().map((virtualRow) => {
+                    const item = filteredQuestions[virtualRow.index];
+                    if (!item) return null;
+                    const { question, actualIndex } = item;
+
+                    return (
+                      <div
+                        key={virtualRow.key}
+                        data-index={virtualRow.index}
+                        ref={questionsVirtualizer.measureElement}
+                        className="pb-3"
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          transform: `translateY(${virtualRow.start}px)`,
+                        }}
+                      >
+                        <div
+                          className="glass-panel p-4 rounded-2xl transition-[background-color,border-color,color,opacity,transform] hover:bg-[var(--hover-fill)] border border-transparent hover:border-[var(--border2)]"
+                        >
+                          <div className="flex items-start gap-3">
+                            <span className="text-[10px] font-black opacity-30 mt-1" style={{ color: theme.text }}>
+                              {String(actualIndex + 1).padStart(2, '0')}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium leading-relaxed" style={{ color: theme.text2 }}>
+                                {question.text}
+                              </p>
+                              {question.imageUrl && (
+                                <div className="mt-3 rounded-xl overflow-hidden shadow-md">
+                                  <QuizImage src={question.imageUrl} maxHeight={120} />
+                                </div>
+                              )}
+                              <div className="flex items-center gap-2 mt-3">
+                                {question.multipleCorrect && (
+                                  <span
+                                    data-active="true"
+                                    className="fine-chip text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg"
+                                  >
+                                    Multi
+                                  </span>
+                                )}
+                                {question.difficulty && (
+                                  <span
+                                    className="fine-chip text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg"
+                                    style={{ color: diffColor(theme)[question.difficulty] }}
+                                  >
+                                    {diffLabel[question.difficulty]}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                        )}
-                        <div className="flex items-center gap-2 mt-3">
-                          {question.multipleCorrect && (
-                            <span
-                              data-active="true"
-                              className="fine-chip text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg"
-                            >
-                              Multi
-                            </span>
-                          )}
-                          {question.difficulty && (
-                            <span
-                              className="fine-chip text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg"
-                              style={{ color: diffColor(theme)[question.difficulty] }}
-                            >
-                              {diffLabel[question.difficulty]}
-                            </span>
-                          )}
                         </div>
                       </div>
-                    </div>
-                  </div>
-                ))}
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </motion.div>
         </div>

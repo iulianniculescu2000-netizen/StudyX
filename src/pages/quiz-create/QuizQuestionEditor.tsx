@@ -48,6 +48,7 @@ export function QuizQuestionEditor({
     <AnimatePresence mode="wait">
       <motion.div
         key={currentQ.id}
+        data-tutorial="create-question-editor"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}
@@ -93,7 +94,7 @@ export function QuizQuestionEditor({
             value={currentQ.text}
             onChange={(event) => onQuestionTextChange(event.target.value)}
             rows={3}
-            className="w-full bg-transparent resize-none font-medium"
+            className="input-bare w-full resize-none font-medium"
             style={{ color: theme.text, outline: 'none', border: 'none' }}
           />
 
@@ -182,7 +183,7 @@ export function QuizQuestionEditor({
                 placeholder={`Opțiunea ${option.id.toUpperCase()}...`}
                 value={option.text}
                 onChange={(event) => onOptionTextChange(option.id, event.target.value)}
-                className="flex-1 bg-transparent text-sm"
+                className="input-bare min-w-0 flex-1 text-sm"
                 style={{ color: theme.text, outline: 'none', border: 'none' }}
               />
               {currentQ.options.length > 2 && (
@@ -217,7 +218,7 @@ export function QuizQuestionEditor({
             placeholder="Explică de ce răspunsul este corect..."
             value={currentQ.explanation || ''}
             onChange={(event) => onExplanationChange(event.target.value)}
-            className="w-full bg-transparent text-sm mt-1"
+            className="input-bare mt-1 w-full text-sm"
             style={{ color: theme.text, outline: 'none', border: 'none' }}
           />
         </Panel>

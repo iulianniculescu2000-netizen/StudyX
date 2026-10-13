@@ -172,6 +172,23 @@ function sameRefs(a: unknown[] | undefined, b: unknown[] | null): boolean {
  * writing them would replace the real copy with it.
  */
 let hydratedProfileId: string | null = null;
+/** Profiles deleted by the user: nothing may be written for them again (a pending autosave would re-create the keys). */
+const purgedProfileIds = new Set<string>();
+
+/**
+ * Purge hook (see profilePurge.ts): stops every future write for a deleted profile and forgets its caches.
+ * Ids are random and never reused, so the mark never has to be lifted.
+ */
+export function markProfilePurged(profileId: string) {
+  purgedProfileIds.add(profileId);
+  if (hydratedProfileId === profileId) hydratedProfileId = null;
+  const prefix = `${profileId}:`;
+  for (const map of [lastSerializedSnapshot, lastSavedRefs] as Array<Map<string, unknown>>) {
+    for (const key of [...map.keys()]) if (key.startsWith(prefix)) map.delete(key);
+  }
+  for (const key of [...blockedNamespaces]) if (key.startsWith(prefix)) blockedNamespaces.delete(key);
+  for (const key of [...localOnly]) if (key.startsWith(prefix)) localOnly.delete(key);
+}
 /** Namespaces loaded from a localStorage copy that is newer than disk — the next save must push them to disk. */
 const localOnly = new Set<string>();
 
@@ -331,6 +348,7 @@ async function read<T>(profileId: string, ns: string, legacyKey?: string): Promi
 }
 
 async function write(profileId: string, ns: string, data: unknown, options: { force?: boolean } = {}) {
+  if (purgedProfileIds.has(profileId)) return;
   if (!options.force && hydratedProfileId !== profileId) return;
   if (blockedNamespaces.has(`${profileId}:${ns}`)) {
     throw new ProfileStorageError('load-failed', ns, `"${ns}" nu s-a incarcat; salvarea e blocata pana la o incarcare reusita.`);
@@ -351,6 +369,8 @@ async function write(profileId: string, ns: string, data: unknown, options: { fo
 
   try {
     await previousLock;
+    // The profile may have been deleted while this write was queued behind another one.
+    if (purgedProfileIds.has(profileId)) return;
     // 1. Try Disk Storage (Premium Path)
     if (window.electronAPI?.storageSave) {
       const success = await window.electronAPI.storageSave(profileId, ns, serialized);
@@ -417,7 +437,7 @@ export async function saveProfileNamespace(profileId: string, namespace: Profile
  */
 export function flushProfileDataSync(profileId: string) {
   // While this profile is still loading (or after it was swapped out) the stores do not hold its data.
-  if (hydratedProfileId !== profileId) return;
+  if (hydratedProfileId !== profileId || purgedProfileIds.has(profileId)) return;
   const namespaces: ProfileNamespace[] = ['quizzes', 'folders', 'stats', 'notes', 'ai'];
   for (const ns of namespaces) {
     if (isNamespaceBlocked(profileId, ns)) continue; // a localStorage copy would later beat the real disk data

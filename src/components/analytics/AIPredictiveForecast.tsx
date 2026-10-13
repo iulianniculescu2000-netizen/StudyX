@@ -91,7 +91,7 @@ function MainCard({ forecast }: { forecast: ScoreForecast }) {
 
       {confidence === 'few' && (
         <p className="mt-3 text-[12.5px]" style={{ color: theme.warning }}>
-          Puține date: ai rezolvat {roCount(forecast.answered, 'grilă distinctă', 'grile distincte')}, deci intervalul e larg și arată mai mult cât nu știm decât cât știi. Se strânge pe măsură ce rezolvi.
+          Date insuficiente: ai rezolvat {roCount(forecast.answered, 'grilă distinctă', 'grile distincte')}, deci intervalul e larg și arată mai mult cât nu știm decât cât știi. Se strânge pe măsură ce rezolvi.
         </p>
       )}
       {trend !== null && trend !== 0 && (

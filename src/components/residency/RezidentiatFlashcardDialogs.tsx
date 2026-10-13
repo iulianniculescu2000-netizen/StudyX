@@ -487,18 +487,20 @@ export function AiQuizDialog({ open, onClose }: BaseProps) {
         <FieldLabel>Subiect</FieldLabel>
         <input type="text" autoFocus value={topic} maxLength={120} placeholder="ex. Insuficiența cardiacă, Pancreatita acută…" onChange={(event) => setTopic(event.target.value)} aria-label="Subiectul grilelor" className="w-full text-[13.5px]" />
       </div>
-      <div>
+      <div data-tutorial="rez-ai-level">
         <FieldLabel help="rez-ai-level">Nivel</FieldLabel>
         <Segmented label="Nivel" value={difficulty} options={DIFFICULTY_OPTIONS} onChange={setDifficulty} />
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Stepper label="Număr de grile" value={count} min={5} max={60} step={5} onChange={setCount} />
-        <div>
+        <div data-tutorial="rez-ai-type">
           <FieldLabel help="rez-ai-type">Tip de grilă</FieldLabel>
           <Segmented label="Tip de grilă" value={questionType} options={TYPE_OPTIONS} onChange={setQuestionType} />
         </div>
       </div>
-      <FolderChoiceField value={choice} onChange={setChoice} label="Se salvează în" options={options} parentOptions={parentOptions} newParentDefault={defaultNewFolderParent('quiz', 'rezidentiat')} />
+      <div data-tutorial="rez-ai-folder">
+        <FolderChoiceField value={choice} onChange={setChoice} label="Se salvează în" options={options} parentOptions={parentOptions} newParentDefault={defaultNewFolderParent('quiz', 'rezidentiat')} />
+      </div>
     </ModalShell>
   );
 }
@@ -529,7 +531,9 @@ export function ImportQuizFolderDialog({ open, onClose, onChosen }: BaseProps & 
         <span>Ce pot importa?</span>
         <HelpTip id="rez-import-quiz" size={16} />
       </div>
-      <FolderChoiceField value={choice} onChange={setChoice} label="Se salvează în" options={options} newParentDefault={defaultNewFolderParent('quiz', 'rezidentiat')} />
+      <div data-tutorial="rez-import-folder">
+        <FolderChoiceField value={choice} onChange={setChoice} label="Se salvează în" options={options} newParentDefault={defaultNewFolderParent('quiz', 'rezidentiat')} />
+      </div>
     </ModalShell>
   );
 }

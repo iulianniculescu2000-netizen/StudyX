@@ -21,9 +21,9 @@ export default function ErrorState({ title, body, onRetry, retryLabel = 'Încear
   const { calmMotion } = useAdaptiveMotion();
   return (
     <div role="alert" className="flex h-full w-full items-center justify-center overflow-auto px-4 py-8">
-      <div className={`glass-panel w-full max-w-md rounded-2xl px-6 py-8 text-center ${calmMotion ? '' : 'fx-rise'}`}>
+      <div className={`glass-panel w-full max-w-md rounded-[var(--r-lg)] px-6 py-8 text-center ${calmMotion ? '' : 'fx-rise'}`}>
         <div
-          className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-[14px]"
+          className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-[var(--r-md)]"
           style={{ background: `${theme.danger}18`, color: theme.danger }}
         >
           <AlertTriangle size={24} aria-hidden="true" />
@@ -49,7 +49,7 @@ export default function ErrorState({ title, body, onRetry, retryLabel = 'Încear
           <details className="mt-5 text-left">
             <summary className="cursor-pointer text-center text-[12px]" style={{ color: theme.text3 }}>Detalii tehnice</summary>
             <pre
-              className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-xl p-3 text-[11px]"
+              className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-[var(--r-md)] p-3 text-[11px]"
               style={{ background: 'var(--fill-subtle)', color: theme.text2 }}
             >
               {details}

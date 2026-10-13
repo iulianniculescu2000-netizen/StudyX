@@ -1,5 +1,6 @@
 import { localDateStr } from '../../lib/studyPlan';
 import { isFlashcardDeck } from '../../lib/deckKind';
+import { playableQuestions } from '../../lib/bankDedup';
 import { CARD_COLOR_MAP } from '../../theme/colorMaps';
 import type { Quiz } from '../../types';
 import type { useStatsStore } from '../../store/statsStore';
@@ -13,8 +14,9 @@ export function buildDeckSummaries(quizzes: Quiz[], questionStats: QuestionStats
     .filter((quiz) => !quiz.archived && quiz.questions.length > 0)
     .filter((quiz) => isFlashcardDeck(quiz))
     .map((quiz) => {
-      const total = quiz.questions.length;
-      const stats = quiz.questions.map((question) => questionStats[`${quiz.id}:${question.id}`]);
+      const playable = playableQuestions(quiz);
+      const total = playable.length;
+      const stats = playable.map((question) => questionStats[`${quiz.id}:${question.id}`]);
       const seen = stats.filter(Boolean).length;
       const due = stats.filter((stat) => stat && stat.nextReview > 0 && stat.nextReview <= now).length;
       const mastered = stats.filter((stat) => (
@@ -27,7 +29,7 @@ export function buildDeckSummaries(quizzes: Quiz[], questionStats: QuestionStats
 
       return { quiz, total, seen, due, mastered, masteryPct, accentColor };
     })
-    .sort((left, right) => right.due - left.due || right.quiz.questions.length - left.quiz.questions.length);
+    .sort((left, right) => right.due - left.due || right.total - left.total);
 }
 
 /**

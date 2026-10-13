@@ -526,7 +526,7 @@ function SearchPanel({ onClose }: { onClose: () => void }) {
             </div>
           </div>
 
-          <div className="custom-scrollbar max-h-[min(62vh,540px)] overflow-y-auto">
+          <div tabIndex={0} role="region" aria-label="Rezultatele căutării" className="custom-scrollbar max-h-[min(62vh,540px)] overflow-y-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]">
             {trimmed.length === 0 && (
               <div className="px-4 pt-5 sm:px-5">
                 <div className="mb-3 flex items-center justify-center gap-1.5" style={{ color: theme.text3 }}>

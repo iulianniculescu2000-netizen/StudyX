@@ -23,6 +23,7 @@ import { ChapterAction, ChapterLink } from './ChapterChip';
 import { bankForChapter, chapterCounts, chapterProgress, countsOf, matchIndexedChapters } from './chapterMatch';
 import { useChapterActions } from './useChapterActions';
 import type { PlanProgress } from './useResidencyData';
+import { plural } from '../../lib/plural';
 
 interface ReaderState {
   title: string;
@@ -34,7 +35,6 @@ interface ReaderState {
   heading?: string;
 }
 
-const plural = (n: number, one: string, many: string) => `${n.toLocaleString('ro-RO')} ${n === 1 ? one : many}`;
 
 interface Props {
   code: BookCode;
@@ -140,7 +140,6 @@ export default function PlanChapters({ code, source, overview, plan, focusIndex 
                 <span className="block truncate text-[13.5px] font-semibold" style={{ color: theme.text }}>{chapter.title}</span>
                 <span className="block truncate text-[11.5px]" style={{ color: theme.text3 }}>
                   {meta}
-                  {!heading && <span className="italic"> · text indisponibil</span>}
                 </span>
               </span>
               {progress && (
@@ -188,7 +187,7 @@ export default function PlanChapters({ code, source, overview, plan, focusIndex 
                 </ul>
                 {!heading && (
                   <p className="text-[11.5px]" style={{ color: theme.text3 }}>
-                    {unavailableReason}: citirea și generarea din text nu sunt disponibile; AI-ul răspunde doar după titlul și paginile din plan.
+                    {unavailableReason}: capitolul se citește oricum (cartea vine cu aplicația); grilele și cardurile se fac după titlul și paginile din plan.
                   </p>
                 )}
                 <div className="flex flex-wrap gap-1.5">

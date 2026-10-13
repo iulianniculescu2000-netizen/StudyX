@@ -197,25 +197,24 @@ const CROSS_CAPACITY_TD = 660;
 const CROSS_CAPACITY_LR = 520;
 const MARGIN = 14;
 
-export function wrapLabel(label: string, maxChars = 26): string[] {
+export function wrapLabel(label: string, maxChars = 24): string[] {
   const out: string[] = [];
   for (const paragraph of label.split('\n')) {
     const words = paragraph.split(/\s+/).filter(Boolean);
     if (words.length === 0) continue;
     let line = '';
     for (const word of words) {
-      if (!line) {
-        line = word;
-      } else if (line.length + 1 + word.length <= maxChars) {
-        line += ` ${word}`;
-      } else {
-        out.push(line);
-        line = word;
+      // Preserve every character, including long medical terms without spaces.
+      for (let offset = 0; offset < word.length; offset += maxChars) {
+        const chunk = word.slice(offset, offset + maxChars);
+        if (!line) line = chunk;
+        else if (line.length + 1 + chunk.length <= maxChars) line += ` ${chunk}`;
+        else { out.push(line); line = chunk; }
       }
     }
     if (line) out.push(line);
   }
-  return out.length ? out.slice(0, 4) : [label];
+  return out.length ? out : [label];
 }
 
 interface PlacedNode extends DiagramNode {

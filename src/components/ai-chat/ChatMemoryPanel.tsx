@@ -117,7 +117,7 @@ export default function ChatMemoryPanel({ profileId }: { profileId: string | nul
                     </>
                   ) : (
                     <>
-                      <button type="button" aria-label={item.pinned ? 'Nu mai fixa' : 'Fixează'} title={item.pinned ? 'Nu mai fixa' : 'Fixează (nu se uită niciodată)'} className={iconButton} style={{ color: item.pinned ? theme.accent : theme.text3 }} onClick={() => setItems(updateMemory(profileId, item.id, { pinned: !item.pinned }))}>
+                      <button type="button" aria-label={item.pinned ? 'Nu mai fixa' : 'Fixează'} title={item.pinned ? 'Nu mai fixa' : 'Fixează (nu se uită niciodată)'} className={iconButton} style={{ color: item.pinned ? theme.accentText : theme.text3 }} onClick={() => setItems(updateMemory(profileId, item.id, { pinned: !item.pinned }))}>
                         {item.pinned ? <PinOff size={13} /> : <Pin size={13} />}
                       </button>
                       <button type="button" aria-label="Editează" className={iconButton} style={{ color: theme.text3 }} onClick={() => startEdit(item)}><Pencil size={13} /></button>

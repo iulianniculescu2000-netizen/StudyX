@@ -50,3 +50,10 @@ export function newQuestion(): Question {
     explanation: '',
   };
 }
+
+/** Why "Salvează" is inert, in words (null when saving is possible). */
+export function getSaveBlockedReason(hasTitle: boolean, questionsValid: boolean): string | null {
+  if (!hasTitle) return 'Completează titlul grilei (pasul anterior).';
+  if (!questionsValid) return 'Fiecare întrebare are nevoie de text, de toate variantele completate și de cel puțin un răspuns corect.';
+  return null;
+}

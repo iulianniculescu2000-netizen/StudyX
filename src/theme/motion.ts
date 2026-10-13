@@ -57,16 +57,9 @@ export const toastIn: Variants = {
   exit: { opacity: 0, y: 12, transition: { duration: dur.fast } },
 };
 
-/** Intrare de pagină: opacitate + y 8→0, fără scale. */
-export const pageEnter: Variants = {
-  hidden: { opacity: 0, y: 8 },
-  visible: { opacity: 1, y: 0, transition: { duration: dur.base, ease: ease.standard } },
-  exit: { opacity: 0, transition: { duration: dur.instant } },
-};
-
 /** Card hero / suprafață mare: ceva mai multă cursă verticală decât un modal, fără scale. */
 export const heroIn: Variants = {
-  hidden: { opacity: 0, y: 18 },
+  hidden: { opacity: 0, y: 6 },
   visible: { opacity: 1, y: 0, transition: { duration: dur.slow, ease: ease.emphasized } },
 };
 

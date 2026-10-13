@@ -4,6 +4,21 @@ import type { Folder, QuizColor } from '../types';
 
 function uid() { return crypto.randomUUID().replace(/-/g, '').slice(0, 12); }
 
+const folderNameKey = (name: string) =>
+  name.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+
+/** Există deja, în același părinte, un folder cu acest nume (fără diferențe de majuscule, diacritice sau spații)? */
+export function hasSiblingFolderNamed(
+  folders: ReadonlyArray<Pick<Folder, 'name' | 'parentId'>>,
+  name: string,
+  parentId: string | null | undefined,
+): boolean {
+  const key = folderNameKey(name);
+  if (!key) return false;
+  const parent = parentId ?? null;
+  return folders.some((folder) => (folder.parentId ?? null) === parent && folderNameKey(folder.name) === key);
+}
+
 interface FolderStore {
   folders: Folder[];
   addFolder: (name: string, emoji: string, color: QuizColor, parentId?: string | null, scope?: Folder['scope']) => string;

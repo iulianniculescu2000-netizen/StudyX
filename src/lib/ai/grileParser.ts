@@ -415,7 +415,9 @@ function buildQuestion(block: Block): ParsedQuestion | null {
       warnings: [
         block.unsupportedKey
           ? 'Întrebare de asociere (cheie de tip A-2, B-4) — nu pot marca automat răspunsul.'
-          : 'Prea puține variante (nu e grilă completă).',
+          : block.explicitAnswer?.length
+            ? `Prea puține variante (${rawOptions.length}), dar cheia indică „${block.explicitAnswer.join(', ')}" — răspunsul nu a fost aplicat, de verificat.`
+            : 'Prea puține variante (nu e grilă completă).',
       ],
       pages: pages.length ? pages : undefined,
       specialty: block.specialty,

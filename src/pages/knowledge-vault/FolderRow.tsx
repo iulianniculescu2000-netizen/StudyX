@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, Trash2 } from 'lucide-react';
+import { ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import type { AILibraryFolder } from '../../store/aiStore';
 import { useTheme } from '../../theme/ThemeContext';
 import { isRezidentiatRootFolder } from '../../lib/rezidentiatRoot';
@@ -12,10 +13,18 @@ interface FolderRowProps {
   fragments: number;
   onOpen: () => void;
   onDelete: () => void;
+  onRename: (name: string) => void;
 }
 
-export default function FolderRow({ folder, index, docCount, subCount, fragments, onOpen, onDelete }: FolderRowProps) {
+export default function FolderRow({ folder, index, docCount, subCount, fragments, onOpen, onDelete, onRename }: FolderRowProps) {
   const theme = useTheme();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const commit = () => {
+    const next = draft.trim();
+    if (next && next !== folder.name) onRename(next);
+    setEditing(false);
+  };
   const isEmpty = docCount === 0 && subCount === 0;
   const isRezidentiat = isRezidentiatRootFolder(folder);
   return (
@@ -36,7 +45,26 @@ export default function FolderRow({ folder, index, docCount, subCount, fragments
           {folder.emoji ?? '📚'}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[14px] font-semibold" style={{ color: isEmpty ? theme.text2 : theme.text }}>{folder.name}</div>
+          {editing ? (
+            <input
+              autoFocus
+              value={draft}
+              maxLength={80}
+              aria-label={`Nume nou pentru folderul ${folder.name}`}
+              onChange={(e) => setDraft(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => {
+                e.stopPropagation();
+                if (e.key === 'Enter') commit();
+                if (e.key === 'Escape') setEditing(false);
+              }}
+              onBlur={commit}
+              className="w-full rounded-[var(--r-sm)] bg-transparent px-1 text-[14px] font-semibold outline-none"
+              style={{ color: theme.text, border: `1px solid ${theme.accent}` }}
+            />
+          ) : (
+            <div className="truncate text-[14px] font-semibold" style={{ color: isEmpty ? theme.text2 : theme.text }}>{folder.name}</div>
+          )}
           <div className="truncate text-[12px]" style={{ color: theme.text3 }}>
             {isEmpty
               ? 'Gol'
@@ -53,6 +81,18 @@ export default function FolderRow({ folder, index, docCount, subCount, fragments
           >
             Deschide în Rezidențiat
           </Link>
+        )}
+        {!isRezidentiat && (
+          <button
+            type="button"
+            onClick={() => { setDraft(folder.name); setEditing(true); }}
+            aria-label={`Redenumește folderul ${folder.name}`}
+            title="Redenumește folderul"
+            className="fine-row flex h-7 w-7 items-center justify-center rounded-full opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+            style={{ color: theme.text2 }}
+          >
+            <Pencil size={13} />
+          </button>
         )}
         <button
           type="button"

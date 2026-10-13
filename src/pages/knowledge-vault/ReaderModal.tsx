@@ -5,6 +5,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import type { SourceChapter } from '../../hooks/useSourceChapters';
 import { dur, ease } from '../../theme/motion';
+import { useSidebarInset } from '../../components/ai-chat/useSidebarInset';
 
 interface ReaderModalProps {
   open: boolean;
@@ -23,6 +24,8 @@ export default function ReaderModal({
 }: ReaderModalProps) {
   const theme = useTheme();
   const readerRef = useFocusTrap(open, onClose);
+  // The panel is centred in the space right of the sidebar, not in the whole window (the sidebar would cover its left edge).
+  const sidebarInset = useSidebarInset(open);
   return (
     <AnimatePresence>
       {open && source && (
@@ -43,6 +46,7 @@ export default function ReaderModal({
             initial={{ opacity: 0, y: 8, scale: 0.985 }}
             animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: dur.base, ease: ease.emphasized } }}
             exit={{ opacity: 0, y: 8, scale: 0.985, transition: { duration: 0.16, ease: ease.snap } }}
+            style={{ left: sidebarInset + 12, right: 12 }}
             className="premium-modal fixed inset-x-3 top-16 bottom-3 z-[60] mx-auto flex max-w-5xl flex-col overflow-hidden rounded-[var(--r-xl)] sm:inset-x-4 sm:top-20 sm:bottom-4 sm:rounded-[var(--r-xl)]"
           >
             <div className="flex flex-wrap items-start justify-between gap-4 border-b px-5 py-4 sm:px-6 sm:py-5" style={{ borderColor: theme.border }}>
@@ -52,7 +56,7 @@ export default function ReaderModal({
                 </span>
                 <div className="min-w-0">
                   <div className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: theme.text3 }}>Vizualizare document</div>
-                  <h2 className="mt-1 truncate text-2xl font-black tracking-tight" style={{ color: theme.text }}>{source.name}</h2>
+                  <h2 className="mt-1 truncate text-2xl font-black tracking-tight leading-normal" style={{ color: theme.text }}>{source.name}</h2>
                 </div>
               </div>
               <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">

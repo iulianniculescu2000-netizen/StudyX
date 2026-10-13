@@ -13,10 +13,12 @@ interface SidebarFooterProps {
   collapsed: boolean;
   toggleCollapsed: () => void;
   logout: () => void;
+  /** Pe ferestre scunde (laptop): comenzile secundare stau pe un singur rând, ca lista de navigare să aibă loc. */
+  compact?: boolean;
 }
 
 /** Bottom block: logout (collapsed), settings, updater, theme switch and the collapse toggle. */
-export default function SidebarFooter({ collapsed, toggleCollapsed, logout }: SidebarFooterProps) {
+export default function SidebarFooter({ collapsed, toggleCollapsed, logout, compact = false }: SidebarFooterProps) {
   const theme = useTheme();
   const { calmMotion, t } = useAdaptiveMotion();
   const updateStatus = useUpdateStore((s) => s.status);
@@ -58,6 +60,32 @@ export default function SidebarFooter({ collapsed, toggleCollapsed, logout }: Si
           )}
         </div>
 
+        {compact && !collapsed ? (
+          <div className="flex items-center justify-between px-2 py-1">
+            <ThemeModeSwitcher variant="compact" />
+            <div className="w-10">
+              <UpdateButton
+                collapsed
+                status={updateStatus}
+                localVersion={localVersion}
+                downloadPercent={downloadPercent}
+                onOpen={() => setShowUpdateModal(true)}
+                theme={theme}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={toggleCollapsed}
+              aria-label="Restrange sidebar"
+              title="Restrânge"
+              className="press-feedback flex h-9 w-10 items-center justify-center rounded-xl focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)] hover:bg-[var(--hover-fill)]"
+              style={{ color: theme.text3 }}
+            >
+              <PanelLeftOpen size={15} style={{ transform: 'rotate(180deg)' }} />
+            </button>
+          </div>
+        ) : (
+        <>
         {/* Update button */}
         <UpdateButton
           collapsed={collapsed}
@@ -91,6 +119,8 @@ export default function SidebarFooter({ collapsed, toggleCollapsed, logout }: Si
             {!collapsed && <span style={{ color: theme.text3 }}>Restrânge</span>}
           </motion.button>
         </Tip>
+        </>
+        )}
       </div>
   );
 }

@@ -5,7 +5,7 @@ import { useAdaptiveMotion } from '../../hooks/useAdaptiveMotion';
 import { dur, ease } from '../../theme/motion';
 import { useCountUp } from '../../hooks/useCountUp';
 import {
-  activePhase, addDays, countStatus, daysBetween, donePages, focusNow, parseDay, statusOf, totalPages, upNext, weekProgress,
+  activePhase, addDays, countStatus, daysBetween, donePages, focusNow, isOverdueStart, parseDay, statusOf, totalPages, upNext, weekProgress,
 } from '../../lib/organizare/engine';
 import { dayRange, longDay, shortDay, weekdayDay, withoutNumber } from '../../lib/organizare/format';
 import ProgressRing from '../fx/ProgressRing';
@@ -259,7 +259,7 @@ function UpNextCard() {
             >
               <span className="min-w-0 truncate text-[13.5px]" style={{ color: theme.text }}>{topic.name}</span>
               <span className="flex flex-shrink-0 items-center gap-1 text-[12px] tabular-nums" style={{ color: theme.text3 }}>
-                {shortDay(win.a[ph - 1][i])} <ChevronRight size={14} />
+                {isOverdueStart(win.a[ph - 1][i], today) ? <span style={{ color: theme.warning }}>restant · {shortDay(win.a[ph - 1][i])}</span> : shortDay(win.a[ph - 1][i])} <ChevronRight size={14} />
               </span>
             </button>
           );

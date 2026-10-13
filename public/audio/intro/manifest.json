@@ -1,0 +1,37 @@
+[
+  {
+    "id": "intro",
+    "text": "Bun venit în Study X. Din cursurile tale, construiești o pregătire clară, pas cu pas, până la examen.",
+    "durationMs": 7080
+  },
+  {
+    "id": "quiz",
+    "text": "Începi cu grile. Le creezi, le imporți sau le generezi din materialele tale. Alegi modul de studiu și înțelegi fiecare răspuns prin explicații.",
+    "durationMs": 10320
+  },
+  {
+    "id": "cards",
+    "text": "Transformi ideile importante în flashcarduri. Repetarea se adaptează la răspunsurile tale, iar noțiunile dificile revin când ai nevoie de ele.",
+    "durationMs": 9048
+  },
+  {
+    "id": "ai",
+    "text": "În biblioteca A I, adaugi cursurile și aștepți pregătirea lor. Apoi pui întrebări în română și verifici sursele indicate. Tu păstrezi controlul asupra fiecărei generări.",
+    "durationMs": 12024
+  },
+  {
+    "id": "plan",
+    "text": "Pentru rezidențiat, urmărești materia și trecerile prin ea. Organizarea îți arată ce urmează, astfel încât fiecare zi să aibă un obiectiv realist.",
+    "durationMs": 9816
+  },
+  {
+    "id": "exam",
+    "text": "Testezi pregătirea într-o simulare. Rezultatele arată progresul, iar caietul de erori te ajută să revii exact la ceea ce merită consolidat.",
+    "durationMs": 8976
+  },
+  {
+    "id": "finish",
+    "text": "Hai să începem. Semnul întrebării îți oferă explicații și ghiduri, ori de câte ori ai nevoie.",
+    "durationMs": 6624
+  }
+]

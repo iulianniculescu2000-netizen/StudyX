@@ -83,7 +83,7 @@ function CiteChip({ n }: { n: number }) {
   const citation = citations.find((entry) => entry.n === n);
   if (!citation) return <span>{`[${n}]`}</span>;
   const label = citationLabel(citation);
-  const canOpen = citation.page !== undefined || citation.printedPage !== undefined || bookOfSource(citation.source);
+  const canOpen = citation.page !== undefined || citation.printedPage !== undefined || citation.sourceId || bookOfSource(citation.source);
   if (!canOpen) return <span className="ai-md-cite ai-md-cite-static" title={citation.excerpt}><span className="ai-md-cite-n">{n}</span>{label}</span>;
   return (
     <button
@@ -188,10 +188,6 @@ function MdTable({ children }: { children?: ReactNode }) {
       <div
         ref={scrollRef}
         className="ai-md-table-scroll"
-        style={{ cursor: overflowing ? 'var(--cursor-zoom-in, zoom-in)' : undefined }}
-        onClick={(event) => {
-          if (overflowing && !(event.target as HTMLElement).closest('a')) setOpen(true);
-        }}
       >
         <table>{children}</table>
       </div>

@@ -36,8 +36,6 @@ const COMMANDS = {
   'electron:build': 'node scripts/generate-premium-assets.cjs && npx tsc -b && npx vite build && npx electron-builder',
   'electron:build:dir': 'node scripts/generate-premium-assets.cjs && npx tsc -b && npx vite build && npx electron-builder --dir',
   
-  // Storybook
-  
   // Performance
   'lighthouse': 'npx lighthouse http://localhost:5173 --output=html --output-path=./lighthouse-report',
   'performance:test': 'npx vitest run tests/performance/*.test.ts',

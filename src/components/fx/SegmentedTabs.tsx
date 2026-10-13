@@ -1,9 +1,10 @@
-import { useRef, type KeyboardEvent } from 'react';
+import { useEffect, useRef, type KeyboardEvent } from 'react';
 import { motion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
 import { useTheme } from '../../theme/ThemeContext';
 import { useAdaptiveMotion } from '../../hooks/useAdaptiveMotion';
 import { spring } from '../../theme/motion';
+import { useScrollFade } from '../ui/useScrollFade';
 
 export interface SegmentedTab<T extends string> {
   id: T;
@@ -48,6 +49,19 @@ export default function SegmentedTabs<T extends string>({
   const { calmMotion } = useAdaptiveMotion();
   const buttons = useRef<Array<HTMLButtonElement | null>>([]);
   const large = size === 'lg';
+  const [stripRef, stripFade] = useScrollFade<HTMLDivElement>();
+  const activeIndex = tabs.findIndex((tab) => tab.id === value);
+
+  // Pe ecran îngust banda derulează: tabul activ trebuie să rămână la vedere.
+  useEffect(() => {
+    const strip = stripRef.current;
+    const button = buttons.current[activeIndex];
+    if (!strip || !button || strip.scrollWidth <= strip.clientWidth) return;
+    const left = button.offsetLeft;
+    const right = left + button.offsetWidth;
+    if (left < strip.scrollLeft + 28) strip.scrollTo?.({ left: Math.max(0, left - 28), behavior: 'smooth' });
+    else if (right > strip.scrollLeft + strip.clientWidth - 28) strip.scrollTo?.({ left: right - strip.clientWidth + 28, behavior: 'smooth' });
+  }, [activeIndex, stripRef]);
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const index = tabs.findIndex((tab) => tab.id === value);
@@ -64,11 +78,12 @@ export default function SegmentedTabs<T extends string>({
 
   return (
     <div
+      ref={stripRef}
       role="tablist"
       aria-label={ariaLabel}
       onKeyDown={onKeyDown}
-      className={`flex p-0.5 ${large ? 'rounded-[var(--r-md)]' : 'rounded-[var(--r-sm)]'} ${className}`}
-      style={{ background: variant === 'bare' ? 'transparent' : 'var(--fill-subtle)' }}
+      className={`relative flex overflow-x-auto p-0.5 ${large ? 'rounded-[var(--r-md)]' : 'rounded-[var(--r-sm)]'} ${className}`}
+      style={{ background: variant === 'bare' ? 'transparent' : 'var(--fill-subtle)', scrollbarWidth: 'none', ...stripFade }}
     >
       {tabs.map((tab, index) => {
         const active = tab.id === value;
@@ -80,11 +95,12 @@ export default function SegmentedTabs<T extends string>({
             type="button"
             role="tab"
             id={idPrefix ? `${idPrefix}-tab-${tab.id}` : undefined}
+            {...(idPrefix === 'gamification' && tab.id === 'self' ? { 'data-tutorial': 'gamification-tab-self' } : idPrefix ? { 'data-tutorial': `${idPrefix}-tab-${tab.id}` } : {})}
             aria-selected={active}
             aria-controls={idPrefix && active ? `${idPrefix}-panel-${tab.id}` : undefined}
             tabIndex={active ? 0 : -1}
             onClick={() => onChange(tab.id)}
-            className={`focus-ring relative flex flex-1 items-center justify-center gap-1.5 rounded-[var(--r-sm)] transition-colors ${large ? 'px-2 py-2 text-[13px]' : 'px-3 py-1.5 text-[12.5px]'}`}
+            className={`focus-ring relative flex flex-1 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-[var(--r-sm)] transition-colors ${large ? 'px-2 py-2 text-[13px]' : 'px-3 py-1.5 text-[12.5px]'}`}
             style={{ color: active ? theme.text : theme.text2, fontWeight: active ? 600 : 500 }}
           >
             {active && (

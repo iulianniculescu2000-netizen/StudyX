@@ -1,6 +1,7 @@
 import type { Quiz, Question } from '../types';
 import { isFolderSessionQuiz } from './rezidentiatOverview';
 import { isRezidentiatQuiz } from './rezidentiatBank';
+import { findDuplicatesCached, memberKey, redundantMembers } from './bankDedup';
 
 export const EXAM_SIM_TAG = 'exam-simulation';
 export const DISCIPLINE_TAG_PREFIX = 'disc:';
@@ -45,11 +46,22 @@ export function examSourceQuizzes(quizzes: Quiz[]): Quiz[] {
   return bank.length > 0 ? bank : eligible;
 }
 
+/** Întrebările care contează: fără copiile redundante din grupurile de dubluri și fără cele ascunse (aceeași regulă ca în Rezidențiat). */
+function countedQuestions(sources: Quiz[], quiz: Quiz): Question[] {
+  const report = findDuplicatesCached(sources);
+  const redundant = new Set(redundantMembers(report).map((m) => memberKey(m.quizId, m.questionId)));
+  return quiz.questions.filter((question) => {
+    const key = memberKey(quiz.id, question.id);
+    return !redundant.has(key) && !(question.hidden && !report.groupOf.has(key));
+  });
+}
+
 export function examDisciplines(quizzes: Quiz[]): { name: string; count: number }[] {
   const counts = new Map<string, number>();
-  for (const quiz of examSourceQuizzes(quizzes)) {
+  const sources = examSourceQuizzes(quizzes);
+  for (const quiz of sources) {
     const name = quiz.category?.trim() || 'Altele';
-    counts.set(name, (counts.get(name) ?? 0) + quiz.questions.length);
+    counts.set(name, (counts.get(name) ?? 0) + countedQuestions(sources, quiz).length);
   }
   return [...counts.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'ro'));
 }
@@ -71,10 +83,11 @@ export function buildExamSimulation(
   const random = options.random ?? Math.random;
   const pool: { question: Question; discipline: string }[] = [];
   const seen = new Set<string>();
-  for (const quiz of examSourceQuizzes(quizzes)) {
+  const sources = examSourceQuizzes(quizzes);
+  for (const quiz of sources) {
     const discipline = quiz.category?.trim() || 'Altele';
     if (options.discipline && discipline !== options.discipline) continue;
-    for (const question of quiz.questions) {
+    for (const question of countedQuestions(sources, quiz)) {
       const fingerprint = plain(question.text);
       if (!fingerprint || seen.has(fingerprint)) continue;
       seen.add(fingerprint);

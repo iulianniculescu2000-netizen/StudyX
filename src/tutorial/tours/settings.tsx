@@ -1,3 +1,5 @@
+import { plural } from '../../lib/plural';
+import { aiStatus } from '../contextText';
 import { Bot, Database, LifeBuoy, Settings as SettingsIcon, SlidersHorizontal } from 'lucide-react';
 import type { TourDefinition } from '../types';
 
@@ -8,7 +10,7 @@ export const settingsTour: TourDefinition = {
     {
       id: 'settings-intro',
       title: 'Setările, pe secțiuni',
-      body: 'Totul e împărțit în câteva secțiuni, ca să găsești repede ce cauți. Le parcurgem pe scurt.',
+      body: (ctx) => `Setările se deschid pe secțiunea indicată de ghid. ${ctx.aiReady ? 'Furnizorul AI ales are o cheie salvată.' : 'Furnizorul AI ales nu este configurat încă.'} La Date poți exporta un backup.`,
       icon: <SettingsIcon size={22} />,
       placement: 'center',
       route: '/settings?s=aspect',
@@ -38,7 +40,7 @@ export const settingsTour: TourDefinition = {
     {
       id: 'settings-ai',
       title: 'Asistentul AI',
-      body: 'Aici salvezi cheia furnizorului AI (există chei gratuite). „Ghid chei gratuite” te duce pas cu pas. Mai multe chei înseamnă rezerve automate dacă una se blochează.',
+      body: (ctx) => `${aiStatus(ctx)} Ai ${plural(ctx.aiKeyCount, 'furnizor cu cheie salvată', 'furnizori cu chei salvate')}. Selectează furnizorul și modelul; o cheie salvată nu garantează că serviciul acceptă cererea.`,
       icon: <Bot size={22} />,
       target: '[data-tutorial="settings-ai"]',
       targetPadding: 6,

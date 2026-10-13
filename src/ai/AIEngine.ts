@@ -16,7 +16,6 @@ import { retrieveRelevantChunks } from './retriever';
 import type {
   AIAnalysisResult,
   AIContextPayload,
-  AINextQuestionState,
   AIQuestionRequest,
   AIQuestionResult,
   AdaptiveDifficultyInput,
@@ -389,39 +388,6 @@ async function generateQuestionsFromTopicOnce(
   };
 }
 
-export class WeaknessAnalyzer {
-  static getWeakTopics(profileId: string) {
-    return getWeakTopicsForProfile(profileId);
-  }
-}
-
-export class AdaptiveDifficulty {
-  static getAdaptiveDifficulty({ accuracy, streak, time }: AdaptiveDifficultyInput): 'easy' | 'medium' | 'hard' {
-    let score = 0;
-    if (accuracy >= 80) score += 2;
-    else if (accuracy < 50) score -= 2;
-    if (streak >= 7) score += 2;
-    else if (streak >= 3) score += 1;
-    if (typeof time === 'number' && time < 20) score -= 1;
-    if (score >= 2) return 'hard';
-    if (score <= -1) return 'easy';
-    return 'medium';
-  }
-}
-
-export class LearningStrategist {
-  static getNextQuestion(state: AINextQuestionState) {
-    const nextTopic = state.weakTopics[0]?.topic ?? state.recentMistakes[0]?.topic ?? 'Topic general';
-    const difficulty = AdaptiveDifficulty.getAdaptiveDifficulty({
-      accuracy: state.accuracy,
-      streak: state.streak,
-      time: state.availableTime,
-    });
-
-    return { topic: nextTopic, difficulty };
-  }
-}
-
 export async function analyzeAnswer(
   profileId: string,
   payload: { question: Question; userAnswer: string; correctAnswer: string; isCorrect: boolean },
@@ -535,35 +501,16 @@ export async function explainWrongOptions(question: Question) {
   return parsed.value?.options ?? [];
 }
 
-export class AITutorSession {
-  static build(profileId: string) {
-    const profile = loadUserProfile(profileId);
-    const weakTopics = getWeakTopicsForProfile(profileId);
-    return {
-      currentTopic: weakTopics[0]?.topic ?? 'Topic general',
-      difficulty: profile.currentDifficulty,
-      progress: 0,
-      questionIds: profile.recentQuestions,
-    };
-  }
-}
-
-export class ExamSimulator {
-  static async generate(profileId: string, context: string) {
-    const profile = loadUserProfile(profileId);
-    return generateQuestions({
-      context,
-      count: 10,
-      difficulty: 'hard',
-      weakTopics: getWeakTopicsForProfile(profileId),
-      userProfile: profile,
-      mode: 'exam',
-    });
-  }
-}
-
-export function getAdaptiveDifficulty(input: AdaptiveDifficultyInput) {
-  return AdaptiveDifficulty.getAdaptiveDifficulty(input);
+export function getAdaptiveDifficulty({ accuracy, streak, time }: AdaptiveDifficultyInput): 'easy' | 'medium' | 'hard' {
+  let score = 0;
+  if (accuracy >= 80) score += 2;
+  else if (accuracy < 50) score -= 2;
+  if (streak >= 7) score += 2;
+  else if (streak >= 3) score += 1;
+  if (typeof time === 'number' && time < 20) score -= 1;
+  if (score >= 2) return 'hard';
+  if (score <= -1) return 'easy';
+  return 'medium';
 }
 
 function deepCleanText(text: string): string {

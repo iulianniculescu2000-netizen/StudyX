@@ -1,4 +1,5 @@
 import ProgressBar from '../../components/fx/ProgressBar';
+import TourHelpButton from '../../tutorial/TourHelpButton';
 import { ChevronLeft, Brain, Undo2 } from 'lucide-react';
 import { dur, ease } from '../../theme/motion';
 import { DUE_NEW_DEFAULT } from '../../lib/flashcardDueQueue';
@@ -34,7 +35,8 @@ export function SessionTopBar({ theme, cardWidthClass, topBarPaddingClass, mobil
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <Brain size={14} style={{ color: theme.accentText }} />
-            <h1 className={`font-black tracking-tight ${isDue ? 'flex-shrink-0' : 'truncate'}`} style={{ color: theme.text, ...titleStyle }}>
+            <TourHelpButton tour="flashcardSession" label="Ghid pentru sesiunea de flashcarduri" />
+            <h1 className={`font-black tracking-tight leading-normal ${isDue ? 'flex-shrink-0' : 'truncate'}`} style={{ color: theme.text, ...titleStyle }}>
               {isDue ? 'Repetare' : current.quiz.title}
             </h1>
             {isDue && current.groupLabel && (

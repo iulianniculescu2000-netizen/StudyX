@@ -1,13 +1,17 @@
 import { test, expect, type Page } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 
 async function ensureOnboarded(page: Page) {
   await page.goto('/');
   await page.waitForLoadState('networkidle');
+  await expect(page.getByRole('status', { name: 'Se pornește StudyX' })).toBeHidden({ timeout: 15000 });
 
-  const nameInput = page.getByPlaceholder(/Alexandru/i);
+  const nameInput = page.getByRole('textbox', { name: 'Cum te cheamă?' });
+  // Initial hydration and the splash can finish after network requests settle.
+  await expect(nameInput.or(page.locator('main'))).toBeVisible({ timeout: 15000 });
   if (await nameInput.isVisible().catch(() => false)) {
-    await nameInput.fill('Test User');
-    await page.getByRole('button', { name: /Continu/i }).click();
+    await nameInput.pressSequentially('Test User');
+    await expect(page.getByText('Salut, Test User! Arată bine.')).toBeVisible();
     await page.getByRole('button', { name: /Intr/i }).click();
   }
 
@@ -19,8 +23,10 @@ async function ensureOnboarded(page: Page) {
 async function dismissTours(page: Page) {
   const close = page.getByRole('button', { name: /Închide turul|Închide prezentarea|Sari peste/ });
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    if (!(await close.first().isVisible({ timeout: 2500 }).catch(() => false))) return;
+    // isVisible does not wait; the lazy first-run film can mount after main.
+    if (!(await close.first().waitFor({ state: 'visible', timeout: 2500 }).then(() => true).catch(() => false))) return;
     await close.first().click();
+    await page.waitForTimeout(100);
   }
 }
 
@@ -43,6 +49,24 @@ test.describe('StudyX Application', () => {
     await expect(navigationItems.first()).toBeVisible();
   });
 
+  test('dashboard controls meet automated accessibility checks', async ({ page }) => {
+    for (const [label, mode] of [['Luminos', 'light'], ['Întunecat', 'dark']] as const) {
+      await openRoute(page, '/settings?s=aspect');
+      await page.getByRole('radio', { name: label, exact: true }).click();
+      await openRoute(page, '/');
+      await expect(page.locator('html')).toHaveAttribute('data-theme', mode);
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+        .analyze();
+      expect(results.violations.map(({ id, impact, nodes }) => ({
+        mode,
+        id,
+        impact,
+        elements: nodes.map(({ target, any }) => ({ target: target.join(' '), details: any.map(({ data }) => data) })),
+      }))).toEqual([]);
+    }
+  });
+
   test('should navigate between pages', async ({ page }) => {
     await openRoute(page, '/quizzes');
     await expect(page).toHaveURL(/#\/quizzes/);
@@ -54,33 +78,47 @@ test.describe('StudyX Application', () => {
   });
 
   test('should handle theme switching', async ({ page }) => {
-    await openRoute(page, '/settings');
-
-    const possibleSelectors = [
-      'button[aria-label*="theme"]',
-      'button[aria-label*="tema"]',
-      'button[title*="theme"]',
-      'button[title*="tema"]',
-      '[data-testid="theme-toggle"]',
-      '.theme-toggle',
-      'button:has-text("Dark")',
-      'button:has-text("Light")',
-      'button:has-text("Tema")',
-    ];
-
-    let toggleFound = false;
-    for (const selector of possibleSelectors) {
-      const element = page.locator(selector).first();
-      if (await element.isVisible().catch(() => false)) {
-        await element.click();
-        toggleFound = true;
-        break;
-      }
+    test.setTimeout(60000);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    for (const [label, mode] of [['Luminos', 'light'], ['Întunecat', 'dark']]) {
+      await openRoute(page, '/settings?s=aspect');
+      await page.getByRole('radio', { name: label, exact: true }).click();
+      await expect(page.locator('html')).toHaveAttribute('data-theme', mode);
+      await openRoute(page, '/');
+      await expect(page.locator('html')).toHaveAttribute('data-theme', mode);
+      await expect(page.getByRole('status', { name: 'Se pornește StudyX' })).toBeHidden();
+      await page.screenshot({ path: `.qa-results-brave/dashboard-${mode}.png` });
     }
+  });
 
-    if (toggleFound) {
-      await expect(page.locator('body')).toBeVisible();
-    }
+  test('film pauses visuals and narration, seeks scenes and supports small windows', async ({ page }) => {
+    test.setTimeout(120000);
+    await page.evaluate(() => window.dispatchEvent(new Event('studyx:welcome-film:open')));
+    const film = page.locator('[role="dialog"][data-film-scene]');
+    await expect(film).toHaveAttribute('data-film-playing', 'true', { timeout: 20000 });
+    await expect(film.locator('audio')).toHaveJSProperty('muted', true);
+    await film.getByRole('button', { name: 'Pornește narațiunea' }).click();
+    await expect(film.locator('audio')).toHaveJSProperty('paused', false);
+    await film.getByRole('button', { name: 'Pauză film' }).click();
+    const paused = await film.getAttribute('data-film-elapsed-ms');
+    await page.waitForTimeout(700);
+    await expect(film).toHaveAttribute('data-film-elapsed-ms', paused!);
+    await expect(film.locator('audio')).toHaveJSProperty('paused', true);
+    await page.screenshot({ path: '.qa-results-brave/intro-cinematic.png' });
+    await film.getByRole('button', { name: 'Scena 3: Flashcarduri' }).click();
+    await expect(film).toHaveAttribute('data-film-scene', 'cards');
+    await expect(film).toHaveAttribute('data-film-scene-elapsed-ms', '0');
+    await film.getByRole('button', { name: 'Continuă filmul' }).click();
+    await expect(film.locator('audio')).toHaveJSProperty('paused', false);
+    await page.setViewportSize({ width: 375, height: 600 });
+    await expect(film.getByRole('button', { name: 'Pauză film' })).toBeInViewport();
+    await film.getByRole('button', { name: 'Pauză film' }).click();
+    const bounds = await film.boundingBox();
+    expect(bounds!.width).toBeLessThanOrEqual(375);
+    expect(bounds!.height).toBeLessThanOrEqual(600);
+    await page.screenshot({ path: '.qa-results-brave/intro-small.png' });
+    await page.keyboard.press('Escape');
+    await expect(film).toHaveCount(0);
   });
 
   test('should show keyboard shortcuts modal', async ({ page }) => {
@@ -114,26 +152,32 @@ test.describe('StudyX Application', () => {
   });
 
   test('should handle quiz creation flow', async ({ page }) => {
-    await openRoute(page, '/quizzes');
-
-    const createButton = page
-      .locator('a[href*="/create"], button:has-text("Create"), button:has-text("New"), button:has-text("Adaug"), button:has-text("Creeaz")')
-      .first();
-
-    if (await createButton.isVisible().catch(() => false)) {
-      await createButton.click();
-      await expect(page).toHaveURL(/#\/create|\/create|\/new|\/add/);
-
-      const titleInput = page.locator('input[name="title"], input[placeholder*="title"], input[placeholder*="Titlu"]').first();
-      if (await titleInput.isVisible().catch(() => false)) {
-        await titleInput.fill('Test Quiz');
-
-        const saveButton = page.locator('button:has-text("Save"), button:has-text("Create"), button:has-text("Salveaz"), button:has-text("Creeaz")').first();
-        if (await saveButton.isVisible().catch(() => false)) {
-          await saveButton.click();
-        }
-      }
+    test.setTimeout(120000);
+    await openRoute(page, '/create');
+    await page.getByPlaceholder('ex: Capitalele Europei').fill('Grilă QA izolată');
+    await page.getByPlaceholder('Descrie pe scurt conținutul grilei...').fill('Verificarea salvării și studiului.');
+    await page.getByRole('button', { name: 'Continuă și adaugă întrebări' }).click();
+    await page.getByPlaceholder('Scrie întrebarea ta...').fill('Care este răspunsul corect QA?');
+    for (const [letter, answer] of [['A', 'Corect QA'], ['B', 'Alternativa B'], ['C', 'Alternativa C'], ['D', 'Alternativa D']]) {
+      await page.getByPlaceholder(`Opțiunea ${letter}...`).fill(answer);
     }
+    await page.getByRole('button', { name: 'Marchează opțiunea A ca fiind corectă' }).click();
+    await page.getByRole('button', { name: 'Salvează grila', exact: true }).click();
+    await expect(page).toHaveURL(/#\/(quizzes|folder\/)/);
+    await expect(page.getByText('Grilă QA izolată', { exact: true }).first()).toBeVisible();
+    // Real reload verifies persisted data rather than React state alone.
+    await page.reload();
+    await expect(page.getByRole('status', { name: 'Se pornește StudyX' })).toBeHidden({ timeout: 15000 });
+    await dismissTours(page);
+    await page.getByText('Grilă QA izolată', { exact: true }).first().click();
+    await page.getByRole('link', { name: 'Începe Grila' }).click();
+    await page.getByRole('button', { name: /Corect QA/ }).click();
+    await page.getByRole('button', { name: 'Verifică răspunsul' }).click();
+    await page.getByRole('button', { name: /Știam sigur/ }).click();
+    await expect(page).toHaveURL(/#\/results\//);
+    await expect(page.locator('main')).toContainText('100');
+    await page.reload();
+    await expect(page.locator('main')).toContainText('100');
   });
 
   test('should drag a quiz into a subfolder', async ({ page }) => {
@@ -167,6 +211,7 @@ test.describe('StudyX Application', () => {
       localStorage.setItem(`studyx-p-${profileId}-quizzes`, JSON.stringify({
         quizzes: [{
           id: 'quiz-dnd-qa',
+          kind: 'quiz',
           title: 'Grila pentru mutare QA',
           description: 'Trebuie mutata in subfolder.',
           emoji: '📝',
@@ -176,7 +221,7 @@ test.describe('StudyX Application', () => {
             id: 'q1',
             text: 'Intrebare QA?',
             multipleCorrect: false,
-            options: [{ id: 'a', text: 'Raspuns', isCorrect: true }],
+            options: [{ id: 'a', text: 'Raspuns', isCorrect: true }, { id: 'b', text: 'Distractor', isCorrect: false }],
           }],
           createdAt: now,
           color: 'blue',
@@ -194,11 +239,11 @@ test.describe('StudyX Application', () => {
     await page.goto(`/?qa=${now}#/folder/f-parent-qa`);
     await page.waitForLoadState('networkidle');
     await expect(page.locator('main')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('status', { name: 'Se pornește StudyX' })).toBeHidden();
     await expect(page.locator('[data-quiz-id="quiz-dnd-qa"]')).toBeVisible();
 
     await page.locator('[data-quiz-id="quiz-dnd-qa"]').dragTo(
       page.locator('[data-folder-id="f-child-qa"]').first(),
-      { force: true },
     );
 
     await expect(page.getByText('Am mutat "Grila pentru mutare QA"')).toBeVisible();
@@ -281,14 +326,17 @@ test.describe('StudyX Application', () => {
 test.describe('StudyX Performance', () => {
   test('should load within reasonable time', async ({ page }) => {
     const startTime = Date.now();
-
-    await ensureOnboarded(page);
+    await page.goto('/');
+    await expect(page.getByRole('status', { name: 'Se pornește StudyX' })).toBeHidden();
+    await expect(page.getByRole('textbox', { name: 'Cum te cheamă?' })).toBeVisible();
 
     const loadTime = Date.now() - startTime;
     expect(loadTime).toBeLessThan(10000);
   });
 
-  test('should not have memory leaks', async ({ page }) => {
+  test('should revisit key pages without rendering errors', async ({ page }) => {
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
     await ensureOnboarded(page);
 
     const pages = ['/#/quizzes', '/#/stats', '/#/flashcards', '/#/'];
@@ -300,5 +348,6 @@ test.describe('StudyX Performance', () => {
     }
 
     await expect(page.locator('body')).toBeVisible();
+    expect(errors).toEqual([]);
   });
 });

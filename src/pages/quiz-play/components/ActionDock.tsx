@@ -90,9 +90,12 @@ export function ActionDock({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 8 }}
-      className="sticky bottom-3 z-20 mt-4"
+      className="sticky bottom-3 z-20 mt-4 pb-1"
     >
-      <div className={`glass-panel rounded-[var(--r-lg)] border ${layout.denseLayout ? 'px-3 py-3' : 'px-4 py-4'}`}>
+      <div
+        className={`glass-panel rounded-[var(--r-lg)] border ${layout.denseLayout ? 'px-3 py-3' : 'px-4 py-4'}`}
+        style={{ background: 'var(--surface)', boxShadow: 'var(--hairline-ring), var(--elev-3)' }}
+      >
         {mobile && !examMode && answerStreak > 1 && (
           <div className="mb-2.5 flex items-center gap-1.5 text-[11px] font-black uppercase tracking-[0.1em]" style={{ color: theme.warning }}>
             <Flame size={13} fill={theme.warning} />

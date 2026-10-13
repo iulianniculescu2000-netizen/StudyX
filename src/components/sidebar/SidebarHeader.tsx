@@ -46,7 +46,7 @@ export default function SidebarHeader({ collapsed, compact, username, liveStreak
       </div>
 
       {/* User header */}
-      <div className={`${compact ? 'p-3' : 'p-4'} flex-shrink-0`} style={{ borderBottom: `1px solid ${theme.border}` }}>
+      <div className={`${compact ? 'px-3 py-2.5' : 'px-3.5 py-3'} flex-shrink-0`} style={{ borderBottom: `1px solid ${theme.border}` }}>
         {collapsed ? (
           <Tip label={username ?? ''}>
             <div
@@ -59,7 +59,7 @@ export default function SidebarHeader({ collapsed, compact, username, liveStreak
         ) : (
           <div className="flex items-center gap-3">
             <div
-              className="w-10 h-10 rounded-[var(--r-sm)] flex items-center justify-center font-bold text-white text-base flex-shrink-0"
+              className="w-9 h-9 rounded-[var(--r-sm)] flex items-center justify-center font-bold text-white text-sm flex-shrink-0"
               style={{ background: theme.accent, boxShadow: 'var(--elev-1)' }}
             >
               {avatarLetter}

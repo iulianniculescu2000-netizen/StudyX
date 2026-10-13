@@ -1,3 +1,5 @@
+import { plural } from '../../lib/plural';
+import { formatStudyTime } from '../../lib/formatStudyTime';
 import { useMemo, useRef, useState, type FormEvent } from 'react';
 import { Loader2, Sparkles, Square } from 'lucide-react';
 import { useTheme } from '../../theme/ThemeContext';
@@ -86,7 +88,7 @@ function DayForm({ day, setDay, formRef }: { day: string; setDay: (d: string) =>
       <h2 className="text-[15px] font-semibold" style={{ color: theme.text }}>Înregistrează ziua</h2>
       {fromApp.sessions > 0 && (
         <div className="fine-chip mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl px-3.5 py-2.5 text-[12.5px]" style={{ background: 'var(--accent-soft)', color: theme.accentText }}>
-          <span>În aplicație, în ziua asta: {fromApp.sessions} {fromApp.sessions === 1 ? 'sesiune' : 'sesiuni'} · {fromApp.g} grile · {Math.round((fromApp.ok / fromApp.g) * 100)}% corecte</span>
+          <span>În aplicație, în ziua asta: {plural(fromApp.sessions, 'sesiune', 'sesiuni')} · {plural(fromApp.g, 'grilă', 'grile')} · {Math.round((fromApp.ok / fromApp.g) * 100)}% corecte</span>
           <button
             type="button"
             className="rounded-full px-3 py-1 font-semibold"
@@ -211,11 +213,11 @@ export default function Rhythm() {
   const ph = Math.min(activePhase(plan, today), 4);
   const recent = st.days.slice(-8).reverse();
 
-  const total = useCountUp(Math.round(st.total), 800);
+  const total = useCountUp(Math.round(st.total * 3600), 800);
   const streak = useCountUp(st.streak, 600);
 
   const tiles: Array<[string, string]> = [
-    [number(total), 'ore înregistrate în total'],
+    [formatStudyTime(total), 'timp înregistrat în total'],
     [String(streak), 'zile la rând'],
     [`${number(st.h7, 1)} / ${number(st.t7, 1)}`, 'ore în ultimele 7 zile'],
     [st.last14.p === null ? '–' : `${Math.round(st.last14.p * 100)}%`, 'grile corecte, 14 zile'],
@@ -286,7 +288,7 @@ export default function Rhythm() {
                 <button key={d} type="button" onClick={() => loadDay(d)} className="fine-row grid w-full grid-cols-[7.5rem_4rem_1fr] items-center gap-2 px-4 py-2.5 text-left text-[13px] sm:px-5" style={{ borderRadius: 0, borderTop: '1px solid var(--hairline)' }}>
                   <span style={{ color: theme.text }}>{weekdayDay(d)}</span>
                   <span className="tabular-nums" style={{ color: theme.text }}>{number(l.h ?? 0, 1)} h</span>
-                  <span className="truncate" style={{ color: theme.text3 }}>{l.g ? `${l.ok ?? 0}/${l.g} grile` : ''}{l.n ? ` · ${l.n}` : ''}</span>
+                  <span className="truncate" style={{ color: theme.text3 }}>{l.g ? `${l.ok ?? 0}/${plural(l.g, 'grilă', 'grile')}` : ''}{l.n ? ` · ${l.n}` : ''}</span>
                 </button>
               );
             })}

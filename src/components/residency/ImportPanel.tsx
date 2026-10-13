@@ -78,7 +78,7 @@ export default function ImportPanel() {
             style={{ color: theme.accentText }}
           >
             {busyKey === 'all' && <Loader2 size={12} className="animate-spin" />}
-            Adaugă tot
+            {busyKey === 'all' ? 'Se adaugă…' : 'Adaugă tot'}
           </button>
         )}
       </div>
@@ -101,7 +101,7 @@ export default function ImportPanel() {
               style={{ color: theme.accentText }}
             >
               {busyKey === item.key || busyKey === 'all' ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-              Adaugă
+              {busyKey === item.key || busyKey === 'all' ? 'Se adaugă…' : 'Adaugă'}
             </button>
           </div>
         ))}

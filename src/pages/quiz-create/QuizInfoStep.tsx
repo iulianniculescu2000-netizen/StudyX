@@ -135,7 +135,7 @@ export function QuizInfoStep({
             placeholder="ex: Capitalele Europei"
             value={title}
             onChange={(event) => onTitleChange(event.target.value)}
-            className="w-full bg-transparent text-lg font-medium mt-1"
+            className="input-bare mt-1 w-full text-lg font-medium"
             style={{ color: theme.text, outline: 'none', border: 'none' }}
           />
         </Panel>
@@ -146,13 +146,13 @@ export function QuizInfoStep({
         transition={calmMotion ? { duration: dur.instant } : { duration: dur.slow, ease: ease.standard }}
       >
         <Panel theme={theme} style={{ border: shakeFields.includes('desc') ? `1px solid ${theme.danger}` : undefined }}>
-          <Label theme={theme}>Descriere *</Label>
+          <Label theme={theme}>Descriere (opțional)</Label>
           <textarea
             placeholder="Descrie pe scurt conținutul grilei..."
             value={description}
             onChange={(event) => onDescriptionChange(event.target.value)}
             rows={3}
-            className="w-full bg-transparent resize-none text-sm mt-1"
+            className="input-bare mt-1 w-full resize-none text-sm"
             style={{ color: theme.text, outline: 'none', border: 'none' }}
           />
         </Panel>
@@ -179,7 +179,7 @@ export function QuizInfoStep({
       </Panel>
 
       <Panel theme={theme}>
-        <Label theme={theme}>Folder tinta</Label>
+        <Label theme={theme}>Folder țintă</Label>
         <FolderTargetPicker
           folders={folders}
           value={selectedFolderId}
@@ -219,7 +219,7 @@ export function QuizInfoStep({
                   onAddTag();
                 }
               }}
-              className="bg-transparent outline-none w-28"
+              className="input-bare w-28"
               style={{ color: theme.text, border: 'none' }}
             />
           </div>
@@ -285,6 +285,9 @@ export function QuizInfoStep({
       >
         Continuă și adaugă întrebări
       </motion.button>
+      {!canProceed && (
+        <p role="status" className="text-center text-xs" style={{ color: theme.text3 }}>Completează titlul pentru a continua.</p>
+      )}
     </motion.div>
   );
 }

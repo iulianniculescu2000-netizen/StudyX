@@ -3,8 +3,8 @@ import { useTheme } from '../../theme/ThemeContext';
 import ProgressRing from '../fx/ProgressRing';
 import { daysUntil } from '../../lib/organizare';
 import type { PlanSummary } from '../../store/organizareStore';
+import { plural } from '../../lib/plural';
 
-const plural = (n: number, one: string, many: string) => `${n.toLocaleString('ro-RO')} ${n === 1 ? one : many}`;
 
 /**
  * Where the student is in the Organizare plan: the topic to work on now, the progress of the current

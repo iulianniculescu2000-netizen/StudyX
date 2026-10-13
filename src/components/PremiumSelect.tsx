@@ -15,13 +15,17 @@ interface Props {
   value: string;
   onChange: (val: string) => void;
   icon?: React.ReactNode;
+  /** Numele câmpului pentru cititoarele de ecran (ex. „Sortare”). */
+  label?: string;
 }
 
-export default function PremiumSelect({ options, value, onChange, icon }: Props) {
+export default function PremiumSelect({ options, value, onChange, icon, label }: Props) {
   const theme = useTheme();
   const { t } = useAdaptiveMotion();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const [coords, setCoords] = useState<{ top?: number; bottom?: number; left: number; width: number; maxHeight: number }>({
     top: 0,
     left: 0,
@@ -64,9 +68,45 @@ export default function PremiumSelect({ options, value, onChange, icon }: Props)
     };
   }, [open]);
 
+  // Esc închide lista și duce focusul înapoi la buton; la deschidere focusul intră pe opțiunea activă.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      event.stopPropagation();
+      setOpen(false);
+      triggerRef.current?.focus();
+    };
+    document.addEventListener('keydown', onKey, true);
+    const timer = window.setTimeout(() => {
+      const list = listRef.current;
+      (list?.querySelector<HTMLElement>('[aria-selected="true"]') ?? list?.querySelector<HTMLElement>('[role="option"]'))?.focus();
+    }, 0);
+    return () => { document.removeEventListener('keydown', onKey, true); window.clearTimeout(timer); };
+  }, [open]);
+
+  const moveFocus = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const keys = ['ArrowDown', 'ArrowUp', 'Home', 'End'];
+    if (!keys.includes(event.key)) return;
+    const items = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('[role="option"]'));
+    if (items.length === 0) return;
+    event.preventDefault();
+    const current = items.indexOf(document.activeElement as HTMLElement);
+    const next = event.key === 'Home' ? 0
+      : event.key === 'End' ? items.length - 1
+        : event.key === 'ArrowDown' ? Math.min(items.length - 1, current + 1) : Math.max(0, current - 1);
+    items[next].focus();
+  };
+
   return (
     <div className="relative" ref={containerRef}>
       <button
+        ref={triggerRef}
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={label && selected ? `${label}: ${selected.label}` : undefined}
         onClick={() => setOpen(!open)}
         className="flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all hover:opacity-80 active:scale-[0.98]"
         style={{ background: theme.surface2, border: `1px solid ${theme.border2}` }}
@@ -107,12 +147,15 @@ export default function PremiumSelect({ options, value, onChange, icon }: Props)
                   backdropFilter: 'blur(var(--blur-2))',
                 }}
               >
-                <div className="custom-scrollbar p-1.5 flex flex-col gap-1 overflow-y-auto" style={{ maxHeight: coords.maxHeight }}>
+                <div ref={listRef} role="listbox" aria-label={label} onKeyDown={moveFocus} className="custom-scrollbar p-1.5 flex flex-col gap-1 overflow-y-auto" style={{ maxHeight: coords.maxHeight }}>
                   {options.map((opt) => {
                     const isActive = opt.value === value;
                     return (
                       <button
                         key={opt.value}
+                        type="button"
+                        role="option"
+                        aria-selected={isActive}
                         onClick={() => {
                           onChange(opt.value);
                           setOpen(false);
@@ -121,7 +164,7 @@ export default function PremiumSelect({ options, value, onChange, icon }: Props)
                         data-active={isActive ? 'true' : undefined}
                         style={isActive ? { background: `${theme.accent}15` } : undefined}
                       >
-                        <span className="text-xs font-bold" style={{ color: isActive ? theme.accent : theme.text2 }}>
+                        <span className="text-xs font-bold" style={{ color: isActive ? theme.accentText : theme.text2 }}>
                           {opt.label}
                         </span>
                         {isActive && <Check size={14} style={{ color: theme.accentText }} />}

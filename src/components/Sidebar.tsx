@@ -23,10 +23,15 @@ import NewFolderDialogHost from './sidebar/NewFolderDialogHost';
 const AISettings = lazy(() => import('./AISettings'));
 const UpdateModal = lazy(() => import('./UpdateModal'));
 
+/** Sub această lățime bara laterală se restrânge singură; se poate deschide peste conținut (suprapunere). */
+const AUTO_COLLAPSE_BELOW = 900;
+const RAIL_WIDTH = 64;
+
 export default function Sidebar() {
   const theme = useTheme();
   const { calmMotion, t } = useAdaptiveMotion();
-  const { compact } = useViewportProfile();
+  const { compact, viewport } = useViewportProfile();
+  const narrowScreen = viewport.width < AUTO_COLLAPSE_BELOW;
   const username = useUserStore((s) => s.username);
   const logout = useUserStore((s) => s.logout);
   const folders = useFolderStore((s) => s.folders);
@@ -35,7 +40,12 @@ export default function Sidebar() {
   const streak = useStatsStore((s) => s.streak);
   const liveStreak = effectiveStreak(streak, localDateStr());
   const addToast = useToastStore((state) => state.addToast);
-  const [collapsed, toggleCollapsed] = useSidebarCollapsed();
+  const [storedCollapsed, toggleStoredCollapsed] = useSidebarCollapsed();
+  const [overlayOpen, setOverlayOpen] = useState(false);
+  // Pe ecran îngust preferința salvată nu se aplică: bara e restrânsă, iar deschiderea e temporară.
+  const collapsed = narrowScreen ? !overlayOpen : storedCollapsed;
+  const overlay = narrowScreen && overlayOpen;
+  const toggleCollapsed = narrowScreen ? () => setOverlayOpen((open) => !open) : toggleStoredCollapsed;
   const {
     dueCount, totalAnswered, activeQuizCount, newQuizCount, uncategorizedCount, folderQuizCount, visibleFolders,
   } = useSidebarData();
@@ -71,17 +81,40 @@ export default function Sidebar() {
     return () => window.removeEventListener('studyx:open-ai-settings', handler);
   }, []);
 
+  useEffect(() => {
+    if (!overlay) return undefined;
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setOverlayOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [overlay]);
+
   return (
+    <div
+      className="flex-shrink-0"
+      style={narrowScreen ? { position: 'relative', width: RAIL_WIDTH, height: '100dvh', zIndex: 50 } : { display: 'contents' }}
+    >
+    {overlay && (
+      <div
+        aria-hidden
+        onClick={() => setOverlayOpen(false)}
+        style={{ position: 'fixed', inset: 0, zIndex: 49, background: 'var(--overlay)' }}
+      />
+    )}
     <motion.div
       ref={rootRef}
-      animate={{ width: collapsed ? 64 : compact ? 242 : 260 }}
+      onClickCapture={(event) => {
+        if (overlay && (event.target as HTMLElement).closest('a')) setOverlayOpen(false);
+      }}
+      animate={{ width: collapsed ? RAIL_WIDTH : compact ? 224 : 240 }}
       transition={calmMotion ? { duration: dur.instant } : t.panel}
       className="studyx-sidebar flex flex-col flex-shrink-0 select-none overflow-hidden glass-panel"
       style={{
         height: '100dvh',
         borderRight: '1px solid var(--hairline)',
-        boxShadow: 'var(--elev-1)',
-        position: 'relative',
+        boxShadow: overlay ? 'var(--elev-4)' : 'var(--elev-1)',
+        position: narrowScreen ? 'absolute' : 'relative',
+        top: narrowScreen ? 0 : undefined,
+        left: narrowScreen ? 0 : undefined,
         zIndex: 50,
         background: collapsed ? theme.navBg : `linear-gradient(180deg, ${theme.navBg}, color-mix(in srgb, ${theme.surface} 88%, transparent))`,
       } as React.CSSProperties}
@@ -125,7 +158,8 @@ export default function Sidebar() {
       {/* Centered folder creation modal */}
       <NewFolderDialogHost />
 
-      <SidebarFooter collapsed={collapsed} toggleCollapsed={toggleCollapsed} logout={logout} />
+      <SidebarFooter collapsed={collapsed} toggleCollapsed={toggleCollapsed} logout={logout} compact={compact} />
     </motion.div>
+    </div>
   );
 }

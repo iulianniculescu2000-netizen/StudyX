@@ -1,3 +1,4 @@
+import { plural } from '../../lib/plural';
 import { CalendarClock, CalendarDays, Compass, LayoutGrid } from 'lucide-react';
 import type { TourDefinition } from '../types';
 
@@ -9,7 +10,7 @@ export const organizareTour: TourDefinition = {
     {
       id: 'organizare-intro',
       title: 'Planul tău pentru rezidențiat',
-      body: 'Patru treceri prin materie, topicuri aranjate pe săptămâni și zilele rămase până la examen. Un tur scurt prin pagină.',
+      body: (ctx) => ctx.hasPlan ? `Planul tău are ${ctx.planDoneCount} din ${plural(ctx.planTopicCount, 'topic terminat', 'topicuri terminate')} în trecerea curentă. Verifică data examenului și topicul zilei.` : 'Verifică data examenului și parcurge topicurile. Planul se calculează în aplicație, fără cheie AI; progresul aparține acestui profil.',
       icon: <Compass size={22} />,
       placement: 'center',
       route: '/rezidentiat/organizare',
@@ -29,7 +30,7 @@ export const organizareTour: TourDefinition = {
     {
       id: 'organizare-panel',
       title: 'Cum stai acum',
-      body: 'Zilele rămase, topicurile terminate și progresul trecerii curente, dintr-o privire. Mai jos vezi ce urmează.',
+      body: (ctx) => ctx.hasPlan ? `${ctx.planDoneCount} din ${plural(ctx.planTopicCount, 'topic terminat', 'topicuri terminate')} în trecerea curentă. Panoul arată zilele rămase și ce urmează.` : 'Panoul se completează când planul este disponibil. Verifică data examenului, apoi folosește Topicuri pentru a înregistra progresul.',
       icon: <CalendarClock size={22} />,
       target: '[data-tutorial="organizare-panel"]',
       targetPadding: 6,

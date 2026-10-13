@@ -8,8 +8,8 @@ import SectionLabel from '../components/ui/SectionLabel';
 import { useExamCrunch } from '../lib/examCrunchHook';
 import { COVERAGE_GAP_THRESHOLD, type CrunchBucket } from '../lib/examCrunch';
 import HelpTip from '../components/ui/HelpTip';
+import { plural } from '../lib/plural';
 
-const plural = (n: number, one: string, many: string) => `${n.toLocaleString('ro-RO')} ${n === 1 ? one : many}`;
 
 const BUCKETS: { id: CrunchBucket; title: string; icon: LucideIcon; body: string }[] = [
   { id: 'due', title: 'Scadente', icon: RefreshCw, body: 'Întrebările la care repetarea spațiată a ajuns la termen sau a depășit termenul. Cele mai întârziate vin primele.' },
@@ -28,11 +28,11 @@ export default function ExamCrunch() {
         <PageHeader
           back={{ to: '/', label: 'Panou' }}
           title="Aproape de examen"
-          actions={<HelpTip id="crunch-near-exam" />}
-          subtitle="Pentru ultimele săptămâni: doar ce trebuie consolidat, fără material nou de parcurs. O sesiune pe care o alegi după timpul pe care îl ai."
+          tour={{ id: 'crunch', label: 'Ghid pentru Aproape de examen' }}
+          subtitle="Pentru ultimele săptămâni: întrebări scadente, greșeli și lacune din seturile tale. Alegi sesiunea după timpul pe care îl ai."
         />
 
-        <div className="glass-panel mb-6 flex flex-wrap items-center gap-4 rounded-[var(--r-lg)] p-4" style={{ boxShadow: 'var(--elev-1)' }}>
+        <div data-tutorial="crunch-date" className="glass-panel mb-6 flex flex-wrap items-center gap-4 rounded-[var(--r-lg)] p-4" style={{ boxShadow: 'var(--elev-1)' }}>
           <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[var(--r-sm)]" style={{ background: `${theme.accent}18`, color: theme.accentText }}>
             <CalendarClock size={20} aria-hidden="true" />
           </div>
@@ -59,7 +59,7 @@ export default function ExamCrunch() {
         </p>
 
         <SectionLabel className="mb-2">Ce intră în sesiune</SectionLabel>
-        <ul className="mb-8 grid gap-3 sm:grid-cols-3">
+        <ul data-tutorial="crunch-buckets" className="mb-8 grid gap-3 sm:grid-cols-3">
           {BUCKETS.map(({ id, title, icon: Icon, body }) => (
             <li key={id} className="glass-panel rounded-[var(--r-lg)] p-4" style={{ boxShadow: 'var(--elev-1)' }}>
               <div className="mb-2 flex items-center gap-2" style={{ color: theme.accentText }}>
@@ -85,7 +85,7 @@ export default function ExamCrunch() {
               <SectionLabel>Alege timpul</SectionLabel>
               <HelpTip id="crunch-session" size={16} />
             </div>
-            <ul className="grid gap-3 sm:grid-cols-3">
+            <ul data-tutorial="crunch-duration" className="grid gap-3 sm:grid-cols-3">
               {options.map((option) => (
                 <li key={option.minutes}>
                   <button

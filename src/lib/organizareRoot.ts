@@ -21,8 +21,6 @@ export interface ResolveRootResult {
 /** Cărțile compilate pe care aplicația le caută: ele decid care folder e cel bun când sunt mai multe asemănătoare. */
 export const EXPECTED_BOOK_FILES: string[] = Object.values(BOOK_FILES);
 
-export const canResolveRoot = (): boolean => typeof bridge()?.organizareResolveRoot === 'function';
-
 /** Cere procesului principal folderul bun pornind de la `root`; `null` dacă nu există punte (varianta web) sau nu se găsește. */
 export async function resolveMaterialsRoot(root: string): Promise<ResolveRootResult | null> {
   const api = bridge();

@@ -15,6 +15,7 @@ import { useAdaptiveMotion } from '../hooks/useAdaptiveMotion';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useScrollLock } from '../hooks/useScrollLock';
 import Portal from './Portal';
+import { plural } from '../lib/plural';
 import type { Quiz } from '../types';
 
 function uid() {
@@ -139,7 +140,7 @@ function ContentPackCard({
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 11, color: theme.text3 }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             <BookOpen size={10} />
-            {pack.questionCount} întrebări
+            {plural(pack.questionCount, 'întrebare', 'întrebări')}
           </span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             <FolderPlus size={10} />
@@ -221,7 +222,9 @@ export default function UpdateModal() {
   const nextVersion = manifest?.version ?? localVersion;
   const hasSystemUpdate = ['available', 'downloading', 'ready', 'error'].includes(status);
   const hasContent = contentUpdates.length > 0;
-  const canRefresh = status !== 'checking' && status !== 'downloading';
+  // Actualizările vin prin aplicația desktop; în browser nu există punte către procesul principal.
+  const isDesktop = typeof window !== 'undefined' && typeof window.electronAPI?.updaterCheck === 'function';
+  const canRefresh = isDesktop && status !== 'checking' && status !== 'downloading';
   const deliveryLabel = manifest?.delivery === 'native'
     ? 'Actualizare automată'
     : manifest?.delivery === 'installer'
@@ -373,7 +376,7 @@ export default function UpdateModal() {
                   whileTap={calmMotion ? undefined : { scale: 0.97 }}
                   onClick={() => checkForUpdate()}
                   disabled={!canRefresh}
-                  title="Verifică actualizările"
+                  title={isDesktop ? 'Verifică actualizările' : 'Disponibil doar în aplicația desktop'}
                   style={{
                     width: 36,
                     height: 36,
@@ -482,10 +485,12 @@ export default function UpdateModal() {
                         </div>
                         <div>
                           <div style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>
-                            Aplicația este la zi
+                            {isDesktop ? 'Aplicația este la zi' : 'Actualizările funcționează doar în aplicația desktop'}
                           </div>
                           <div style={{ fontSize: 12, color: theme.text3, marginTop: 2 }}>
-                            Versiunea {localVersion} este cea mai recentă.
+                            {isDesktop
+                              ? `Versiunea ${localVersion} este cea mai recentă.`
+                              : 'Deschide StudyX din aplicația instalată pe calculator ca să verifici și să instalezi actualizări.'}
                           </div>
                         </div>
                       </motion.div>
@@ -555,7 +560,7 @@ export default function UpdateModal() {
 
                               {/* Content */}
                               <div style={{ flex: 1, paddingBottom: idx === arr.length - 1 ? 0 : 28, paddingTop: 8, opacity: isFuture ? 0.5 : 1 }}>
-                                <div style={{ fontSize: 15, fontWeight: isActive ? 800 : 600, color: isActive ? theme.accent : theme.text, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <div style={{ fontSize: 15, fontWeight: isActive ? 800 : 600, color: isActive ? theme.accentText : theme.text, display: 'flex', alignItems: 'center', gap: 8 }}>
                                    {step.label}
                                    {isActive && status === 'checking' && (
                                       <motion.span animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>

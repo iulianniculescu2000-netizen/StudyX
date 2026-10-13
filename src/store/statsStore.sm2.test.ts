@@ -66,8 +66,8 @@ describe('SM-2 interval', () => {
   });
 
   it('still grows the interval normally from a healthy card', () => {
-    useStatsStore.getState().recordAnswer(QUIZ, QUESTION, true, 'confident'); // n=0 -> 1 day
-    expect(stat().interval).toBe(1);
+    useStatsStore.getState().recordAnswer(QUIZ, QUESTION, true, 'confident'); // n=0, „Ușor” -> 4 zile
+    expect(stat().interval).toBe(4);
     useStatsStore.getState().recordAnswer(QUIZ, QUESTION, true, 'confident'); // n=1 -> 6 days
     expect(stat().interval).toBe(6);
     useStatsStore.getState().recordAnswer(QUIZ, QUESTION, true, 'confident'); // n>=2 -> interval * EF

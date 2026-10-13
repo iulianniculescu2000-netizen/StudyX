@@ -8,8 +8,8 @@ import { shouldClarify } from '../../ai/helpers/clarifyGate';
 import { neutralizeActionClaims } from '../../ai/helpers/actionClaims';
 
 export function currentHelperFlags() {
-  // Fără AI local: queryRewrite/answerChecklist sunt legate de local (oprite), clarifyGate rămâne implicit pornit.
-  return resolveHelperFlags(false);
+  // queryRewrite oprit implicit, clarifyGate pornit implicit; alegerea explicită din localStorage are prioritate.
+  return resolveHelperFlags();
 }
 
 /** Interogarea pentru regăsire: rescrisă fără LLM când flagul e activ, altfel neschimbată. */

@@ -98,6 +98,7 @@ export default function FlashcardSession() {
 
         <div className="min-h-0">
           <div
+            data-tutorial="fc-session-card"
             className={`relative flex h-full flex-col items-center justify-center ${denseLayout ? 'py-1' : crampedHeight ? 'py-2' : 'py-3'}`}
             style={{ perspective: performanceLite ? '900px' : '1200px' }}
           >
@@ -159,6 +160,7 @@ export default function FlashcardSession() {
           </div>
         </div>
 
+        <div data-tutorial="fc-session-rating">
         <RatingDock
           theme={theme}
           t={t}
@@ -173,6 +175,7 @@ export default function FlashcardSession() {
           dockGridClass={dockGridClass}
           handleRating={handleRating}
         />
+        </div>
       </div>
     </div>
   );

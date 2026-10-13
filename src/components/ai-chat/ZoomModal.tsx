@@ -13,6 +13,8 @@ interface ZoomModalProps {
   onClose: () => void;
   /** Extra header buttons (download, copy…), rendered before the zoom controls. */
   actions?: ReactNode;
+  /** Natural diagram bounds; lets the viewer fit short, wide diagrams without a tall empty stage. */
+  contentSize?: { width: number; height: number };
   children: ReactNode;
 }
 
@@ -25,7 +27,7 @@ const clamp = (value: number) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, value))
  * (the chat drawer has transforms that would trap a fixed overlay), traps
  * focus, and takes Esc before the surrounding chat does.
  */
-export default function ZoomModal({ title, mode, onClose, actions, children }: ZoomModalProps) {
+export default function ZoomModal({ title, mode, onClose, actions, contentSize, children }: ZoomModalProps) {
   const theme = useTheme();
   const { t, calmMotion } = useAdaptiveMotion();
   const dialogRef = useFocusTrap(true, onClose);
@@ -33,6 +35,21 @@ export default function ZoomModal({ title, mode, onClose, actions, children }: Z
   const [view, setView] = useState({ k: 1, x: 0, y: 0 });
   const drag = useRef<{ id: number; startX: number; startY: number; originX: number; originY: number } | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [viewport, setViewport] = useState(() => ({ width: window.innerWidth, height: window.innerHeight }));
+
+  useEffect(() => {
+    const onResize = () => setViewport({ width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  const fittedWidth = contentSize
+    ? Math.min(contentSize.width * 1.4, Math.max(280, viewport.width - 96), 1220)
+    : 0;
+  const preferredHeight = contentSize
+    ? Math.max(300, fittedWidth * contentSize.height / Math.max(contentSize.width, 1) + 64)
+    : 900;
+  const panHeight = Math.min(preferredHeight, viewport.height * 0.86, 900);
 
   // Esc closes just this layer: the chat behind listens on window, so intercept first.
   useEffect(() => {
@@ -124,7 +141,7 @@ export default function ZoomModal({ title, mode, onClose, actions, children }: Z
         transition={t.modal}
         onClick={(event) => event.stopPropagation()}
         className="flex max-h-full w-full max-w-[1280px] flex-col overflow-hidden rounded-[var(--r-xl)] shadow-2xl"
-        style={{ background: theme.surface, border: `1px solid ${theme.border}`, color: theme.text, height: mode === 'pan' ? 'min(86vh, 900px)' : undefined }}
+        style={{ background: theme.surface, border: `1px solid ${theme.border}`, color: theme.text, height: mode === 'pan' ? `${panHeight}px` : undefined }}
       >
         <div className="flex items-center justify-between gap-2 px-4 py-2.5" style={{ borderBottom: `1px solid ${theme.border}` }}>
           <span className="truncate text-[13px] font-semibold" style={{ color: theme.text2 }}>{title}</span>

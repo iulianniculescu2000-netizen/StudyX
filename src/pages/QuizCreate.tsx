@@ -3,18 +3,19 @@ import { useBack } from '../hooks/useBack';
 import { useAdaptiveMotion } from '../hooks/useAdaptiveMotion';
 import { useState, useRef, useMemo, useDeferredValue, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Check, ChevronLeft, Pencil, Plus, Bot, FileText, X } from 'lucide-react';
+import { Check, Pencil, Plus, Bot, FileText, X } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import { useQuizStore } from '../store/quizStore';
 import { useUserStore } from '../store/userStore';
+import { useToastStore } from '../store/toastStore';
 import { useFolderStore } from '../store/folderStore';
 import { withoutFlashcardFolders } from '../lib/folderScope';
 import { useTheme } from '../theme/ThemeContext';
 import { useAIStore } from '../store/aiStore';
 import type { Question, Option, Difficulty, QuizColor } from '../types';
 import { ALL_QUESTION_TYPES, type QuestionType } from '../lib/ai/questionTypes';
-import { OPTION_IDS, compressImage, generateId, newQuestion } from './quiz-create/helpers';
+import { OPTION_IDS, compressImage, generateId, getSaveBlockedReason, newQuestion } from './quiz-create/helpers';
 import {
   QuestionPreviewModal,
   QuizAIGenerationPanel,
@@ -27,7 +28,7 @@ import Portal from '../components/Portal';
 import { isUnderRezidentiatRoot } from '../lib/rezidentiatRoot';
 import { REZIDENTIAT_TAG } from '../lib/rezidentiatBank';
 import type { ParsedQuestion } from '../lib/ai/grileParser';
-import TourHelpButton from '../tutorial/TourHelpButton';
+import PageHeader from '../components/ui/PageHeader';
 
 let quizCreateAIPromise: Promise<typeof import('../lib/groq')> | null = null;
 
@@ -55,6 +56,7 @@ interface QuizDraft {
 export default function QuizCreate() {
   const navigate = useNavigate();
   const goBack = useBack('/quizzes');
+  const addToast = useToastStore((state) => state.addToast);
   const [searchParams] = useSearchParams();
   const targetFolderId = searchParams.get('folder');
   const editId = searchParams.get('edit');
@@ -329,7 +331,8 @@ export default function QuizCreate() {
     }
   };
 
-  const canProceed = title.trim() && description.trim();
+  // Descrierea e opțională: grilele importate din text nu au una și trebuie să rămână editabile.
+  const canProceed = !!title.trim();
   const deferredQuestions = useDeferredValue(questions);
   const isQValid = (q: Question) =>
     q.text.trim() &&
@@ -337,6 +340,8 @@ export default function QuizCreate() {
     q.options.some((o) => o.isCorrect);
   const questionValidity = useMemo(() => deferredQuestions.map((q) => !!isQValid(q)), [deferredQuestions]);
   const canSave = questionValidity.every(Boolean);
+
+  const saveBlockedReason = getSaveBlockedReason(!!title.trim(), canSave);
 
   const handleSave = () => {
     if (!canSave || !canProceed) return;
@@ -362,6 +367,7 @@ export default function QuizCreate() {
         tags: tagsForFolder(finalTags),
         questions,
       });
+      addToast('Modificările grilei au fost salvate.', 'success');
       navigate(`/quiz/${editId}`, { replace: true });
     } else {
       addQuiz({
@@ -377,6 +383,7 @@ export default function QuizCreate() {
         createdAt: Date.now(),
       });
       localStorage.removeItem(draftKey);
+      addToast('Grila a fost salvată. O găsești în colecția aleasă.', 'success');
       navigate(selectedFolderId !== '__uncategorized__' ? `/folder/${selectedFolderId}` : '/quizzes', { replace: true });
     }
   };
@@ -387,24 +394,12 @@ export default function QuizCreate() {
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
       <div className={`${compact ? 'max-w-[980px]' : 'max-w-[1080px]'} mx-auto`}>
 
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-          className={`flex items-center gap-3 ${compact ? 'mb-6' : 'mb-8'} rounded-[var(--r-xl)] px-1`}>
-          <button onClick={() => step === 'questions' ? setStep('info') : goBack()}
-            aria-label={step === 'questions' ? 'Înapoi la informații generale' : 'Înapoi'}
-            className="p-2 rounded-xl transition-[background-color,border-color,color,opacity,transform] hover:opacity-80"
-            style={{ background: theme.surface, color: theme.text2 }}>
-            <ChevronLeft size={18} />
-          </button>
-          <div>
-            <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight" style={{ color: theme.text }}>
-              {editId ? 'Editează grila' : 'Grilă nouă'}
-              <TourHelpButton tour="create" label="Vezi turul creării unei grile" />
-            </h1>
-            <p className="text-sm" style={{ color: theme.text3 }}>
-              {step === 'info' ? 'Pas 1: Informații generale' : `Pas 2: Întrebări (${questions.length})`}
-            </p>
-          </div>
-          <div className="ml-auto flex items-center gap-3">
+        <PageHeader
+          title={editId ? 'Editează grila' : 'Grilă nouă'}
+          subtitle={step === 'info' ? 'Pas 1: Informații generale' : `Pas 2: Întrebări (${questions.length})`}
+          back={{ label: step === 'questions' ? 'Înapoi la informații generale' : 'Înapoi', onClick: () => step === 'questions' ? setStep('info') : goBack() }}
+          tour={{ id: 'create', label: 'Vezi turul creării unei grile' }}
+          actions={<>
             <button
               onClick={() => setShowImportDoc(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-[background-color,border-color,color,opacity,transform] hover:opacity-80"
@@ -418,13 +413,13 @@ export default function QuizCreate() {
                   style={{ background: (step === 'info' && i === 0) || (step === 'questions' && i <= 1) ? theme.accent : theme.surface2 }} />
               ))}
             </div>
-          </div>
-        </motion.div>
+          </>}
+        />
 
         <AnimatePresence mode="wait">
           {step === 'info' ? (
             <QuizInfoStep
-              canProceed={!!canProceed}
+              canProceed={canProceed}
               category={category}
               color={color}
               description={description}
@@ -451,7 +446,6 @@ export default function QuizCreate() {
                 if (!canProceed) {
                   const empty = [];
                   if (!title.trim()) empty.push('title');
-                  if (!description.trim()) empty.push('desc');
                   triggerShake(empty);
                   return;
                 }
@@ -473,7 +467,7 @@ export default function QuizCreate() {
               exit={{ opacity: 0, x: -20 }} transition={t.page}>
 
               {/* Tab switcher: Manual / AI */}
-              <div className="flex gap-1 mb-5 p-1.5 rounded-2xl glass-panel">
+              <div data-tutorial="create-question-tabs" className="flex gap-1 mb-5 p-1.5 rounded-2xl glass-panel">
                 {[
                   { id: 'manual' as const, label: 'Manual', icon: <Pencil size={13} /> },
                   { id: 'ai' as const, label: 'Generează cu AI', icon: <Bot size={13} /> },
@@ -579,15 +573,18 @@ export default function QuizCreate() {
                 }}
               />
 
+              {saveBlockedReason && (
+                <p role="status" className="mt-4 text-center text-xs" style={{ color: theme.text3 }}>{saveBlockedReason}</p>
+              )}
               <div className="mt-5 flex gap-3">
                 <button onClick={addQuestion}
                   className="flex-1 py-3.5 rounded-2xl font-medium text-sm transition-[background-color,border-color,color,opacity,transform] hover:opacity-80"
                   style={{ background: theme.surface, border: `1px solid ${theme.border}`, color: theme.text2 }}>
                   <Plus size={15} className="inline mr-1" />Întrebare nouă
                 </button>
-                <button onClick={handleSave} disabled={!canSave}
+                <button onClick={handleSave} disabled={!canSave || !canProceed} title={saveBlockedReason ?? undefined}
                   className="flex-1 py-3.5 rounded-2xl font-semibold text-white transition-[background-color,border-color,color,opacity,transform] hover:opacity-90 disabled:opacity-30 flex items-center justify-center gap-1.5"
-                  style={{ background: `linear-gradient(135deg, ${theme.success} 0%, #34C759 100%)` }}>
+                  style={{ background: theme.successFill }}>
                   {editId ? <><Pencil size={15} />Salvează modificările</> : <><Check size={15} />Salvează grila</>}
                 </button>
               </div>

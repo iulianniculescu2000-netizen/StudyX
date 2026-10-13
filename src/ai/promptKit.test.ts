@@ -158,12 +158,14 @@ describe('instrucțiunile-cheie ale promptului de chat', () => {
     expect(base).toContain('fără să o enumeri');
   });
 
-  it('schemele: formatul compact ```schema pentru fluxuri, mermaid doar pentru celelalte tipuri', () => {
+  it('schemele: formatul compact ```schema pentru clasificări și fluxuri, mermaid pentru tipuri speciale', () => {
     expect(DIAGRAM_RULES).toContain('```schema');
     expect(DIAGRAM_RULES).toContain('```mermaid');
-    for (const kind of ['sequenceDiagram', 'mindmap', 'timeline', 'stateDiagram-v2']) {
+    for (const kind of ['sequenceDiagram', 'timeline', 'stateDiagram-v2']) {
       expect(DIAGRAM_RULES).toContain(kind);
     }
+    expect(DIAGRAM_RULES).toContain('evită `mindmap`');
+    expect(DIAGRAM_RULES).toContain('nu tăia informația');
     expect(DIAGRAM_RULES).toContain('tabelul Markdown');
     expect(DIAGRAM_RULES).not.toContain('flowchart TD');
   });
@@ -351,6 +353,13 @@ describe('„capcana de examen” doar la subiecte medicale', () => {
   });
 
   it('știe cum se comportă aplicația când un furnizor rămâne fără limită', () => {
-    expect(composeChatSystemPrompt({})).toContain('trece singură pe următorul cu cheie');
+    expect(composeChatSystemPrompt({ appQuestion: true })).toContain('încearcă următorul furnizor configurat cu cheie');
+    expect(composeChatSystemPrompt({ userMessage: 'de ce cade furnizorul?' })).toContain('încearcă următorul furnizor configurat cu cheie');
+  });
+
+  it('o întrebare medicală primește doar nucleul despre aplicație, cu garda anti-„am salvat”', () => {
+    const prompt = composeChatSystemPrompt({ userMessage: 'Ce este sepsisul?' });
+    expect(prompt).not.toContain('CONTEXT DESPRE APLICAȚIE');
+    expect(prompt).toContain('NU creezi, salvezi, muți sau ștergi nimic');
   });
 });

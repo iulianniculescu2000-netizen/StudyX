@@ -7,6 +7,8 @@ export interface CardItem {
   groupKey?: string;
   groupLabel?: string;
   isNew?: boolean;
+  /** Copia reluată după „Greu”, adăugată la finalul sesiunii (se reia o singură dată). */
+  isRetry?: boolean;
 }
 
 export interface SessionMeta {

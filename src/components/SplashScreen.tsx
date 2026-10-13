@@ -30,6 +30,8 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ visible, durationMs }) => {
     <AnimatePresence>
       {visible && (
         <motion.div
+          role="status"
+          aria-label="Se pornește StudyX"
           initial={{ opacity: 1 }}
           exit={{ opacity: 0, transition: { duration: calm ? dur.instant : dur.base, ease: ease.snap } }}
           style={{

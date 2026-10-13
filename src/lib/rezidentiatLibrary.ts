@@ -40,6 +40,14 @@ export const REZIDENTIAT_LIBRARY_BOOKS: RezidentiatLibraryBook[] = [
   },
 ];
 
+/**
+ * Cărțile incluse în aplicație sunt text simplu, fără PDF și fără numere de pagină: nu au ce reindexa
+ * cu pagini, deci nu apar în bannerul „cărți fără pagini”.
+ */
+export function isBundledLibraryBookName(name: string): boolean {
+  return REZIDENTIAT_LIBRARY_BOOKS.some((book) => book.name === name);
+}
+
 export function isLibraryBookImported(book: RezidentiatLibraryBook): boolean {
   // A failed or interrupted import must not count: it would hide the book from "De adăugat" and never be retried.
   return useAIStore.getState().knowledgeSources.some((source) => source.name === book.name && isSourceReady(source) && source.indexStatus !== 'indexing');

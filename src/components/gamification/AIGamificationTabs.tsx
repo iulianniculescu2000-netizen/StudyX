@@ -9,13 +9,15 @@ interface AIGamificationTabsProps {
 /** Cele trei secțiuni ale paginii; navigarea cu săgeți, Home/End și ARIA vin din `SegmentedTabs`. */
 export default function AIGamificationTabs({ activeTab, setActiveTab }: AIGamificationTabsProps) {
   return (
-    <SegmentedTabs
-      tabs={TAB_ITEMS}
-      value={activeTab}
-      onChange={setActiveTab}
-      layoutId="gamification-tab-pill"
-      ariaLabel="Secțiuni Realizări"
-      idPrefix="gamification"
-    />
+    <div data-tutorial="gamification-tabs">
+      <SegmentedTabs
+        tabs={TAB_ITEMS}
+        value={activeTab}
+        onChange={setActiveTab}
+        layoutId="gamification-tab-pill"
+        ariaLabel="Secțiuni Realizări"
+        idPrefix="gamification"
+      />
+    </div>
   );
 }

@@ -72,6 +72,9 @@ describe('FlashcardSession — sesiune „due” peste pachete', () => {
     expect(screen.getByTestId('card-chapter-chip').textContent).toBe('Pachet b');
     rate(/Greu/);
     rate(/Bine/);
+    // „Greu” readuce cardul la finalul aceleiași sesiuni (o singură dată)
+    expect(screen.getByText('4 / 4')).toBeTruthy();
+    rate(/Bine/);
 
     expect(screen.getByText('Sesiune încheiată')).toBeTruthy();
     expect(screen.getByTestId('chapter-tally').textContent).toContain('2 carduri');

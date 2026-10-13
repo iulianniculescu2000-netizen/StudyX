@@ -54,6 +54,7 @@ export function parseImportedQuiz(data: QuizImportData, folderId?: string | null
     ...(folderId && isUnderRezidentiatRoot(folderId, useFolderStore.getState().folders) ? { tags: [REZIDENTIAT_TAG] } : {}),
     shuffleQuestions: data.shuffleQuestions ?? false,
     shuffleAnswers: data.shuffleAnswers ?? false,
+    ...(data.penaltyMode === true ? { penaltyMode: true } : {}),
     questions,
     createdAt: Date.now(),
   };

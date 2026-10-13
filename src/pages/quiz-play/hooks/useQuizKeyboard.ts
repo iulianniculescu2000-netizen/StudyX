@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { Confidence, Question } from '../../../types';
+import { useTutorialStore } from '../../../store/tutorialStore';
 
 interface Handlers {
   question: Question | undefined;
@@ -29,13 +30,13 @@ export function useQuizKeyboard(handlers: Handlers) {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (useTutorialStore.getState().active || (e.target instanceof Element && e.target.closest('[role="dialog"]'))) return;
+      // Held keys must not replay selection/confirm/next (a held Enter on the last card finished the quiz twice).
+      if (e.repeat) return;
       const s = latest.current;
       const active = document.activeElement;
-      if (
-        active instanceof HTMLInputElement ||
-        active instanceof HTMLTextAreaElement ||
-        active?.hasAttribute('contenteditable')
-      ) return;
+      // Focused controls keep their native keys, including the help button opening a tour.
+      if (active?.closest('input, textarea, select, button, a, [role="button"], [contenteditable="true"], [role="dialog"], [role="alertdialog"]')) return;
 
       // After reveal (study modes): 1/2/3 rate confidence and advance.
       if (s.revealed && !s.examMode) {

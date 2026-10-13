@@ -1,6 +1,5 @@
 import { logAIDebug } from '../../ai/debug';
 import { getMedicalSystemPrompt } from '../aiContext';
-import { extractJsonArrayLenient } from '../jsonExtract';
 import { QuestionsBatchSchema, parseStructuredReply } from '../ai/schemas';
 import { buildQuestionTypeInstruction, type QuestionType } from '../ai/questionTypes';
 import { groqChat } from './requests';
@@ -13,13 +12,6 @@ export interface GeneratedQuestion {
   tags?: string[];
   reference?: string;
   type?: QuestionType;
-}
-
-export function extractJsonArray(raw: string): string | null {
-  // Slicing to the last `]` used to land on an inner `options` array whenever a
-  // reply was cut short by max_tokens, so the batch failed to parse and every
-  // complete question in it was thrown away. This keeps the finished ones.
-  return extractJsonArrayLenient(raw);
 }
 
 export function detectLanguage(text: string): string {

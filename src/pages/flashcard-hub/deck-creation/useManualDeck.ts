@@ -3,7 +3,6 @@ import { useQuizStore } from '../../../store/quizStore';
 import { useStatsStore } from '../../../store/statsStore';
 import { buildMistakeFlashcardQuiz } from '../../../lib/adaptiveStudy';
 import type { Quiz } from '../../../types';
-import { generateId, buildFlashcardQuestion } from '../cardBuilders';
 import type { AiRun } from './useAiRun';
 import type { DeckTarget } from './useDeckTarget';
 import type { GeneratedDeckApi } from './useGeneratedDeck';
@@ -41,54 +40,5 @@ export function useManualDeck(ai: AiRun, target: DeckTarget, generated: Generate
     navigate(`/flashcards/session/${targetQuiz.id}?mode=all`);
   };
 
-  const createQuickDeck = () => {
-    const deckId = generateId();
-    const now = Date.now();
-    const questions = [
-      buildFlashcardQuestion(
-        'Care este primul pas când înveți un concept nou?',
-        'Formulează definiția în cuvintele tale și notează un exemplu concret.',
-      ),
-      buildFlashcardQuestion(
-        'Cum verifici rapid dacă ai înțeles o lecție?',
-        'Închide materialul și explică ideea principală în 30 de secunde, fără să copiezi textul.',
-      ),
-      buildFlashcardQuestion(
-        'Ce faci cu o greșeală repetată?',
-        'O transformi într-un card scurt: întrebare clară pe față, răspuns esențial pe spate.',
-      ),
-      buildFlashcardQuestion(
-        'Când este cel mai util un mnemonic?',
-        'Când trebuie să reții liste, pași, excepții sau asocieri care nu se leagă natural între ele.',
-      ),
-      buildFlashcardQuestion(
-        'Ce înseamnă recapitulare activă?',
-        'Încerci să recuperezi răspunsul din memorie înainte să verifici materialul.',
-      ),
-      buildFlashcardQuestion(
-        'Cum alegi cardurile pentru azi?',
-        'Începi cu restanțele, apoi treci la cardurile noi sau la punctele slabe.',
-      ),
-    ];
-
-    addQuiz({
-      id: deckId,
-      title: `Deck rapid · ${new Date(now).toLocaleDateString('ro-RO')}`,
-      description: 'Deck scurt pentru testarea fluxului de flashcarduri și pentru încălzire.',
-      emoji: '🃏',
-      color: selectedFolder?.color ?? 'green',
-      category: selectedFolder?.name ?? 'Flashcards',
-      folderId: selectedFolder?.id ?? null,
-      kind: 'flashcard',
-      shuffleQuestions: false,
-      shuffleAnswers: false,
-      tags: ['flashcard', 'deck', 'manual', 'quick'],
-      questions,
-      createdAt: now,
-    });
-
-    navigate(`/flashcards/session/${deckId}?mode=all`);
-  };
-
-  return { createMistakeDeck, createQuickDeck };
+  return { createMistakeDeck };
 }

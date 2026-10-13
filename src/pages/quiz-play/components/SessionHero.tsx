@@ -10,6 +10,7 @@ import { HERO_COLOR_MAP } from '../../../theme/colorMaps';
 import type { QuizPlayLayout } from '../layout';
 import SegmentedProgressBar from '../SegmentedProgressBar';
 import MetricsStrip from './MetricsStrip';
+import TourHelpButton from '../../../tutorial/TourHelpButton';
 
 interface SessionHeroProps {
   quiz: Quiz;
@@ -54,6 +55,7 @@ export default function SessionHero({
 
   return (
     <motion.div
+      data-tutorial="quiz-session-controls"
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={pageTransition}
@@ -75,21 +77,22 @@ export default function SessionHero({
 
             <div className={`${denseLayout ? 'mt-3 gap-3' : 'mt-4 gap-4'} flex items-start`}>
               <div
-                className={`flex shrink-0 items-center justify-center shadow-lg ${denseLayout ? 'h-11 w-11 rounded-[var(--r-md)] text-2xl sm:h-12 sm:w-12' : 'h-14 w-14 rounded-[var(--r-lg)] text-3xl'}`}
+                className={`flex shrink-0 items-center justify-center shadow-lg [@media(max-height:860px)]:hidden ${denseLayout ? 'h-11 w-11 rounded-[var(--r-md)] text-2xl sm:h-12 sm:w-12' : 'h-14 w-14 rounded-[var(--r-lg)] text-3xl'}`}
                 style={{ background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(12px)' }}
               >
                 {quiz.emoji}
               </div>
 
               <div className="min-w-0">
-                <div className="text-[10px] font-black uppercase tracking-[0.24em] text-white/65">
-                  Sesiune quiz
+                <div className="flex items-center gap-2 [&_button]:!text-white">
+                  <span className="text-[10px] font-black uppercase tracking-[0.24em] text-white/65">Sesiune quiz</span>
+                  <TourHelpButton tour="quizSession" label="Ghid pentru rezolvarea unei grile" />
                 </div>
                 <h1 className={`page-title-compact mt-1 text-white ${denseLayout ? 'leading-tight' : ''}`} style={heroTitleStyle}>{quiz.title}</h1>
-                <p className={heroSubtitleClass}>
+                <p className={`${heroSubtitleClass} [@media(max-height:860px)]:hidden`}>
                   {quiz.category} • {modeLabel}
                 </p>
-                <div className={`${denseLayout ? 'mt-2 gap-1.5' : 'mt-3 gap-2'} flex flex-wrap items-center`}>
+                <div className={`${denseLayout ? 'mt-2 gap-1.5' : 'mt-3 gap-2'} flex flex-wrap items-center [@media(max-height:860px)]:hidden`}>
                   <span className="rounded-full border border-white/18 bg-white/12 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white/90">
                     Întrebarea {currentIdx + 1} din {total}
                   </span>
@@ -108,6 +111,8 @@ export default function SessionHero({
             </div>
           </div>
 
+          {/* Pe ferestre scunde metricile cedează locul întrebării; cronometrul rămâne vizibil când contează. */}
+          <div className={`${timedMode || examMinutes ? '' : '[@media(max-height:860px)]:hidden'} flex shrink-0 self-start`}>
           <MetricsStrip
             theme={theme}
             mobile={mobile}
@@ -121,9 +126,10 @@ export default function SessionHero({
             answeredCount={answeredCount}
             total={total}
           />
+          </div>
         </div>
 
-        <div className={`grid ${denseLayout ? 'gap-3' : 'gap-4'} xl:grid-cols-[minmax(0,1fr)_auto] xl:items-end`}>
+        <div className={`grid ${denseLayout ? 'gap-3' : 'gap-4'} xl:grid-cols-[minmax(0,1fr)_auto] xl:items-end [@media(max-height:860px)]:grid-cols-[minmax(0,1fr)_auto] [@media(max-height:860px)]:items-end`}>
           <div className={`rounded-[var(--r-lg)] border border-white/14 bg-black/12 ${denseLayout ? 'px-3 py-3' : 'px-4 py-4'}`}>
             <div className="mb-2 flex items-center justify-between gap-3">
               <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/65">Progres sesiune</span>
@@ -156,7 +162,7 @@ export default function SessionHero({
               <button
                 onClick={onToggleAuto}
                 title={autoAdvance ? 'Dezactivează auto-avansarea' : 'Activează auto-avansarea (2 secunde)'}
-                className="press-feedback rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] transition-opacity duration-200 hover:opacity-85"
+                className="press-feedback rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] transition-opacity duration-200 hover:opacity-85 [@media(max-height:860px)]:hidden"
                 style={{
                   background: autoAdvance ? 'rgba(255,255,255,0.24)' : 'rgba(255,255,255,0.10)',
                   borderColor: autoAdvance ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.14)',
@@ -206,7 +212,7 @@ export default function SessionHero({
             )}
             <button
               onClick={() => setShowKeys(!showKeys)}
-              className="press-feedback rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] transition-opacity duration-200 hover:opacity-85"
+              className="press-feedback rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] transition-opacity duration-200 hover:opacity-85 [@media(max-height:860px)]:hidden"
               style={{ background: 'rgba(255,255,255,0.10)', borderColor: 'rgba(255,255,255,0.14)', color: '#FFFFFF' }}
             >
               <span className="inline-flex items-center gap-1.5">

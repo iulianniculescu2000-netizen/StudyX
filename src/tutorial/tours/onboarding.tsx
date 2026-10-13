@@ -1,3 +1,5 @@
+import { plural } from '../../lib/plural';
+import { libraryStatus, cardStatus } from '../contextText';
 import { BookOpen, Bot, CreditCard, Database, FolderOpen, Keyboard, LifeBuoy, ListChecks, Play, RefreshCw, Sparkles, Stethoscope } from 'lucide-react';
 import AIKeyGuide from '../AIKeyGuide';
 import type { TourDefinition } from '../types';
@@ -13,7 +15,7 @@ export const onboardingTour: TourDefinition = {
     {
       id: 'welcome',
       title: 'Bun venit în StudyX',
-      body: 'Grile, flashcarduri cu repetare spațiată, o bibliotecă AI care citește cursurile tale și un plan pentru rezidențiat. Turul durează cam 3 minute și îl poți închide oricând.',
+      body: (ctx) => ctx.quizCount + ctx.deckCount === 0 ? 'Începe cu o grilă sau un pachet importat. Turul îți arată unde adaugi materiale și cum revii la ele; poți sări orice pas.' : `Ai ${plural(ctx.quizCount, 'grilă', 'grile')} și ${plural(ctx.deckCount, 'pachet', 'pachete')}. Turul îți arată recapitularea, biblioteca și planul din acest profil.`,
       icon: <Sparkles size={22} />,
       placement: 'center',
       route: '/',
@@ -32,7 +34,7 @@ export const onboardingTour: TourDefinition = {
     {
       id: 'first-quiz',
       title: 'Prima ta grilă',
-      body: 'Creează una de la zero sau importă una existentă. Încearcă acum: după ce o salvezi, turul merge mai departe singur.',
+      body: (ctx) => ctx.quizCount === 0 ? 'Creează sau importă prima grilă. După salvare, turul continuă singur; poți și să sari peste.' : `Ai deja ${plural(ctx.quizCount, 'grilă', 'grile')}. Poți adăuga încă una sau poți sări peste acest exercițiu.`,
       icon: <BookOpen size={22} />,
       target: '[data-tutorial="btn-new-quiz"]',
       targetPadding: 6,
@@ -71,19 +73,19 @@ export const onboardingTour: TourDefinition = {
       placement: 'top',
       route: '/flashcards',
       accent: '#BF6FFF',
-      when: (ctx) => ctx.deckCount === 0,
+      when: (ctx) => ctx.generalDeckCount === 0,
     },
     {
       id: 'flashcards',
       title: 'Flashcarduri',
-      body: '„De repetat azi” strânge într-un loc cardurile scadente și pe cele noi. Dedesubt sunt pachetele tale, iar „Creează pachet nou” le face din cursurile tale, din greșeli sau din import.',
+      body: (ctx) => cardStatus(ctx),
       icon: <CreditCard size={22} />,
       target: '[data-tutorial="flashcards-due"]',
       targetPadding: 6,
       placement: 'bottom',
       route: '/flashcards',
       accent: '#BF6FFF',
-      when: (ctx) => ctx.deckCount > 0,
+      when: (ctx) => ctx.generalDeckCount > 0,
     },
     {
       id: 'spaced-repetition',
@@ -99,7 +101,7 @@ export const onboardingTour: TourDefinition = {
     {
       id: 'vault',
       title: 'Biblioteca AI',
-      body: 'Încarci cursuri (PDF, DOCX, poze) și AI-ul le indexează. De acolo, răspunsurile și grilele generate pornesc din cursurile tale și arată din ce fragment vin.',
+      body: (ctx) => libraryStatus(ctx),
       icon: <Database size={22} />,
       target: '[data-tutorial="nav-vault"]',
       targetPadding: 6,
@@ -120,8 +122,10 @@ export const onboardingTour: TourDefinition = {
     },
     {
       id: 'ai-key',
+      completeWhen: (ctx, atEntry) => ctx.aiKeyCount > atEntry.aiKeyCount,
+      actionHint: 'Salvează o cheie din ghid sau sari peste.',
       title: 'AI-ul tău, gratuit',
-      body: 'Cu o cheie gratuită, StudyX generează carduri și grile din cursuri și îți răspunde în chat.',
+      body: (ctx) => ctx.aiReady ? 'Furnizorul ales are o cheie salvată. Ghidul de mai jos îți permite să adaugi o rezervă; verificarea pornește doar când apeși tu.' : 'Salvează o cheie pentru furnizorul ales, folosind ghidul de mai jos. Poți continua turul fără AI.',
       icon: <Bot size={22} />,
       placement: 'center',
       accent: '#BF6FFF',

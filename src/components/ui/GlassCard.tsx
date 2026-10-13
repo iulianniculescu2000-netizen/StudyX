@@ -24,7 +24,7 @@ export interface GlassCardProps extends Omit<HTMLMotionProps<'div'>, 'ref'> {
  * including per-theme tinted glass via `Theme.glassPanel`, see themes.ts).
  */
 const GlassCard = forwardRef<HTMLDivElement, GlassCardProps>(function GlassCard(
-  { variant = 'default', padding = '20px', radius = '24px', animate = false, style, className, children, ...rest },
+  { variant = 'default', padding = '20px', radius = 'var(--r-lg)', animate = false, style, className, children, ...rest },
   ref,
 ) {
   const theme = useTheme();

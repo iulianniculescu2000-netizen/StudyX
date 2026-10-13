@@ -5,7 +5,6 @@ import { ThemeProvider, useTheme } from './theme/ThemeContext';
 import { useUserStore } from './store/userStore';
 import { useFocusModeStore } from './store/focusModeStore';
 import { useTutorialStore } from './store/tutorialStore';
-import { useAIStore } from './store/aiStore';
 import { useQuizStore } from './store/quizStore';
 import { useToastStore } from './store/toastStore';
 import { useSaveStatusStore } from './store/saveStatusStore';
@@ -15,12 +14,15 @@ import Sidebar from './components/Sidebar';
 import { useFlashcardFolderMigration } from './hooks/useFlashcardFolderMigration';
 import AnimatedBackground from './components/AnimatedBackground';
 import ToastContainer from './components/ToastContainer';
+import GlobalUploadIndicator from './components/app/GlobalUploadIndicator';
+import { useVaultUploadStore } from './store/vaultUploadStore';
 import TitleTooltips from './components/TitleTooltips';
 import DropzoneOverlay from './components/DropzoneOverlay';
 import Welcome from './pages/Welcome';
 import ProfileSelect from './pages/ProfileSelect';
 import KeyboardShortcuts from './components/KeyboardShortcuts';
 import SplashScreen from './components/SplashScreen';
+import StudyXHandCursor from './components/cursor/StudyXHandCursor';
 import { useAutoBackup } from './hooks/useAutoBackup';
 import ScrollToTopButton from './components/app/ScrollToTopButton';
 import { useAchievementWatcher, useStudyLevel } from './store/achievementsStore';
@@ -51,7 +53,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'));
 const QuizList = lazy(() => import('./pages/QuizList'));
 const QuizDetail = lazy(() => import('./pages/QuizDetail'));
 const QuizCreate = lazy(() => import('./pages/QuizCreate'));
-const QuizPlay = lazy(() => import('./pages/quiz-play/QuizPlayRefactored'));
+const QuizPlay = lazy(() => import('./pages/QuizPlay'));
 const QuizResults = lazy(() => import('./pages/QuizResults'));
 const FolderView = lazy(() => import('./pages/FolderView'));
 const Stats = lazy(() => import('./pages/Stats'));
@@ -68,8 +70,8 @@ const Organizare = lazy(() => import('./pages/Organizare'));
 const FlashcardSession = lazy(() => import('./pages/FlashcardSession'));
 const Notes = lazy(() => import('./pages/Notes'));
 const Settings = lazy(() => import('./pages/Settings'));
-const AIGamification = lazy(() => import('./components/gamification/AIGamificationRefactored'));
-const AIPredictiveAnalytics = lazy(() => import('./components/analytics/AIPredictiveRefactored'));
+const AIGamification = lazy(() => import('./components/gamification/AIGamification'));
+const AIPredictiveAnalytics = lazy(() => import('./components/analytics/AIPredictiveAnalytics'));
 
 function AppContent({ splashVisible }: { splashVisible: boolean }) {
   const profiles = useUserStore((state) => state.profiles);
@@ -77,7 +79,6 @@ function AppContent({ splashVisible }: { splashVisible: boolean }) {
   const pendingTutorialProfileId = useUserStore((state) => state.pendingTutorialProfileId);
   const clearPendingTutorialProfile = useUserStore((state) => state.clearPendingTutorialProfile);
   const username = useUserStore((state) => state.username);
-  const addKnowledgeSource = useAIStore((state) => state.addKnowledgeSource);
   const addToast = useToastStore((state) => state.addToast);
   const setHealthReport = useDiagnosticsStore((state) => state.setHealthReport);
   const checkForUpdate = useUpdateStore((state) => state.checkForUpdate);
@@ -97,74 +98,9 @@ function AppContent({ splashVisible }: { splashVisible: boolean }) {
   const predictiveLevel = useStudyLevel().level;
   useAchievementWatcher();
 
-  const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number, message: string) => {
-    let timeoutId: ReturnType<typeof window.setTimeout>;
-    try {
-      return await Promise.race<T>([
-      promise,
-      new Promise<T>((_, reject) => {
-        timeoutId = window.setTimeout(() => reject(new Error(message)), timeoutMs);
-      }),
-      ]);
-    } finally {
-      window.clearTimeout(timeoutId!);
-    }
-  };
-
   const handleGlobalDrop = async (files: File[]) => {
-    if (!activeProfileId) return;
-
-    for (const file of files) {
-      const name = file.name.toLowerCase();
-      const isPdf = name.endsWith('.pdf');
-      const isDocx = name.endsWith('.docx');
-      const isImage = /\.(jpe?g|png|webp|bmp)$/i.test(name);
-      const isTxt = /\.(txt|md)$/i.test(name);
-
-      if (!isPdf && !isDocx && !isImage && !isTxt) {
-        addToast(`Format neacceptat: ${file.name}`, 'error');
-        continue;
-      }
-
-      addToast(`Procesăm: ${file.name}...`, 'info', 2000);
-
-      try {
-        let text = '';
-        let type: import('./store/aiStore').AIKnowledgeSourceType = 'txt';
-
-        if (isPdf) {
-          const { parsePDF } = await import('./ai/pdfParser');
-          // Buget scalat cu dimensiunea (ca workerul din electron/main.cjs): PDF-urile mari au nevoie de mai mult timp.
-          const pdfTimeoutMs = Math.min(300000, 12000 + Math.ceil((file.size / (1024 * 1024)) * 1500));
-          text = await withTimeout(parsePDF(file), pdfTimeoutMs, `Importul PDF pentru ${file.name} a expirat.`);
-          type = 'pdf';
-        } else if (isDocx) {
-          const { parseDocx } = await import('./ai/docxParser');
-          text = await withTimeout(parseDocx(file), 15000, `Importul DOCX pentru ${file.name} a expirat.`);
-          type = 'docx';
-        } else if (isImage) {
-          const { parseImageOCR } = await import('./ai/ocrParser');
-          text = await withTimeout(parseImageOCR(file), 60000, `OCR-ul pentru ${file.name} a expirat.`);
-          type = 'image';
-        } else {
-          text = await withTimeout(file.text(), 10000, `Citirea fișierului ${file.name} a expirat.`);
-        }
-
-        if (text.trim().length < 20) {
-          addToast(`Conținut insuficient în ${file.name}`, 'warning');
-          continue;
-        }
-
-        await withTimeout(
-          addKnowledgeSource(file.name, text, type),
-          20000,
-          `Indexarea pentru ${file.name} s-a blocat. Încearcă din nou după repornire.`,
-        );
-        addToast(`"${file.name}" adăugat cu succes în Biblioteca AI.`, 'success');
-      } catch {
-        addToast(`Eroare la procesarea ${file.name}`, 'error');
-      }
-    }
+    if (!activeProfileId || files.length === 0) return;
+    void useVaultUploadStore.getState().enqueueFiles(files);
   };
 
   useAutoBackup(activeProfileId ?? null);
@@ -294,20 +230,15 @@ function AppContent({ splashVisible }: { splashVisible: boolean }) {
     };
   }, [splashVisible]);
 
-  // Welcome/ProfileSelect mount immediately, hidden behind the splash, so
-  // their data reads happen during the splash's visible window rather than
-  // janking the reveal. But that also means their entrance animations finish
-  // playing out of sight — remounting them the instant the splash clears
-  // (key flips) replays that entrance fresh, so avatars/cards actually pop in
-  // as the splash fades instead of just sitting there already-settled.
-  const revealKey = splashVisible ? 'pre-splash' : 'post-splash';
+  // Keep onboarding mounted through the splash so early typing and profile
+  // selection survive the reveal instead of resetting their local state.
 
   if (profiles.length === 0 || (addingProfile && !activeProfileId)) {
-    return (<><Welcome key={revealKey} onBack={profiles.length > 0 ? () => setAddingProfile(false) : undefined} /><TitleTooltips /></>);
+    return (<><Welcome onBack={profiles.length > 0 ? () => setAddingProfile(false) : undefined} /><TitleTooltips /></>);
   }
 
   if (!activeProfileId) {
-    return (<><ProfileSelect key={revealKey} onAddNew={() => setAddingProfile(true)} /><TitleTooltips /></>);
+    return (<><ProfileSelect onAddNew={() => setAddingProfile(true)} /><TitleTooltips /></>);
   }
 
   return (
@@ -376,6 +307,7 @@ function AppContent({ splashVisible }: { splashVisible: boolean }) {
         </ChatErrorBoundary>
       )}
       <ToastContainer />
+      <GlobalUploadIndicator />
       <TitleTooltips />
       <BookViewerHost />
       <KeyboardShortcuts />
@@ -442,6 +374,7 @@ export default function App() {
             <WindowControls />
             <SplashScreen visible={splashVisible} durationMs={splashDurationMs} />
             <AppContent splashVisible={splashVisible} />
+            <StudyXHandCursor />
           </div>
         </MotionConfig>
       </ThemeProvider>

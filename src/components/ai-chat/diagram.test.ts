@@ -65,9 +65,10 @@ describe('parseDiagram', () => {
 });
 
 describe('wrapLabel', () => {
-  it('wraps long labels and caps the line count', () => {
+  it('wraps long labels without silently dropping medical terms or later lines', () => {
     expect(wrapLabel('unu doi trei patru cinci', 10)).toEqual(['unu doi', 'trei patru', 'cinci']);
-    expect(wrapLabel('a b c d e f g h i j k l', 1)).toHaveLength(4);
+    expect(wrapLabel('a b c d e f g h i j k l', 1)).toHaveLength(12);
+    expect(wrapLabel('psoriazisul-este-o-afectiune-cronica', 10).join('')).toBe('psoriazisul-este-o-afectiune-cronica');
   });
 });
 

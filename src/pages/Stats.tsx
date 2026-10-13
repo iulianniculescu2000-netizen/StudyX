@@ -1,3 +1,5 @@
+import { plural } from '../lib/plural';
+import { formatStudyTime } from '../lib/formatStudyTime';
 import { motion } from 'framer-motion';
 import ProgressBar from '../components/fx/ProgressBar';
 import { lazy, Suspense, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
@@ -5,7 +7,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Trophy, Flame, Target, Clock, BookOpen, TrendingUp, Brain, Sparkles, Loader2, RefreshCw, Award, ArrowRight, BarChart3 } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
 import { useQuizStore } from '../store/quizStore';
-import { useStatsStore, accuracyByQuiz } from '../store/statsStore';
+import { useStatsStore, accuracyByQuiz, countWeakStats, existingStatKeys } from '../store/statsStore';
 import { useAdaptiveMotion } from '../hooks/useAdaptiveMotion';
 import { useStoresHydrated } from '../hooks/useStoresHydrated';
 import { useAIStore } from '../store/aiStore';
@@ -58,10 +60,11 @@ function ChartSkeleton({ height = 180 }: { height?: number }) {
 }
 
 /** Card de sticlă cu intrare în cascadă (`index` = poziția, plafonată la 8 de CSS). */
-function StatsCard({ index = 0, className = '', children }: { index?: number; className?: string; children: ReactNode }) {
+function StatsCard({ index = 0, className = '', children, 'data-tutorial': tutorialAnchor }: { index?: number; className?: string; children: ReactNode; 'data-tutorial'?: string }) {
   const { calmMotion } = useAdaptiveMotion();
   return (
     <div
+      data-tutorial={tutorialAnchor}
       className={`glass-panel rounded-[var(--r-lg)] p-5 ${calmMotion ? '' : 'fx-rise'} ${className}`}
       style={{ '--i': index } as CSSProperties}
     >
@@ -84,9 +87,9 @@ export default function Stats() {
   const accuracy = useStatsStore((s) => s.getAccuracy());
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- getWeakQuestions citește din store; recalculăm când se schimbă statisticile
-  const weakQuestions = useMemo(() => getWeakQuestions(5), [getWeakQuestions, questionStats]);
+  const weakQuestions = useMemo(() => getWeakQuestions(5, existingStatKeys(useQuizStore.getState().quizzes)), [getWeakQuestions, questionStats]);
   const quizAccuracy = useMemo(() => accuracyByQuiz(questionStats), [questionStats]);
-  const studyHours = (totalStudyTime / 3600).toFixed(1);
+  const studyTimeLabel = formatStudyTime(totalStudyTime);
 
   // "Ce nu știu?" AI report
   const hasKey = useAIStore((s) => s.hasKey);
@@ -228,10 +231,11 @@ export default function Stats() {
     const recentAcc = recent.length > 0
       ? Math.round((recent.reduce((sum, s) => sum + s.score / s.total, 0) / recent.length) * 100)
       : null;
-    const weakCount = getWeakQuestions(1000).filter(q => q.timesCorrect / (q.timesCorrect + q.timesWrong) < 0.5).length;
+    // Aceeași definiție ca /review: greșită măcar o dată și nestabilizată, doar din întrebări existente.
+    const weakCount = countWeakStats(questionStats ?? {}, existingStatKeys(quizzes));
     const dueCount = buildDueItems(questionStats ?? {}, quizzes).length;
     return { recentAcc, weakCount, dueCount };
-  }, [sessions, quizzes, questionStats, getWeakQuestions]);
+  }, [sessions, quizzes, questionStats]);
 
   const level = useStudyLevel();
   useAchievementWatcher();
@@ -254,24 +258,24 @@ export default function Stats() {
           eyebrow="Statistici"
           title="Performanță"
           subtitle="Progresul tău în timp: ritm, acuratețe și punctele care cer atenție."
-          help="page-stats"
+          tour={{ id: 'stats', label: 'Ghid pentru statistici' }}
         />
-        <div className={`mb-6 flex flex-wrap gap-2 ${calmMotion ? '' : 'fx-rise'}`} style={{ '--i': 1 } as CSSProperties}>
+        <div data-tutorial="stats-summary" className={`mb-6 flex flex-wrap gap-2 ${calmMotion ? '' : 'fx-rise'}`} style={{ '--i': 1 } as CSSProperties}>
           <span className="premium-chip rounded-full px-3 py-1 text-[11px] font-semibold" style={{ color: theme.text3 }}>
-            {sessions.length} sesiuni
+            {plural(sessions.length, 'sesiune', 'sesiuni')}
           </span>
           <span className="premium-chip rounded-full px-3 py-1 text-[11px] font-semibold" style={{ color: theme.text3 }}>
             {accuracy}% acuratețe globală
           </span>
           <span className="premium-chip rounded-full px-3 py-1 text-[11px] font-semibold" style={{ color: theme.text3 }}>
-            {studyHours}h studiu
+            {studyTimeLabel} studiu
           </span>
         </div>
 
         <div className="space-y-5">
         {/* ── "Ce nu știu?" AI Report ── */}
         {hasKey && (
-          <StatsCard index={2} className="sm:p-6">
+          <StatsCard index={2} className="sm:p-6" data-tutorial="stats-ai-report">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-[var(--r-sm)] flex items-center justify-center flex-shrink-0"
@@ -347,9 +351,9 @@ export default function Stats() {
                 { label: 'Sesiuni Totale', value: sessions.length, icon: <BookOpen size={18} />, color: theme.accentText },
                 { label: 'Acuratețe Medie', value: `${accuracy}%`, icon: <Target size={18} />, color: theme.success },
                 { label: 'Scor Maxim', value: `${bestScore}%`, icon: <Trophy size={18} />, color: theme.warning },
-                { label: 'Serie curentă', value: `${liveStreak} ${liveStreak === 1 ? 'zi' : 'zile'}`, icon: <Flame size={18} />, color: theme.warning },
-                { label: 'Cea mai lungă serie', value: `${streak.longestStreak} ${streak.longestStreak === 1 ? 'zi' : 'zile'}`, icon: <TrendingUp size={18} />, color: theme.accent2 },
-                { label: 'Timp Studiu', value: `${studyHours}h`, icon: <Clock size={18} />, color: theme.text2 },
+                { label: 'Serie curentă', value: plural(liveStreak, 'zi', 'zile'), icon: <Flame size={18} />, color: theme.warning },
+                { label: 'Cea mai lungă serie', value: plural(streak.longestStreak, 'zi', 'zile'), icon: <TrendingUp size={18} />, color: theme.accent2 },
+                { label: 'Timp Studiu', value: studyTimeLabel, icon: <Clock size={18} />, color: theme.text2 },
               ].map((stat, i) => (
                 <div key={stat.label}
                   className={`glass-panel rounded-[var(--r-lg)] p-4 relative ${calmMotion ? '' : 'fx-rise'}`}
@@ -390,7 +394,7 @@ export default function Stats() {
             </StatsCard>
 
             {/* Heatmap calendar */}
-            <StatsCard index={5}>
+            <StatsCard index={5} data-tutorial="stats-activity">
               <h2 className="font-semibold mb-4" style={{ color: theme.text }}>Activitate (90 zile)</h2>
               <div className="flex gap-1 overflow-x-auto pb-1">
                 {heatmapWeeks.map((week, wi) => (
@@ -399,7 +403,7 @@ export default function Stats() {
                       const opacity = day.count === 0 ? 0 : day.count === 1 ? 0.35 : day.count === 2 ? 0.6 : 1;
                       return (
                         <div key={di}
-                          title={day.date ? `${day.date}: ${day.count} ${day.count === 1 ? 'sesiune' : 'sesiuni'}` : ''}
+                          title={day.date ? `${day.date}: ${plural(day.count, 'sesiune', 'sesiuni')}` : ''}
                           className="w-3 h-3 rounded-sm"
                           style={{
                             background: day.date
@@ -495,7 +499,7 @@ export default function Stats() {
               <div className="grid grid-cols-3 gap-3">
                 {[
                   { label: 'Acuratețe recentă', value: readiness.recentAcc === null ? '-' : `${readiness.recentAcc}%`, hint: 'ultimele 10 sesiuni', color: theme.text },
-                  { label: 'Întrebări slabe', value: String(readiness.weakCount), hint: 'sub 50% corecte', color: readiness.weakCount > 5 ? theme.danger : theme.success },
+                  { label: 'Întrebări slabe', value: String(readiness.weakCount), hint: 'greșite recent', color: readiness.weakCount > 5 ? theme.danger : theme.success },
                   { label: 'Restante', value: String(readiness.dueCount), hint: 'de recapitulat', color: readiness.dueCount > 0 ? theme.warning : theme.success },
                 ].map((item) => (
                   <div key={item.label} className="rounded-[var(--r-md)] p-3" style={{ background: theme.surface2 }}>
@@ -533,7 +537,7 @@ export default function Stats() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium" style={{ color: theme.text }}>{topic.topic}</p>
                         <p className="mt-0.5 text-xs" style={{ color: theme.text3 }}>
-                          {topic.total} {topic.total === 1 ? 'întrebare' : 'întrebări'}
+                          {plural(topic.total, 'întrebare', 'întrebări')}
                         </p>
                       </div>
                       <span className="flex-shrink-0 text-sm font-bold" style={{ color: theme.success }}>

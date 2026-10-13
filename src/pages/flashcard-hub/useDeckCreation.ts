@@ -17,7 +17,7 @@ export function useDeckCreation({ rezScope, quizzes, folders }: { rezScope: bool
   const { readyLibrarySources, generateDeckFromLibrary } = useLibraryDeckGeneration(ai, target, generated, rezScope);
   const { resumeGeneration } = useResumeGeneration(ai, generated, quizzes);
   const importer = useDeckImport(ai, target, generateDeckFromPdf);
-  const { createMistakeDeck, createQuickDeck } = useManualDeck(ai, target, generated, quizzes);
+  const { createMistakeDeck } = useManualDeck(ai, target, generated, quizzes);
 
   return {
     fileInputRef: importer.fileInputRef, csvInputRef: importer.csvInputRef, photoInputRef: importer.photoInputRef,
@@ -33,6 +33,6 @@ export function useDeckCreation({ rezScope, quizzes, folders }: { rezScope: bool
     resumeGeneration, readyLibrarySources, generateDeckFromLibrary,
     handleCsvImport: importer.handleCsvImport, handlePhotoImport: importer.handlePhotoImport,
     handlePdfImport: importer.handlePdfImport, guardBusy: ai.guardBusy,
-    createMistakeDeck, createQuickDeck,
+    createMistakeDeck,
   };
 }

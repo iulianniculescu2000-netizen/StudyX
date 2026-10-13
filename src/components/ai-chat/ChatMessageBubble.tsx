@@ -5,9 +5,10 @@ import type { Theme } from '../../theme/themes';
 import type { AgentJobStepParams } from '../../store/agentJobsStore';
 import AgentJobCard from './AgentJobCard';
 import AIMarkdown from './AIMarkdown';
-import AIOrb from './AIOrb';
+import Mascot from '../Mascot';
+import AIThinkingIndicator from './AIThinkingIndicator';
 import CrossCheckCard from './CrossCheckCard';
-import { citationLabel } from './citations';
+import { citationLabel, citationOpenLabel } from './citations';
 import { CHAT_MODES, getContextState, type ChatMessage, type ChatMode, type Citation, type OptionCard } from './shared';
 import OptionCardView from './OptionCardView';
 import { servedBadgeText } from './servedBadge';
@@ -69,11 +70,11 @@ function ChatMessageBubble({
     >
       {message.role === 'assistant' && (
         <div className="mt-0.5">
-          <AIOrb theme={theme} size={26} active={streaming} calm={calmMotion} />
+          <Mascot accent={theme.accent} size={26} static calm={calmMotion} />
         </div>
       )}
       <div
-        className={`max-w-[84%] rounded-[var(--r-lg)] p-4 text-sm leading-relaxed ${message.role === 'user' ? 'text-white' : ''}`}
+        className={`chat-bubble-content max-w-[84%] rounded-[var(--r-lg)] p-4 text-sm leading-relaxed ${message.role === 'user' ? 'text-white' : ''}`}
         style={{
           background: message.role === 'user' ? theme.accent : theme.surface2,
           color: message.role === 'user' ? '#fff' : theme.text,
@@ -92,9 +93,15 @@ function ChatMessageBubble({
           </div>
         )}
 
-        <AIMarkdown content={message.content} className="font-medium" streaming={streaming} citations={message.citations} />
-        {streaming && (
-          <span className="streaming-cursor" style={{ color: theme.accentText }}>▌</span>
+        {streaming && !message.content.trim() ? (
+          <AIThinkingIndicator compact size="sm" className="my-1.5" />
+        ) : (
+          <>
+            <AIMarkdown content={message.content} className="font-medium" streaming={streaming} citations={message.citations} />
+            {streaming && (
+              <span className="streaming-cursor" style={{ color: theme.accentText }}>▌</span>
+            )}
+          </>
         )}
 
         {message.role === 'assistant' && message.localAnswer && !streaming && (
@@ -172,7 +179,7 @@ function ChatMessageBubble({
                     style={{
                       background: isActiveCitation ? `${theme.accent}18` : undefined,
                       borderColor: isActiveCitation ? `${theme.accent}30` : undefined,
-                      color: isActiveCitation ? theme.accent : undefined,
+                      color: isActiveCitation ? theme.accentText : undefined,
                     }}
                   >
                     {citation.n ? `[${citation.n}] ` : ''}{citationLabel(citation)}
@@ -195,14 +202,14 @@ function ChatMessageBubble({
                   </div>
                   {citation.excerpt}
                   {citation.excerpt.length >= 220 ? '…' : ''}
-                  {(citation.page !== undefined || citation.printedPage !== undefined) && (
+                  {(citation.page !== undefined || citation.printedPage !== undefined || citation.sourceId) && (
                     <button
                       type="button"
                       className="citation-pill mt-2 block transition-colors"
-                      aria-label={`Deschide în carte: ${citationLabel(citation)}`}
+                      aria-label={`${citationOpenLabel(citation)}: ${citationLabel(citation)}`}
                       onClick={() => actions.openBook(citation)}
                     >
-                      Deschide în carte
+                      {citationOpenLabel(citation)}
                     </button>
                   )}
                 </div>

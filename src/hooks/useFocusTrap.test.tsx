@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { useFocusTrap } from './useFocusTrap';
@@ -16,6 +16,19 @@ function Trapped({ onEscape }: { onEscape: () => void }) {
       <button>last</button>
     </div>
   );
+}
+
+// Like TourEngine, the foreground layer receives bubbling keys on window,
+// after the underlying dialog's document listener.
+function TourLayer({ interactive, onEscape }: { interactive: boolean; onEscape: () => void }) {
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); onEscape(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onEscape]);
+  return <div role="dialog" aria-modal={!interactive} data-tour-keyboard-layer><button>tour control</button></div>;
 }
 
 describe('useFocusTrap', () => {
@@ -51,6 +64,50 @@ describe('useFocusTrap', () => {
     unmount();
     expect(document.activeElement).toBe(opener);
     opener.remove();
+  });
+
+  it('yields Tab and Escape to a tour above the dialog, then resumes after it closes', () => {
+    const onDialogEscape = vi.fn();
+    const onTourEscape = vi.fn();
+    const { rerender } = render(<><Trapped onEscape={onDialogEscape} /><TourLayer interactive={false} onEscape={onTourEscape} /></>);
+    const tourControl = screen.getByText('tour control');
+    tourControl.focus();
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    tourControl.dispatchEvent(tab);
+    expect(tab.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(tourControl);
+    fireEvent.keyDown(tourControl, { key: 'Escape' });
+    expect(onTourEscape).toHaveBeenCalledTimes(1);
+    expect(onDialogEscape).not.toHaveBeenCalled();
+
+    rerender(<Trapped onEscape={onDialogEscape} />);
+    screen.getByText('last').focus();
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(document.activeElement).toBe(screen.getByText('first'));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onDialogEscape).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets interactive tour steps reach page controls even while a dialog is open', () => {
+    const onDialogEscape = vi.fn();
+    const onTourEscape = vi.fn();
+    render(<><Trapped onEscape={onDialogEscape} /><button>highlighted action</button><TourLayer interactive onEscape={onTourEscape} /></>);
+    const last = screen.getByText('last');
+    last.focus();
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    last.dispatchEvent(tab);
+    expect(tab.defaultPrevented).toBe(false);
+    // jsdom has no native tab navigation; verify the handler also leaves the
+    // destination alone once the browser has moved focus there.
+    const target = screen.getByText('highlighted action');
+    target.focus();
+    const reverseTab = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true });
+    target.dispatchEvent(reverseTab);
+    expect(reverseTab.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(target);
+    fireEvent.keyDown(target, { key: 'Escape' });
+    expect(onTourEscape).toHaveBeenCalledTimes(1);
+    expect(onDialogEscape).not.toHaveBeenCalled();
   });
 });
 

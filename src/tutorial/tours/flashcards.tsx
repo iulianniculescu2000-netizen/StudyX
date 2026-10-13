@@ -1,3 +1,5 @@
+import { plural } from '../../lib/plural';
+import { aiStatus, cardStatus } from '../contextText';
 import { CreditCard, Layers, Plus, RefreshCw } from 'lucide-react';
 import type { TourDefinition } from '../types';
 
@@ -9,7 +11,7 @@ export const flashcardsTour: TourDefinition = {
     {
       id: 'flashcards-intro',
       title: 'Flashcarduri, pe înțelesul tău',
-      body: 'Cartonașe cu repetare spațiată: aplicația îți arată ce ai de repetat azi și cât din fiecare pachet ai stăpânit. Trecem rapid prin pagină.',
+      body: (ctx) => ctx.generalDeckCount === 0 ? 'Nu ai pachete încă. Creează unul manual sau importă CSV/Anki; generarea AI este opțională.' : `Ai ${plural(ctx.generalDeckCount, 'pachet', 'pachete')}. ${cardStatus(ctx)}`,
       icon: <CreditCard size={22} />,
       placement: 'center',
       route: '/flashcards',
@@ -18,14 +20,14 @@ export const flashcardsTour: TourDefinition = {
     {
       id: 'flashcards-due',
       title: 'De repetat azi',
-      body: 'Numără exact ce primești în sesiune: cardurile scadente și cele noi. Seria ta de zile apare tot aici.',
+      body: (ctx) => cardStatus(ctx),
       icon: <RefreshCw size={22} />,
       target: '[data-tutorial="flashcards-due"]',
       targetPadding: 6,
       placement: 'bottom',
       route: '/flashcards',
       // Without any deck there is no "de repetat" card to point at.
-      when: (ctx) => ctx.deckCount > 0,
+      when: (ctx) => ctx.generalDeckCount > 0,
     },
     {
       id: 'flashcards-decks',
@@ -37,12 +39,12 @@ export const flashcardsTour: TourDefinition = {
       placement: 'top',
       route: '/flashcards',
       accent: '#5E5CE6',
-      when: (ctx) => ctx.deckCount > 0,
+      when: (ctx) => ctx.generalDeckCount > 0,
     },
     {
       id: 'flashcards-create',
       title: 'Creează un pachet nou',
-      body: 'Din cursurile tale (10, 25, 50 sau 100 de carduri), din greșelile tale sau din import. Dacă AI-ul se oprește pe drum, cardurile deja făcute rămân și poți apăsa „Continuă generarea”.',
+      body: (ctx) => `${aiStatus(ctx)} ${ctx.errorCount > 0 ? 'Poți crea și un pachet din greșelile tale.' : 'Pentru un pachet din greșeli, ai nevoie întâi de răspunsuri greșite înregistrate.'} Importul și crearea manuală sunt alternative fără AI.`,
       icon: <Plus size={22} />,
       target: '[data-tutorial="flashcards-create"]',
       targetPadding: 6,

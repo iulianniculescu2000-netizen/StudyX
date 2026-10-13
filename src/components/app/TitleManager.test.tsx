@@ -19,6 +19,10 @@ describe('TitleManager', () => {
     ['/rezidentiat/abc123', 'StudyX - Rezidențiat'],
     ['/gamification', 'StudyX - Realizări'],
     ['/analytics', 'StudyX - Perspective AI'],
+    ['/erori', 'StudyX - Caiet de erori'],
+    ['/simulare', 'StudyX - Simulare de examen'],
+    ['/aproape-examen', 'StudyX - Aproape de examen'],
+    ['/folder/inexistent', 'StudyX - Folder'],
   ])('%s -> %s', (path, expected) => {
     expect(titleFor(path)).toBe(expected);
   });

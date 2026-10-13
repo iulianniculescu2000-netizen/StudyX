@@ -506,7 +506,7 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
 
               <div className="space-y-2.5">
                 {providerCheckResults.map((entry, i) => {
-                  const tone = !entry.hadKey ? theme.text3 : !entry.ok ? theme.danger : entry.changed ? theme.accent : theme.success;
+                  const tone = !entry.hadKey ? theme.text3 : !entry.ok ? theme.danger : entry.changed ? theme.accentText : theme.success;
                   return (
                     <motion.div
                       key={entry.provider}

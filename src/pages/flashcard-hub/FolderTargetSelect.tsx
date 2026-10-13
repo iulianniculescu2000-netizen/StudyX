@@ -4,6 +4,7 @@ import { Check, ChevronDown, FolderPlus } from 'lucide-react';
 import type { Folder } from '../../types';
 import type { Theme } from '../../theme/themes';
 import { folderPath } from './folderPath';
+import { hasSiblingFolderNamed } from '../../store/folderStore';
 import { dur, ease } from '../../theme/motion';
 import HelpTip from '../../components/ui/HelpTip';
 import type { HelpTipId } from '../../tutorial/helpTips';
@@ -63,9 +64,11 @@ export function FolderTargetSelect({
     setOpen(true);
   };
 
+  const newNameDuplicate = hasSiblingFolderNamed(folders, newName, browseParentId);
+
   const submitNewFolder = () => {
     const name = newName.trim();
-    if (!name) return;
+    if (!name || newNameDuplicate) return;
     const id = onCreateFolder(name, browseParentId);
     onChange(id);
     setNewName('');
@@ -86,7 +89,7 @@ export function FolderTargetSelect({
         }}
       >
         <div className="min-w-0 flex-1">
-          <div className="text-[9px] font-black uppercase tracking-[0.18em]" style={{ color: theme.text3 }}>
+          <div className="text-[9px] font-black uppercase tracking-[0.18em]" style={{ color: theme.text2 }}>
             {label}
           </div>
           <div className="mt-0.5 truncate text-xs font-black">{selectedLabel}</div>
@@ -201,14 +204,21 @@ export function FolderTargetSelect({
                       if (event.key === 'Escape') setCreating(false);
                     }}
                     placeholder={browseFolder ? `Subfolder în ${browseFolder.name}` : 'Nume folder nou'}
+                    aria-invalid={newNameDuplicate || undefined}
                     className="w-full rounded-[var(--r-sm)] border px-3 py-2 text-xs font-bold outline-none"
                     style={{ background: theme.surface2, borderColor: theme.border, color: theme.text }}
                   />
+                  {newNameDuplicate && (
+                    <div role="alert" className="text-[11px] font-semibold" style={{ color: theme.danger }}>
+                      Există deja un folder cu acest nume aici. Alege alt nume.
+                    </div>
+                  )}
                   <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={submitNewFolder}
-                      className="flex-1 rounded-[var(--r-sm)] px-3 py-2 text-[11px] font-black uppercase tracking-wider text-white"
+                      disabled={newNameDuplicate}
+                      className="disabled:opacity-50 flex-1 rounded-[var(--r-sm)] px-3 py-2 text-[11px] font-black uppercase tracking-wider text-white"
                       style={{ background: theme.accent }}
                     >
                       Creează

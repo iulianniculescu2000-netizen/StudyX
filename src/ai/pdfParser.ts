@@ -67,7 +67,7 @@ async function extractPdfTextInBrowser(file: File): Promise<string> {
   return parts.join('\n');
 }
 
-function cleanText(input: string) {
+export function cleanText(input: string) {
   return input
     .replace(/\r\n/g, '\n')
     .replace(/\f/g, '\n')
@@ -75,7 +75,7 @@ function cleanText(input: string) {
     .replace(/-\n(?=(?:⁣p\d{1,5}(?:\|\d{1,5})?~?⁣)?\p{Ll})/gu, '')
     // Caracterele neacceptate (ex. \u03B2, \u00B5) devin spa\u021Biu \u00CENAINTE de colapsare: altfel \u201Esau \u03B2-lactamine\u201D las\u0103
     // dou\u0103 spa\u021Bii, iar a doua cur\u0103\u021Bare (dup\u0103 scoaterea marcajelor de pagin\u0103) schimb\u0103 textul \u0219i pierde harta paginilor.
-    .replace(/[^\x20-\x7E\u00A0-\u036F\u2000-\u206F\u2070-\u218F\n]/g, ' ')
+    .replace(/[^\x20-\x7E\u00A0-\u036F\u0370-\u03FF\u2000-\u206F\u2070-\u22FF\n]/g, ' ')
     .replace(/[^\S\n]{2,}/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();

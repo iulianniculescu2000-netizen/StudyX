@@ -1,3 +1,4 @@
+import { plural } from '../lib/plural';
 import { useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ChevronRight, Layers, SearchX, Loader2, Play, Plus, Shuffle } from 'lucide-react';
@@ -27,7 +28,6 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'carduri', label: 'Carduri' },
 ];
 
-const number = (value: number) => value.toLocaleString('ro-RO');
 
 /** "Cardiologie — Test 3" → "Test 3": the specialty is already the heading above it. */
 function shortTitle(title: string, specialty: string): string {
@@ -91,7 +91,7 @@ function SpecialtyDetail({ specialty }: { specialty: SpecialtyOverview }) {
           <div className="min-w-0">
             <div className="truncate text-[17px] font-semibold" style={{ color: theme.text }}>{specialty.name}</div>
             <div className="text-[12.5px]" style={{ color: theme.text3 }}>
-              {specialty.quizzes.length} teste · {number(specialty.questionCount)} grile · {specialty.progress}% parcurs
+              {plural(specialty.quizzes.length, 'test', 'teste')} · {plural(specialty.questionCount, 'grilă', 'grile')} · {specialty.progress}% parcurs
             </div>
           </div>
           {next && (
@@ -149,7 +149,7 @@ function SpecialtyDetail({ specialty }: { specialty: SpecialtyOverview }) {
                 >
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[14px] font-semibold" style={{ color: theme.text }}>{shortTitle(quiz.title, specialty.name)}</div>
-                    <div className="text-[12px]" style={{ color: theme.text3 }}>{quiz.questions.length} grile</div>
+                    <div className="text-[12px]" style={{ color: theme.text3 }}>{plural(quiz.questions.length, 'grilă', 'grile')}</div>
                   </div>
                   <span className="text-[12.5px] font-semibold" style={{ color }}>{best === undefined ? 'Neîncercat' : `${best}%`}</span>
                   <ChevronRight size={16} style={{ color: theme.text3 }} />
@@ -174,7 +174,7 @@ function SpecialtyDetail({ specialty }: { specialty: SpecialtyOverview }) {
               >
                 <Link to={`/quiz/${quiz.id}`} className="min-w-0 flex-1">
                   <div className="truncate text-[14px] font-semibold" style={{ color: theme.text2 }}>{shortTitle(quiz.title, specialty.name)}</div>
-                  <div className="text-[12px]" style={{ color: theme.text3 }}>{quiz.questions.length} grile</div>
+                  <div className="text-[12px]" style={{ color: theme.text3 }}>{plural(quiz.questions.length, 'grilă', 'grile')}</div>
                 </Link>
                 <button
                   type="button"
@@ -241,7 +241,7 @@ export default function ResidencyDiscipline() {
   if (!discipline) {
     return (
       <FxPage className="px-4 py-6 sm:px-8 sm:py-10">
-        <div className="mx-auto max-w-3xl">
+        <div className="mx-auto max-w-4xl">
           <EmptyState icon={SearchX} title="Disciplina nu a fost găsită." primary={{ label: 'Înapoi la Rezidențiat', to: '/rezidentiat' }} />
         </div>
       </FxPage>
@@ -264,11 +264,11 @@ export default function ResidencyDiscipline() {
 
   return (
     <FxPage className="px-4 py-6 sm:px-8 sm:py-10">
-      <div className="mx-auto max-w-3xl space-y-5">
+      <div className="mx-auto max-w-4xl space-y-5">
         <PageHeader
           back={{ to: '/rezidentiat', label: 'Rezidențiat' }}
           title={discipline.folder.name}
-          subtitle={`${discipline.specialties.filter((entry) => !entry.loose).length} specialități · ${number(discipline.questionCount)} grile · ${discipline.progress}% parcurs`}
+          subtitle={`${plural(discipline.specialties.filter((entry) => !entry.loose).length, 'specialitate', 'specialități')} · ${plural(discipline.questionCount, 'grilă', 'grile')} · ${discipline.progress}% parcurs`}
         />
 
         <SegmentedTabs tabs={TABS} value={tab} onChange={setTab} layoutId="residency-tab-pill" ariaLabel="Secțiunile disciplinei" />
@@ -296,7 +296,7 @@ export default function ResidencyDiscipline() {
                   >
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-[13.5px] font-semibold" title={specialty.name} style={{ color: active ? theme.accent : theme.text }}>{specialty.name}</div>
-                      <div className="text-[11.5px]" style={{ color: theme.text3 }}>{specialty.quizzes.length} teste · {number(specialty.questionCount)} grile</div>
+                      <div className="text-[11.5px]" style={{ color: theme.text3 }}>{plural(specialty.quizzes.length, 'test', 'teste')} · {plural(specialty.questionCount, 'grilă', 'grile')}</div>
                     </div>
                     <span className="text-[11.5px] font-semibold" style={{ color: active ? theme.accent : theme.text3 }}>{specialty.progress}%</span>
                   </button>
@@ -346,7 +346,7 @@ export default function ResidencyDiscipline() {
                     >
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-[14px] font-semibold" style={{ color: theme.text }}>{deck.title}</div>
-                        <div className="text-[12px]" style={{ color: theme.text3 }}>{deck.questions.length} carduri</div>
+                        <div className="text-[12px]" style={{ color: theme.text3 }}>{plural(deck.questions.length, 'card', 'carduri')}</div>
                       </div>
                       <ChevronRight size={16} style={{ color: theme.text3 }} />
                     </Link>

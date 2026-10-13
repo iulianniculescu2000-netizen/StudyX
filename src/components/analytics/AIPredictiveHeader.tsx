@@ -14,14 +14,14 @@ export default function AIPredictiveHeader({ currentLevel, period, onPeriodChang
   return (
     <PageHeader
       title="Perspective AI"
-      help="page-analytics"
+      tour={{ id: 'analytics', label: 'Ghid pentru Perspective AI' }}
       subtitle="Calculat din răspunsurile tale; AI-ul intervine doar când îl întrebi."
       actions={(
         <>
           <span className="fine-chip rounded-full px-3 py-1.5 text-[12.5px] font-semibold" style={{ color: theme.accentText }}>
             Nivel {currentLevel}
           </span>
-          <AIPredictiveTimeframe value={period} onChange={onPeriodChange} />
+          <div data-tutorial="analytics-period"><AIPredictiveTimeframe value={period} onChange={onPeriodChange} /></div>
         </>
       )}
     />

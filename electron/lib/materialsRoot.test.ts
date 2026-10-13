@@ -14,6 +14,7 @@ const EXPECTED = [
 ];
 
 describe('findMaterialsRoot', () => {
+  let base = '';
   let tmp = '';
   const file = (...parts: string[]) => {
     const full = path.join(tmp, ...parts);
@@ -24,7 +25,11 @@ describe('findMaterialsRoot', () => {
   const at = (...parts: string[]) => path.join(tmp, ...parts);
 
   beforeEach(() => {
-    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'studyx-root-'));
+    base = fs.mkdtempSync(path.join(os.tmpdir(), 'studyx-root-'));
+    // The resolver intentionally visits three ancestors. Keep them inside this
+    // fixture so another test's materials under the shared temp root cannot win.
+    tmp = path.join(base, 'scope', 'case', 'root');
+    fs.mkdirSync(tmp, { recursive: true });
     // Folderul corect: cele trei cărți + Capitole.
     for (const rel of EXPECTED) file('Desktop', 'Rezidentiat', ...rel.split('/'));
     dir('Desktop', 'Rezidentiat', 'Capitole');
@@ -32,7 +37,7 @@ describe('findMaterialsRoot', () => {
     file('Desktop', 'Licenta', 'Carti', 'altceva.pdf');
     dir('Desktop', 'Licenta', 'Capitole');
   });
-  afterEach(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  afterEach(() => fs.rmSync(base, { recursive: true, force: true }));
 
   it('alegerea corectă rămâne neschimbată', () => {
     const res = findMaterialsRoot(at('Desktop', 'Rezidentiat'), EXPECTED);

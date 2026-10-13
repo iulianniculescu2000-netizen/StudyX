@@ -1,5 +1,6 @@
 import type { Question, QuestionStat, Quiz } from '../types';
 import { isFolderSessionQuiz } from './rezidentiatOverview';
+import { matchesQuery } from './searchText';
 
 export interface ErrorEntry {
   key: string;
@@ -64,12 +65,11 @@ const sorters: Record<ErrorSort, (a: ErrorEntry, b: ErrorEntry) => number> = {
   accuracy: (a, b) => a.accuracy - b.accuracy || b.wrong - a.wrong,
 };
 
-const plain = (value: string) => value.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-
 export function filterErrorEntries(entries: ErrorEntry[], search: string): ErrorEntry[] {
-  const needle = plain(search.trim());
-  if (!needle) return entries;
-  return entries.filter((entry) => plain(`${entry.question.text} ${entry.quiz.title} ${entry.quiz.category}`).includes(needle));
+  if (!search.trim()) return entries;
+  return entries.filter((entry) =>
+    matchesQuery(`${entry.question.text} ${entry.quiz.title} ${entry.quiz.category ?? ''}`, search)
+  );
 }
 
 export function groupErrors(entries: ErrorEntry[], sort: ErrorSort = 'wrong'): ErrorGroup[] {

@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer, webUtils } = require('electron');
+const { contextBridge, ipcRenderer, webUtils, webFrame } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   // Window controls
@@ -7,6 +7,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
   close: () => ipcRenderer.send('win:close'),
   destroy: () => ipcRenderer.send('win:destroy'),
   isMaximized: () => ipcRenderer.invoke('win:isMaximized'),
+  setZoomFactor: (factor) => {
+    try {
+      if (typeof factor === 'number' && Number.isFinite(factor) && factor > 0) {
+        webFrame.setZoomFactor(factor);
+      }
+    } catch { /* ignore */ }
+  },
+  getZoomFactor: () => {
+    try {
+      const factor = webFrame.getZoomFactor();
+      return typeof factor === 'number' && Number.isFinite(factor) && factor > 0 ? factor : 1;
+    } catch {
+      return 1;
+    }
+  },
   // Theme: renderer -> main only (window background + nativeTheme)
   setTheme: (payload) => ipcRenderer.send('theme:set', payload),
   onMaximized: (cb) => {
@@ -60,6 +75,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   autoBackup: (data) => ipcRenderer.invoke('app:autoBackup', { data }),
   storageSave: (profileId, namespace, serialized) => ipcRenderer.invoke('storage:save', { profileId, namespace, serialized }),
   storageLoad: (profileId, namespace) => ipcRenderer.invoke('storage:load', { profileId, namespace }),
+  storageDeleteProfile: (profileId) => ipcRenderer.invoke('storage:delete-profile', { profileId }),
   onAppClose: (cb) => {
     const listener = () => cb();
     ipcRenderer.on('app:request-close', listener);
