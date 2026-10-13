@@ -2,9 +2,26 @@ export type RelevantDocBlock =
   | { kind: 'heading' | 'paragraph'; text: string }
   | { kind: 'list'; items: string[] };
 
-/** Present extracted PDF text without rewriting it. Only visual line wraps become spaces. */
+const CEDILLA: Record<string, string> = { 'ş': 'ș', 'Ş': 'Ș', 'ţ': 'ț', 'Ţ': 'Ț' };
+const OCR_DIGITS: Record<string, string> = { '0': 'o', '1': 'r' };
+
+/**
+ * Curățenie tipografică pentru textul extras din PDF, fără să schimbe sensul: diacritice cu sedilă → virgulă, cratime
+ * de capăt de rând lipite, și cifrele care în OCR țin loc de litere în mijlocul cuvintelor („a1ticulară” → „articulară”,
+ * „rap01t” → „raport”). Cifrele se corectează doar când au litere mici de ambele părți, ca „B12”, „H1N1” sau „10 mg” să rămână.
+ * Greșelile de OCR de alt fel („pentrn”) nu se ating: nu se ghicesc cuvinte medicale.
+ */
+export function tidyBookText(text: string): string {
+  return text
+    .replace(/­/g, '')
+    .replace(/[şŞţŢ]/g, (char) => CEDILLA[char])
+    .replace(/(\p{Ll})-\n[ \t]*(\p{Ll})/gu, '$1$2')
+    .replace(/(?<=\p{Ll})[01]+(?=\p{Ll})/gu, (digits) => Array.from(digits, (digit) => OCR_DIGITS[digit]).join(''));
+}
+
+/** Present extracted PDF text. Only visual line wraps become spaces; see `tidyBookText` for the typographic cleanup. */
 export function formatRelevantDoc(text: string): RelevantDocBlock[] {
-  const lines = text.replace(/\r\n?/g, '\n').split('\n');
+  const lines = tidyBookText(text.replace(/\r\n?/g, '\n')).split('\n');
   const blocks: RelevantDocBlock[] = [];
   let paragraph: string[] = [];
   let list: string[] = [];

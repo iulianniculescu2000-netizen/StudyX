@@ -54,3 +54,25 @@ describe('detectStudyRequest', () => {
     expect(detectStudyRequest('fă-mi 10 grile despre HTA în folderul „Recapitulare iarnă”')!.folderName).toBe('Recapitulare iarnă');
   });
 });
+
+describe('subiect cu „din …” (fără „despre”)', () => {
+  it('„din tratamentul AR” este subiectul, nu se pierde', () => {
+    const request = detectStudyRequest('fa mi 30 de grile din tratamentul AR, rezidentiat');
+    expect(request?.topic).toBe('tratamentul AR');
+    expect(request?.count).toBe(30);
+    expect(request?.missing).not.toContain('topic');
+  });
+
+  it('„din Kumar” numește o carte, deci nu devine subiect', () => {
+    expect(detectStudyRequest('fa mi 10 grile din Kumar', ['Kumar - Medicină clinică.pdf'])?.topic).toBe('');
+  });
+
+  it('„despre” are prioritate, iar „din capitolul” păstrează prefixul', () => {
+    expect(detectStudyRequest('fa 10 grile despre artrita reumatoida')?.topic).toBe('artrita reumatoida');
+    expect(detectStudyRequest('fa 10 grile din capitolul aritmii')?.topic).toBe('capitolul aritmii');
+  });
+
+  it('„din răspunsul de mai sus” nu e un subiect', () => {
+    expect(detectStudyRequest('fa 10 grile din raspunsul de mai sus')?.topic).toBe('');
+  });
+});

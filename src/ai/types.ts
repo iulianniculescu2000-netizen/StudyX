@@ -162,6 +162,11 @@ export interface AIQuestionRequest {
   /** Which track to generate: rezidențiat (5 options) or plain subject quiz (4). */
   examStyle?: import('../lib/ai/examStyle').ExamStyle;
   prefetchedContext?: AIContextPayload;
+  /**
+   * Subiect obligatoriu: toate întrebările rămân pe el. Taie din prompt topicurile slabe și istoricul de greșeli
+   * (care împingeau modelul spre alte patologii) și adaugă regula explicită. Fără el, generarea rămâne personalizată.
+   */
+  subject?: string;
   /** Enunțuri deja acceptate, pe care modelul nu trebuie să le repete (cererile de completare). */
   avoidTexts?: string[];
 }

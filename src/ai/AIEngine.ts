@@ -1,3 +1,4 @@
+import { explainAbbreviations } from '../lib/ai/medicalAbbreviations';
 import type { Difficulty, Question } from '../types';
 import { groqRequest, groqStream } from '../lib/groq';
 import { logAIDebug } from './debug';
@@ -188,7 +189,8 @@ export class QuestionGenerator {
   static async generate(profile: UserProfileData | null, request: AIQuestionRequest): Promise<AIQuestionResult> {
     const target = request.count ?? 1;
     const first = await QuestionGenerator.generateOnce(profile, request);
-    if (first.questions.length >= target) return { ...first, requested: target, topUpRounds: 0 };
+    // Modelul întoarce uneori mai multe decât s-a cerut („30 cerute, 33 primite”): se păstrează exact cât s-a cerut.
+    if (first.questions.length >= target) return { ...first, questions: first.questions.slice(0, target), requested: target, topUpRounds: 0 };
     const filled = await fillShortfall({
       target,
       first,
@@ -206,7 +208,8 @@ export class QuestionGenerator {
   }
 
   private static async generateOnce(profile: UserProfileData | null, request: AIQuestionRequest): Promise<AIQuestionResult> {
-    const weakTopics = request.weakTopics ?? (profile ? getWeakTopicsForProfile(profile.profileId) : []);
+    // Cu subiect obligatoriu, topicurile slabe ale studentului nu intră deloc: ele mutau întrebările pe alte patologii.
+    const weakTopics = request.subject ? [] : (request.weakTopics ?? (profile ? getWeakTopicsForProfile(profile.profileId) : []));
     const difficulty = request.difficulty ?? profile?.currentDifficulty ?? 'medium';
     const query = request.context || 'Cunoștințe medicale generale';
     let context: AIContextPayload;
@@ -240,6 +243,7 @@ export class QuestionGenerator {
       request.questionTypes,
       request.count ?? 1,
       request.examStyle ?? DEFAULT_EXAM_STYLE,
+      request.subject,
     );
     // Self-gated by the localStorage "studyx-ai-debug" flag (see debug.ts).
     logAIDebug('buildQuestionPrompt', { questionTypes: request.questionTypes, count: request.count, prompt });
@@ -292,7 +296,8 @@ export async function generateQuestionsFromTopic(
   examStyle: ExamStyle = DEFAULT_EXAM_STYLE,
 ): Promise<AIQuestionResult> {
   const first = await generateQuestionsFromTopicOnce(topic, count, difficulty, questionType, profile, examStyle, []);
-  if (first.questions.length >= count) return { ...first, requested: count, topUpRounds: 0 };
+  // Modelul întoarce uneori mai multe decât s-a cerut („30 cerute, 33 primite”): se păstrează exact cât s-a cerut.
+  if (first.questions.length >= count) return { ...first, questions: first.questions.slice(0, count), requested: count, topUpRounds: 0 };
   // „5 cerute, 2 primite”: cere doar diferența (cu enunțurile existente la „nu repeta”), de cel mult două ori.
   const filled = await fillShortfall({
     target: count,
@@ -333,7 +338,9 @@ async function generateQuestionsFromTopicOnce(
   // constant fixes it for any topic/size, not just this one.
   const maxTokens = Math.min(8000, Math.max(2200, count * 220 + 300));
 
-  const topicPrompt = buildQuestionPrompt(profile, [], difficulty, undefined, questionType, undefined, count, examStyle);
+  // „AR” poate fi artrită reumatoidă, aritmie ș.a.: subiectul merge spre model cu abrevierea explicată.
+  const subject = explainAbbreviations(topic);
+  const topicPrompt = buildQuestionPrompt(profile, [], difficulty, undefined, questionType, undefined, count, examStyle, subject);
   const parsed = await requestStructuredOrThrow({
     schema: QuestionsBatchSchema,
     schemaHint: QUESTIONS_SCHEMA_HINT,
@@ -344,7 +351,7 @@ async function generateQuestionsFromTopicOnce(
       { role: 'system', content: topicPrompt },
       {
         role: 'user',
-        content: `Generează ${count} întrebări în JSON strict, exclusiv în limba română, despre subiectul: ${topic}. Folosește cunoștințe medicale generale — nu ai context din bibliotecă pentru acest subiect.${avoidInstruction(avoidTexts)}`,
+        content: `Generează ${count} întrebări în JSON strict, exclusiv în limba română, despre subiectul: ${subject}. Folosește cunoștințe medicale generale — nu ai context din bibliotecă pentru acest subiect.${avoidInstruction(avoidTexts)}`,
       },
     ],
     skipLibraryContext: true,

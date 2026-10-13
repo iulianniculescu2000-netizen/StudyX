@@ -3,7 +3,7 @@ import { OPTION_CARD_CANCELLED, optionCardDone, optionCardFailed, optionCardIntr
 import { useFolderStore } from '../../store/folderStore';
 import { generateStudyMaterial } from '../../lib/ai/studyMaterial';
 import { DEFAULT_COUNT, detectStudyRequest, type StudyRequest } from '../../lib/ai/optionRequest';
-import type { SourceScope } from '../../lib/ai/sourceScope';
+import { useScopedSources, type SourceScope } from '../../lib/ai/sourceScope';
 import { defaultDestinationChoice, defaultNewFolderParent, destinationOptions } from '../../lib/ai/studyDestinations';
 import type { FolderChoice } from '../../lib/rezidentiatFlashcardFolders';
 import type { ChatMessage, OptionCard } from './shared';
@@ -35,6 +35,8 @@ function folderFromRequest(request: StudyRequest, space: SourceScope): FolderCho
  */
 export function useOptionCards({ setMessages, messagesRef, chatThread }: UseOptionCardsOptions) {
   const space: SourceScope = chatThread === 'rezidentiat' ? 'rezidentiat' : 'general';
+  // Cărțile din bibliotecă: „din Kumar” rămâne cerere pe sursă, nu devine un subiect numit „Kumar”.
+  const sources = useScopedSources(space);
 
   const patchCard = useCallback((cardId: string, patch: Partial<OptionCard>, content?: string) => {
     setMessages((prev) => prev.map((message) => (message.optionCard?.id === cardId
@@ -66,7 +68,7 @@ export function useOptionCards({ setMessages, messagesRef, chatThread }: UseOpti
 
   /** Prinde cererea de generare din mesaj. Întoarce `true` când a preluat-o (a pus cartea sau a pornit generarea). */
   const tryHandleOptionRequest = useCallback((text: string): boolean => {
-    const request = detectStudyRequest(text);
+    const request = detectStudyRequest(text, sources.map((source) => source.name));
     if (!request) return false;
 
     const card: OptionCard = {
@@ -94,7 +96,7 @@ export function useOptionCards({ setMessages, messagesRef, chatThread }: UseOpti
     // A spus tot ce trebuia: nu-l mai întrebăm nimic.
     if (complete) void runCard(card);
     return true;
-  }, [runCard, setMessages, space]);
+  }, [runCard, setMessages, space, sources]);
 
   const editOptionCard = useCallback((index: number, patch: Partial<OptionCard>) => {
     setMessages((prev) => prev.map((message, i) => (i === index && message.optionCard

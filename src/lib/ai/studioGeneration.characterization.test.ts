@@ -80,13 +80,18 @@ describe('buildStudioContextPayload (characterization)', () => {
   it('windows the chunks by pack index and caps topics / weak topics', () => {
     const payload = buildStudioContextPayload({
       sourceName: 'Curs.pdf', chunks, packIndex: 1, totalPacks: 2, difficulty: 'hard',
-      weakTopics: Array.from({ length: 6 }, (_, i) => ({ topic: `Slab ${i}`, accuracy: 10, wrongCount: 3, total: 4, recencyScore: 0 })),
+      // Doar punctele slabe din temele pachetului intră în prompt; „Altă patologie” (din altă temă) ar fi mutat întrebările.
+      weakTopics: [
+        { topic: 'Altă patologie', accuracy: 5, wrongCount: 9, total: 10, recencyScore: 0 },
+        ...Array.from({ length: 6 }, (_, i) => ({ topic: `Boala ${i + 3}`, accuracy: 10, wrongCount: 3, total: 4, recencyScore: 0 })),
+      ],
     });
     // totalPacks <= 3 -> window of 6; start = (1*3) % (12-6+1) = 3
     expect(payload.chunks!.map((c) => c.id)).toEqual(['c3', 'c4', 'c5', 'c6', 'c7', 'c8']);
     expect(payload.query).toBe('Întrebări despre Boala 3, Boala 4, Boala 5, Boala 6');
     expect(payload.summary).toContain('Document sursă: Curs.pdf');
-    expect(payload.summary).toContain('Puncte slabe ale utilizatorului de urmărit: Slab 0, Slab 1, Slab 2, Slab 3.');
+    expect(payload.summary).toContain('Puncte slabe ale utilizatorului de urmărit: Boala 3, Boala 4, Boala 5, Boala 6.');
+    expect(payload.summary).not.toContain('Altă patologie');
     expect(payload.summary).toContain('Fragment 1 | Boala 3');
     expect(payload.level).toBe('hard');
   });

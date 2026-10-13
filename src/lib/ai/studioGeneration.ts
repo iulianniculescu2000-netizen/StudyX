@@ -260,7 +260,15 @@ export function buildStudioContextPayload({
   const start = maxStart === 0 ? 0 : (packIndex * 3) % (maxStart + 1);
   const scopedChunks = chunks.slice(start, start + safeWindowSize);
   const focusTopics = Array.from(new Set(scopedChunks.map((chunk) => normalizeTopic(chunk.topic)))).slice(0, 4);
-  const weakTopicSummary = weakTopics.slice(0, 4).map((entry) => entry.topic).join(', ');
+  // Un punct slab din altă temă nu are ce căuta într-un pachet despre fragmentele de mai jos: ar muta întrebările pe altă patologie.
+  const inFocus = (topic: string) => {
+    const wanted = normalizeTopic(topic).toLowerCase();
+    return focusTopics.some((focus) => {
+      const have = focus.toLowerCase();
+      return have.includes(wanted) || wanted.includes(have);
+    });
+  };
+  const weakTopicSummary = weakTopics.filter((entry) => inFocus(entry.topic)).slice(0, 4).map((entry) => entry.topic).join(', ');
   const summary = scopedChunks
     .map((chunk, index) => `Fragment ${index + 1} | ${normalizeTopic(chunk.topic)}\n${normalizeText(chunk.text).slice(0, 1000)}`)
     .join('\n\n');

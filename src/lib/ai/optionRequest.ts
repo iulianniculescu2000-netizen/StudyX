@@ -70,23 +70,41 @@ function detectFolder(original: string, folded: string): string | null {
 
 const TOPIC_MARKER = /\b(despre|pe tema|pe subiectul|pe subiect|referitoare la|referitor la|legate de|privind|la tema|din capitolul|din capitol|din tema)\b/;
 const TOPIC_STOP = /\s+(?:in|la|pe)\s+folder|\s+(?:cu|de)\s+(?:nivel|dificultate)|\s+nivel\s|\s+dificultate|\s+de\s+\d|\s+\d+\s+(?:de\s+)?(?:carduri|flash|gril|intreb)|\s+(?:te rog|please|mersi)|[,;.!?]/;
-const VAGUE_TOPIC = /^(asta|aceasta|acest subiect|ce am discutat|ce am vorbit|raspunsul|ultimul raspuns|conversatia|tema asta)$/;
+const VAGUE_TOPIC = /^(asta|aceasta|acest subiect|ce am discutat|ce am vorbit|raspunsul(?: de mai sus| anterior)?|ultimul raspuns|conversatia|tema asta)$/;
 
-function detectTopic(original: string, folded: string): string {
-  const match = folded.match(TOPIC_MARKER);
+const nameWords = (name: string) => fold(name.replace(/\.(pdf|docx|txt|md)$/i, '')).split(/[^a-z0-9]+/).filter((word) => word.length >= 5);
+
+/** „din Kumar” numește o carte din bibliotecă, nu un subiect: acolo cererea se rezolvă pe sursă. */
+function namesLibrarySource(foldedTopic: string, sourceNames: readonly string[]): boolean {
+  const topicWords = new Set(foldedTopic.split(/[^a-z0-9]+/).filter(Boolean));
+  return sourceNames.some((name) => nameWords(name).some((word) => topicWords.has(word)));
+}
+
+function detectTopic(original: string, folded: string, sourceNames: readonly string[]): string {
+  const match = folded.match(TOPIC_MARKER) ?? matchFrom(folded);
   if (!match || match.index === undefined) return '';
-  const prefix = match[1].startsWith('din') ? match[1].replace(/^din\s+/, '') : '';
+  const prefix = match[1].startsWith('din ') ? match[1].replace(/^din\s+/, '') : '';
   const start = match.index + match[0].length;
   const foldedTail = folded.slice(start);
   const stop = foldedTail.search(TOPIC_STOP);
   const raw = (stop === -1 ? original.slice(start) : original.slice(start, start + stop)).replace(/^[\s:„"'-]+|[\s„"'.,;:!?]+$/g, '');
   const topic = prefix ? `${prefix} ${raw}`.trim() : raw.trim();
   if (topic.length < 3 || VAGUE_TOPIC.test(fold(topic))) return '';
+  if (match[1] === 'din' && namesLibrarySource(fold(topic), sourceNames)) return '';
   return topic.length > 120 ? topic.slice(0, 120).trim() : topic;
 }
 
-/** Cererea de generare din mesaj, sau `null` dacă mesajul e altceva (întrebare, explicație, o comandă pe care o face planificatorul). */
-export function detectStudyRequest(text: string): StudyRequest | null {
+/** Fără niciun „despre / pe tema”, un „din <subiect>” e subiectul; potrivire în forma celorlalți marcatori, cu grupul 1 = „din”. */
+function matchFrom(folded: string): RegExpMatchArray | null {
+  const match = folded.match(/\b(din)\s+(?=\S)/);
+  return match && match.index !== undefined ? match : null;
+}
+
+/**
+ * Cererea de generare din mesaj, sau `null` dacă mesajul e altceva (întrebare, explicație, o comandă pe care o face planificatorul).
+ * `sourceNames`: cărțile din bibliotecă, ca „din Kumar” să rămână cerere pe sursă și nu un subiect numit „Kumar”.
+ */
+export function detectStudyRequest(text: string, sourceNames: readonly string[] = []): StudyRequest | null {
   const original = (text ?? '').trim();
   if (original.length < 6 || original.length > 600) return null;
   const folded = fold(original);
@@ -100,7 +118,7 @@ export function detectStudyRequest(text: string): StudyRequest | null {
   if (/^(cum|ce|cat|care|de ce|cand|unde)\b/.test(folded) && !/\b(fa-mi|fa mi|vreau|genereaza|creeaza)\b/.test(folded)) return null;
 
   const kind: StudyKind = wantsCards ? 'flashcards' : 'quiz';
-  const topic = detectTopic(original, folded);
+  const topic = detectTopic(original, folded, sourceNames);
   const count = detectCount(folded, kind);
   const difficulty = detectDifficulty(folded);
   const folderName = detectFolder(original, folded);

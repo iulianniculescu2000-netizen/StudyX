@@ -124,6 +124,15 @@ export function sanitizeUserInput(input: string) {
     .trim();
 }
 
+/** Regula repetată înainte și după context: modelul o respectă mai bine când o vede și la final. */
+function subjectRuleText(subject: string) {
+  return (
+    `SUBIECT OBLIGATORIU: „${subject}”. Fiecare întrebare trebuie să fie despre acest subiect, nu despre altă patologie, ` +
+    'specialitate sau capitol, nici măcar înrudite. Dacă o abreviere e ambiguă (de exemplu AR), subiectul este cel din contextul dat. ' +
+    'Dacă nu poți formula suficiente întrebări fidele subiectului, returnează mai puține, nu schimba subiectul.'
+  );
+}
+
 export function buildQuestionPrompt(
   profile: UserProfileData | null,
   weakTopics: WeakTopic[],
@@ -133,12 +142,15 @@ export function buildQuestionPrompt(
   questionTypes?: QuestionType[],
   count = 1,
   examStyle: ExamStyle = DEFAULT_EXAM_STYLE,
+  subject?: string,
 ) {
   const typeInstruction = questionTypes && questionTypes.length > 0
     ? buildQuestionTypeInstruction(count, questionTypes)
     : '';
   const safeContext = contextPayload?.summary ?? '';
-  const mistakeSection = profile?.mistakeBank?.length ? mistakeBankText(profile.mistakeBank) : '';
+  // Pe un subiect fix, greșelile și topicurile slabe din alte teme nu au ce căuta în prompt.
+  const mistakeSection = !subject && profile?.mistakeBank?.length ? mistakeBankText(profile.mistakeBank) : '';
+  const subjectRule = subject ? subjectRuleText(subject) : '';
 
   const profileLine = profile
     ? `PROFIL STUDENT: dificultate curentă ${profile.currentDifficulty}, acuratețe globală ${profile.globalAccuracy}%, streak ${profile.streak}.`
@@ -175,7 +187,8 @@ export function buildQuestionPrompt(
     TRUSTED_GENERAL_KNOWLEDGE_RULES,
     examStyle === 'residency' ? RESIDENCY_STYLE_RULES : SIMPLE_STYLE_RULES,
     profileLine,
-    `TOPICURI SLABE DE PRIORITIZAT: ${weakTopicsText(weakTopics)}.`,
+    subjectRule,
+    subject ? '' : `TOPICURI SLABE DE PRIORITIZAT: ${weakTopicsText(weakTopics)}.`,
     mistakeSection,
     `NIVEL CERUT: ${difficultyText(difficulty)}`,
     vignetteInstruction,
@@ -188,6 +201,7 @@ export function buildQuestionPrompt(
     safeContext
       ? `CONTEXT DIN BIBLIOTECA STUDENTULUI:\n${safeContext}`
       : 'Nu există context în bibliotecă. Folosește doar cunoștințe medicale generale.',
+    subjectRule,
     'Returnează strict JSON valid, fără text înainte sau după. Schema este:',
     jsonSchema,
   ]

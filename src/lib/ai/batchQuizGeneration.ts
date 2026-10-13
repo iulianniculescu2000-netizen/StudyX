@@ -139,9 +139,10 @@ export async function generateQuizPackagesFromSource({
         const request = () => generateQuestions({
           context: contextPayload.query,
           prefetchedContext: contextPayload,
+          // Pachetul rămâne pe fragmentele alese; topicurile slabe din alte teme nu intră în prompt.
+          subject: contextPayload.query.replace(/^Întrebări despre\s+/i, ''),
           count: batchCount,
           difficulty: targetDifficulty,
-          weakTopics,
           userProfile: profile ?? undefined,
           mode: 'standard',
           questionType,

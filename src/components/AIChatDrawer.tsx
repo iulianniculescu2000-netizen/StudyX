@@ -1,3 +1,4 @@
+import { buildAnswerQuizRequest } from '../lib/ai/answerQuizRequest';
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -1106,7 +1107,6 @@ export default function AIChatDrawer() {
     if (loading) return;
     const assertSameProfile = profileGuard();
     const prev = messages[index - 1];
-    const topic = (prev?.role === 'user' ? prev.content : '').trim() || messages[index].content.slice(0, 140);
     if (!hasKey) {
       addToast('Pentru a genera un set ai nevoie de o cheie AI în Setări.', 'warning');
       return;
@@ -1118,10 +1118,14 @@ export default function AIChatDrawer() {
     try {
       const { generateQuestions, getUserProfile } = await import('../ai/AIEngine');
       const profile = activeProfileId ? getUserProfile(activeProfileId) : undefined;
+      // Grilele se ancorează în răspunsul de pe ecran, nu în căutarea din bibliotecă pe textul cererii și nu în topicurile slabe:
+      // acelea mutau întrebările pe altă patologie decât cea explicată.
+      const { subject, prefetchedContext } = buildAnswerQuizRequest(prev?.role === 'user' ? prev.content : '', messages[index].content);
       const result = await generateQuestions({
-        context: topic,
+        context: subject,
+        prefetchedContext,
+        subject,
         count: 5,
-        weakTopics,
         userProfile: profile,
         mode: 'standard',
       });

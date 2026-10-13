@@ -47,6 +47,15 @@ describe('generateQuestionsFromTopic: „5 cerute, 2 primite”', () => {
     expect(structured.calls[1].user).toContain('cea mai frecventă cauză de infarct');
   });
 
+  it('taie la numărul cerut când modelul întoarce mai multe („30 cerute, 33 primite”)', async () => {
+    structured.replies.push(Array.from({ length: 33 }, (_, i) => raw(`Întrebarea numărul ${i + 1} despre artrita reumatoidă`)));
+    const { generateQuestionsFromTopic } = await import('./AIEngine');
+    const result = await generateQuestionsFromTopic('artrita reumatoidă', 30, 'medium', 'single', null, 'residency');
+    expect(result.questions).toHaveLength(30);
+    expect(result.requested).toBe(30);
+    expect(structured.calls).toHaveLength(1);
+  });
+
   it('nu face runde în plus când primul lot ajunge', async () => {
     structured.replies.push([raw('Întrebarea cu numărul unu'), raw('Întrebarea cu numărul doi')]);
     const { generateQuestionsFromTopic } = await import('./AIEngine');
