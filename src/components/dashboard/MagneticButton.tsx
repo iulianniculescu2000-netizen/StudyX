@@ -35,7 +35,7 @@ export default function MagneticButton({
       onMouseLeave={reset}
       animate={calmMotion ? undefined : { x: position.x, y: position.y }}
       transition={calmMotion ? { duration: dur.instant } : spring.nav}
-      className={className}
+      className={`btn-action ${className ?? ''}`}
       style={style}
     >
       {children}

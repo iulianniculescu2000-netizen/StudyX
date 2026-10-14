@@ -1813,3 +1813,22 @@ a:focus-visible,
 /* Umbra mâinii/săgeții cursorului StudyX (filtru, nu box-shadow). */
 .cursor-hand-shadow-sm { filter: drop-shadow(0 1px 2px rgb(0 0 0 / .3)); }
 .cursor-hand-shadow-lg { filter: drop-shadow(0 1.5px 3px rgb(0 0 0 / .3)); }
+
+/* ── Regula de text: acțiunile se scriu cu litere normale, etichetele mici cu majuscule discrete ──
+   Butoane de acțiune (dreptunghiuri rotunjite, MagneticButton): litere normale, fără spațiere extinsă.
+   Pastilele (rounded-full) și .fine-chip sunt etichete/filtre: rămân cu majuscule, dar mai fine (greutate 700). */
+.btn-action,
+:is(button, a, [role="button"]).uppercase:not([class*="rounded-full"]):not(.fine-chip) {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 700;
+  font-size: 13px;
+}
+.fine-chip.uppercase,
+:is(button, a, [role="button"]).uppercase[class*="rounded-full"] {
+  font-weight: 700;
+}
+
+/* Logo: tema deschisă păstrează dreptunghiul închis; în tema închisă primește o treaptă mai luminoasă și un contur fin, ca să nu se piardă în fundal. */
+.logo-tile { stroke: var(--hairline); stroke-width: 3; }
+:root[data-theme="dark"] .logo-tile { fill: #1E1E26; stroke: rgba(255, 255, 255, 0.18); stroke-width: 4; }

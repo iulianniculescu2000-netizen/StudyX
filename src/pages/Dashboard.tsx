@@ -29,6 +29,7 @@ import EmptyState from '../components/ui/EmptyState';
 import { useScopedSources } from '../lib/ai/sourceScope';
 import { isRezidentiatQuiz } from '../lib/rezidentiatBank';
 import { isFlashcardDeck } from '../lib/deckKind';
+import { countDashboardQuizzes } from '../lib/dashboardCounts';
 import { isChapterDeck } from '../lib/chapterDecks';
 import { buildDueItems } from '../lib/dueItems';
 import { computeTopicMastery, folderNamesOf, isTopicPracticeQuiz, pickStudyFocus } from '../lib/topicMastery';
@@ -148,9 +149,10 @@ export default function Dashboard() {
   // Real week-over-week deltas. Every stat card used to show a fixed "▲ 2%".
   const trends = useMemo(() => computeDashboardTrends(quizzes, sessions), [quizzes, sessions]);
 
-  // Toate grilele jucabile, inclusiv cele de Rezidențiat: după o sesiune doar în Rezidențiat panoul nu mai spune „0 grile”.
-  const quizOnlyCount = useMemo(() => quizzes.filter((q) => !q.archived && !isFlashcardDeck(q) && !isTopicPracticeQuiz(q)).length, [quizzes]);
-  const animatedQuizzes = useCountUp(quizOnlyCount);
+  // „Grile” = aceeași cifră ca „Toate grilele” din bara laterală (seturile proprii); Rezidențiatul se numără separat și se spune clar.
+  const { own: ownQuizCount, residency: residencyQuizCount } = useMemo(() => countDashboardQuizzes(quizzes), [quizzes]);
+  const quizOnlyCount = ownQuizCount + residencyQuizCount;
+  const animatedQuizzes = useCountUp(ownQuizCount);
   // currentStreak is only recalculated when a session is recorded: after a skipped day it stays stale.
   const liveStreak = effectiveStreak(streak, localDateStr());
   const animatedStreak = useCountUp(liveStreak);
@@ -216,7 +218,7 @@ export default function Dashboard() {
 
   const greeting = hour < 12 ? 'Bună dimineața' : hour < 18 ? 'Bună ziua' : 'Bună seara';
   const stats: DashboardStat[] = [
-    { label: 'Grile', numeric: quizOnlyCount, display: String(animatedQuizzes), suffix: '', color: theme.accentText, delta: trends.quizzes },
+    { label: 'Grile', numeric: ownQuizCount, display: String(animatedQuizzes), suffix: '', color: theme.accentText, delta: trends.quizzes, hint: residencyQuizCount > 0 ? `+ ${residencyQuizCount} ${residencyQuizCount === 1 ? 'set' : 'seturi'} în Rezidențiat` : undefined },
     // A streak has no meaningful week-over-week percentage — the number itself
     // already says everything, so it carries no badge.
     { label: 'Serie', numeric: liveStreak, display: `${animatedStreak} ${animatedStreak === 1 ? 'zi' : 'zile'}`, suffix: '', color: theme.warning },

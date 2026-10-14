@@ -93,7 +93,7 @@ export function ActionDock({
       className="sticky bottom-3 z-20 mt-4 pb-1"
     >
       <div
-        className={`glass-panel rounded-[var(--r-lg)] border ${layout.denseLayout ? 'px-3 py-3' : 'px-4 py-4'}`}
+        className={`glass-panel rounded-[var(--r-lg)] border ${revealed && !examMode ? 'px-3 py-2' : layout.denseLayout ? 'px-3 py-3' : 'px-4 py-4'}`}
         style={{ background: 'var(--surface)', boxShadow: 'var(--hairline-ring), var(--elev-3)' }}
       >
         {mobile && !examMode && answerStreak > 1 && (
@@ -109,6 +109,7 @@ export function ActionDock({
             calmMotion={calmMotion}
             isLast={isLast}
             denseLayout={layout.denseLayout}
+            compact
           />
         ) : (
           <div className={`flex items-start justify-between gap-3 ${mobile ? 'flex-col' : ''}`}>

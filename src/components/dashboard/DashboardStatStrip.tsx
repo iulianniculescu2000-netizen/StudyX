@@ -13,6 +13,8 @@ export type DashboardStat = {
   color: string;
   delta?: number | null;
   deltaUnit?: '%' | 'pp';
+  /** Mică precizare sub cifră (ex. „+4215 în Rezidențiat”). */
+  hint?: string;
 };
 
 /**
@@ -38,13 +40,14 @@ const DashboardStatStrip = memo(function DashboardStatStrip({ stats }: { stats: 
           initial={calmMotion ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={calmMotion ? { duration: 0 } : { delay: Math.min(index, 8) * staggerStep, duration: dur.base, ease: ease.emphasized }}
-          className={`flex items-center justify-between gap-3 px-5 py-4 border-[var(--hairline)] ${index % 2 === 1 ? 'border-l' : ''} ${index >= 2 ? 'border-t md:border-t-0' : ''} ${index === 2 ? 'md:border-l' : ''}`}
+          className={`flex items-start justify-between gap-3 px-5 py-4 border-[var(--hairline)] ${index % 2 === 1 ? 'border-l' : ''} ${index >= 2 ? 'border-t md:border-t-0' : ''} ${index === 2 ? 'md:border-l' : ''}`}
         >
           <div>
             <div className="secondary-label mb-1 font-black tracking-widest" style={{ color: theme.text3 }}>{stat.label}</div>
             <div className="text-2xl font-black tracking-tighter tabular-nums" style={{ color: theme.text }}>
               {stat.display ?? `${stat.numeric}${stat.suffix}`}
             </div>
+            {stat.hint && <div className="mt-0.5 text-[11px]" style={{ color: theme.text3 }}>{stat.hint}</div>}
           </div>
           {typeof stat.delta === 'number' && stat.delta !== 0 && (
             <div

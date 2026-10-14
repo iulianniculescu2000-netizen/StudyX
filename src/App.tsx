@@ -256,6 +256,8 @@ function AppContent({ splashVisible }: { splashVisible: boolean }) {
           <GlobalSearch />
         </Suspense>
         <main style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+          {/* Aura unică pentru toate paginile: un singur strat în spatele rutei, nu repornit la navigare. */}
+          <div className="fx-mesh" aria-hidden="true"><i /><i /><i /></div>
           <AppErrorBoundary resetKey={location.pathname}>
             {/* Suspense persistent (nu e sub `key`): la navigare pagina veche rămâne vizibilă până e gata cea nouă.
                 Intrare fără ieșire: pagina nouă urcă ușor (doar translate, fără fade, ca să nu pară spălată). */}
@@ -265,7 +267,7 @@ function AppContent({ splashVisible }: { splashVisible: boolean }) {
               initial={calmMotion ? false : { y: 8 }}
               animate={{ y: 0 }}
               transition={t.page}
-              style={{ height: '100%' }}
+              style={{ height: '100%', position: 'relative', zIndex: 1 }}
             >
                 <Routes location={location}>
                   <Route path="/" element={<PageRoute><Dashboard /></PageRoute>} />

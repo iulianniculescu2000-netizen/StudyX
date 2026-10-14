@@ -1597,7 +1597,7 @@ export default function AIChatDrawer() {
           onClick={() => setChatOpen(true)}
           aria-label="Deschide chatul AI"
           data-tutorial="ai-chat-button"
-          className="fixed right-6 z-[9998] flex h-14 w-14 items-center justify-center rounded-full press-feedback focus-ring"
+          className="fixed right-9 z-[9998] flex h-14 w-14 items-center justify-center rounded-full press-feedback focus-ring"
           style={{
             bottom: '24px',
           }}

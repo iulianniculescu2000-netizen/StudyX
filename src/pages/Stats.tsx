@@ -357,6 +357,7 @@ export default function Stats() {
             title="Nicio sesiune înregistrată"
             body="Rezolvă câteva grile pentru a-ți genera profilul de performanță."
             primary={{ label: 'Începe acum', to: '/quizzes' }}
+            secondary={{ label: 'Recapitulare zilnică', to: '/daily-review' }}
           />
         ) : (
           <>

@@ -10,7 +10,7 @@ export const dashboardTour: TourDefinition = {
     {
       id: 'dash-intro',
       title: 'Panoul tău',
-      body: (ctx) => ctx.quizCount + ctx.deckCount === 0 ? 'Profilul este gol. Începe cu Creează grilă sau Import; cifrele se completează după ce lucrezi.' : `Ai ${plural(ctx.quizCount, 'grilă', 'grile')} și ${plural(ctx.deckCount, 'pachet', 'pachete')}. Panoul adună progresul și ce urmează azi.`,
+      body: (ctx) => ctx.quizCount + ctx.deckCount === 0 ? 'Profilul este gol. Începe cu Creează grilă sau Import; cifrele se completează după ce lucrezi.' : `Ai ${plural(Math.max(0, ctx.quizCount - ctx.residencyQuizCount), 'grilă', 'grile')}${ctx.residencyQuizCount > 0 ? ` (plus ${ctx.residencyQuizCount} în Rezidențiat)` : ''} și ${plural(ctx.deckCount, 'pachet', 'pachete')}. Panoul adună progresul și ce urmează azi.`,
       icon: <LayoutDashboard size={22} />,
       placement: 'center',
       route: '/',

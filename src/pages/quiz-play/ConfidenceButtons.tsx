@@ -12,6 +12,8 @@ interface ConfidenceButtonsProps {
   /** Label changes on the last question so the user knows rating ends the session. */
   isLast: boolean;
   denseLayout?: boolean;
+  /** Single slim row for the sticky dock: covers as little of the answer/explanation as possible. */
+  compact?: boolean;
   /** When set, a countdown bar for this many ms is shown above the ratings and an
    *  inferred rating fires automatically once it runs out (see QuizPlay's handleAutoAdvance). */
   autoAdvanceMs?: number;
@@ -35,7 +37,45 @@ const OPTIONS: Array<{
  * Self-assessment row shown after the answer is revealed. Replaces the plain
  * "Next" button: picking a rating both stores the confidence and advances.
  */
-export default function ConfidenceButtons({ onRate, theme, calmMotion, isLast, denseLayout, autoAdvanceMs, onCancelAutoAdvance }: ConfidenceButtonsProps) {
+export default function ConfidenceButtons({ onRate, theme, calmMotion, isLast, denseLayout, compact, autoAdvanceMs, onCancelAutoAdvance }: ConfidenceButtonsProps) {
+  if (compact) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 6 }}
+        transition={calmMotion ? { duration: dur.instant } : { duration: dur.base, ease: ease.emphasized }}
+        className="flex w-full items-center gap-3"
+        role="group"
+        aria-label="Cât de sigur ai fost?"
+      >
+        <p className="hidden shrink-0 text-[11px] font-bold uppercase tracking-[0.14em] sm:block" style={{ color: theme.text3 }}>
+          Cât de sigur ai fost?{isLast ? ' · final' : ''}
+        </p>
+        <div className="grid min-w-0 flex-1 grid-cols-3 gap-2">
+          {OPTIONS.map((opt) => {
+            const tone = opt.tone(theme);
+            const Icon = opt.icon;
+            return (
+              <motion.button
+                key={opt.level}
+                type="button"
+                onClick={() => onRate(opt.level)}
+                aria-keyshortcuts={opt.shortcut}
+                className="press-feedback focus-ring flex items-center justify-center gap-1.5 rounded-full border px-2 py-2 text-[12px] font-bold"
+                style={{ background: `${tone}12`, borderColor: `${tone}44`, color: tone }}
+                whileTap={calmMotion ? undefined : press.whileTap}
+              >
+                <Icon size={14} aria-hidden="true" />
+                <span className="truncate">{opt.label}</span>
+                <span className="hidden font-mono text-[9px] opacity-60 sm:inline" aria-hidden="true">{opt.shortcut}</span>
+              </motion.button>
+            );
+          })}
+        </div>
+      </motion.div>
+    );
+  }
   return (
     <motion.div
       initial={{ opacity: 0, y: 14 }}

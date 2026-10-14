@@ -15,7 +15,7 @@ export const onboardingTour: TourDefinition = {
     {
       id: 'welcome',
       title: 'Bun venit în StudyX',
-      body: (ctx) => ctx.quizCount + ctx.deckCount === 0 ? 'Începe cu o grilă sau un pachet importat. Turul îți arată unde adaugi materiale și cum revii la ele; poți sări orice pas.' : `Ai ${plural(ctx.quizCount, 'grilă', 'grile')} și ${plural(ctx.deckCount, 'pachet', 'pachete')}. Turul îți arată recapitularea, biblioteca și planul din acest profil.`,
+      body: (ctx) => ctx.quizCount + ctx.deckCount === 0 ? 'Începe cu o grilă sau un pachet importat. Turul îți arată unde adaugi materiale și cum revii la ele; poți sări orice pas.' : `Ai ${plural(Math.max(0, ctx.quizCount - ctx.residencyQuizCount), 'grilă', 'grile')}${ctx.residencyQuizCount > 0 ? ` (plus ${ctx.residencyQuizCount} în Rezidențiat)` : ''} și ${plural(ctx.deckCount, 'pachet', 'pachete')}. Turul îți arată recapitularea, biblioteca și planul din acest profil.`,
       icon: <Sparkles size={22} />,
       placement: 'center',
       route: '/',

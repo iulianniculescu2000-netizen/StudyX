@@ -35,7 +35,7 @@ export default function Logo({ size = 40, className = '' }: LogoProps) {
         </linearGradient>
       </defs>
 
-      <rect width="200" height="200" rx="52" fill="#0F0F12" style={{ stroke: 'var(--hairline)', strokeWidth: 3 }} />
+      <rect className="logo-tile" width="200" height="200" rx="52" fill="#0F0F12" />
 
       {/* Pages */}
       <path d="M40,56 Q40,50 46,50 L94,54 L94,150 L46,154 Q40,154 40,148 Z" fill="white" />
