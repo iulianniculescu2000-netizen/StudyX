@@ -41,7 +41,7 @@ export default function RezidentiatQuizActions({ onAddBook, addingBook }: Props)
     { id: 'import', label: 'Importă grile', hint: 'JSON, document sau din alt AI', icon: <Upload size={16} />, run: () => open('import-folder') },
     { id: 'manual', label: 'Grilă scrisă de mână', hint: 'O creezi tu, întrebare cu întrebare', icon: <PenLine size={16} />, run: () => { setMenuOpen(false); navigate('/create'); } },
     { id: 'folder', label: 'Folder nou', hint: 'Îți organizezi grilele', icon: <FolderPlus size={16} />, run: () => open('folder') },
-    { id: 'book', label: 'Adaugă o carte', hint: 'PDF pentru capitole și AI', icon: <BookPlus size={16} />, run: () => { setMenuOpen(false); onAddBook(); } },
+    { id: 'book', label: 'Adaugă un material', hint: 'PDF pentru banca de materiale și AI', icon: <BookPlus size={16} />, run: () => { setMenuOpen(false); onAddBook(); } },
   ];
 
   return (

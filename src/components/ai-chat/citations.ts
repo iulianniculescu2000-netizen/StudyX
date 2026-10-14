@@ -1,5 +1,10 @@
+import { useMemo } from 'react';
 import { cleanSourceName, formatCitationLabel, formatPageRange, type ContextSource } from '../../ai/contextBuilder';
 import { bookOfSourceName, type BookCode } from '../../lib/curriculum';
+import { useAIStore } from '../../store/aiStore';
+import { isBundledLibraryBookName } from '../../lib/rezidentiatLibrary';
+import { isRezidentiatSource, rezidentiatFolderIds } from '../../lib/ai/sourceScope';
+import type { SourceTier } from '../../lib/bookTier';
 import type { Citation } from './shared';
 
 /** Evenimentul pe care îl ascultă cititorul de cărți. */
@@ -12,6 +17,7 @@ export interface OpenBookDetail {
   sourceId?: string;
   sourceName?: string;
   excerpt?: string;
+  tier?: Citation['tier'];
 }
 
 /** Citarea din UI pornind de la o sursă din contextul numerotat. */
@@ -27,6 +33,7 @@ export function citationFromSource(source: ContextSource, fallbackTopic = ''): C
     ...(source.pageEnd !== undefined ? { pageEnd: source.pageEnd } : {}),
     ...(source.printedPage !== undefined ? { printedPage: source.printedPage } : {}),
     ...(source.heading ? { heading: source.heading } : {}),
+    ...(source.tier ? { tier: source.tier } : {}),
   };
 }
 
@@ -56,7 +63,7 @@ export function citationChipParts(citation: Pick<Citation, 'source' | 'page' | '
 }
 
 /** Cere cititorului să deschidă pagina citată. Nu face nimic dacă nu există `window`. */
-export function openBookCitation(citation: Pick<Citation, 'source' | 'sourceId' | 'page' | 'printedPage' | 'excerpt'>): void {
+export function openBookCitation(citation: Pick<Citation, 'source' | 'sourceId' | 'page' | 'printedPage' | 'excerpt' | 'tier'>): void {
   if (typeof window === 'undefined') return;
   const detail: OpenBookDetail = {
     book: bookOfSourceName(citation.source) ?? undefined,
@@ -65,9 +72,37 @@ export function openBookCitation(citation: Pick<Citation, 'source' | 'sourceId' 
     ...(citation.sourceId ? { sourceId: citation.sourceId } : {}),
     sourceName: citation.source,
     excerpt: citation.excerpt,
+    ...(citation.tier ? { tier: citation.tier } : {}),
   };
   window.dispatchEvent(new CustomEvent<OpenBookDetail>(OPEN_BOOK_EVENT, { detail }));
 }
+
+/** Cartea de bază se recunoaște după numele fișierului inclus, cu sau fără extensie. */
+function isBundledCitationName(name: string): boolean {
+  return isBundledLibraryBookName(name) || isBundledLibraryBookName(`${name.trim()}.pdf`);
+}
+
+/**
+ * Nivelul fiecărei citări: `tier` de pe citare, când există; altfel cartea inclusă (după nume) e `book`, un document din
+ * folderul Rezidențiat e `bank`, restul `general`. Un singur calcul pentru toate citările unui mesaj.
+ */
+export function useCitationTiers(citations: readonly Pick<Citation, 'source' | 'sourceId' | 'tier'>[]): SourceTier[] {
+  const sources = useAIStore((state) => state.knowledgeSources);
+  const folders = useAIStore((state) => state.libraryFolders);
+  return useMemo(() => {
+    const rez = rezidentiatFolderIds(folders);
+    return citations.map((citation) => {
+      if (citation.tier) return citation.tier;
+      if (isBundledCitationName(citation.source)) return 'book';
+      const source = (citation.sourceId ? sources.find((item) => item.id === citation.sourceId) : undefined)
+        ?? sources.find((item) => item.name === citation.source);
+      return source && isRezidentiatSource(source, rez) ? 'bank' : 'general';
+    });
+  }, [citations, sources, folders]);
+}
+
+/** Eticheta scurtă a nivelului în chip: „Carte” pentru cărțile de bază, „Material” pentru banca de materiale. */
+export const CITATION_TIER_TAG: Record<SourceTier, string> = { book: 'Carte', bank: 'Material', general: '' };
 
 /** Eticheta de accesibilitate (română) a chip-ului. */
 export function citationAriaLabel(citation: Citation): string {

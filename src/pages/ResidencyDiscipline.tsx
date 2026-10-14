@@ -310,7 +310,7 @@ export default function ResidencyDiscipline() {
         {tab === 'carti' && (
           <BookShelf
             books={disciplineBooks}
-            emptyMessage="Nicio carte pentru această disciplină. Cărțile fără disciplină clară (ex. Sinopsis) sunt în ecranul principal, la „Cărțile tale”."
+            emptyMessage="Nicio carte pentru această disciplină. Cărțile de bază (ex. Sinopsis, fără disciplină clară) sunt în ecranul principal, la „Cărțile de bază”."
           />
         )}
 

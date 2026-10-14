@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ChunkRecord } from '../../ai/types';
 import type { AIKnowledgeSource } from '../../store/aiStore';
 import { findCitationSource, textForCitation } from './sourceCitation';
+import { REZIDENTIAT_LIBRARY_BOOKS } from '../../lib/rezidentiatLibrary';
 
 const source = { id: 'curs-1', name: 'Curs.pdf' } as AIKnowledgeSource;
 const chunk = (text: string, page: number, pageEnd?: number) => ({ text, page, ...(pageEnd ? { pageEnd } : {}) }) as ChunkRecord;
@@ -12,6 +13,12 @@ describe('citări din documente importate', () => {
     expect(findCitationSource([source], { sourceId: 'șters', sourceName: 'Curs.pdf' })).toBeUndefined();
     expect(findCitationSource([source], { sourceName: 'curs.PDF' })).toBe(source);
     expect(findCitationSource([source], { sourceName: 'Curs' })).toBe(source);
+  });
+
+  it('o citare veche a unei cărți de bază se deschide și după ce cartea a fost refăcută (alt id, același nume)', () => {
+    const bookName = REZIDENTIAT_LIBRARY_BOOKS[0].name;
+    const rebuilt = { id: 'nou-1', name: bookName } as AIKnowledgeSource;
+    expect(findCitationSource([rebuilt], { sourceId: 'vechi-9', sourceName: bookName })).toBe(rebuilt);
   });
 
   it('arată fragmentele paginii citate, inclusiv un fragment care se întinde pe mai multe pagini', () => {

@@ -316,7 +316,7 @@ function DeckTreeBody({ profileId, decks, folders, theme, query, onQueryChange, 
         icon={CreditCard}
         title="Niciun pachet de Rezidențiat încă"
         body="Apasă „+” din dreapta sus: poți crea un folder, scrie un pachet, genera unul cu AI din cărțile tale sau importa din CSV și Anki."
-        primary={{ label: 'Cărțile tale', to: '/rezidentiat' }}
+        primary={{ label: 'Cărțile de bază', to: '/rezidentiat' }}
       />
     );
   }

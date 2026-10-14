@@ -50,3 +50,19 @@ describe('chip-uri de citare în răspuns', () => {
     expect(container.querySelector('img')).toBeNull();
   });
 });
+
+describe('nivelul citării (carte / material)', () => {
+  it('cartea inclusă primește data-tier="book", după nume', () => {
+    const book = citationFromSource({ n: 1, source: 'Sinopsis de medicină.pdf', sourceId: 'x', heading: 'Pediatrie', excerpt: 'Text', score: 1 } as never);
+    const { container } = render(<MarkdownRenderer content="Vezi [1]." citations={[book]} />);
+    expect(container.querySelector('.ai-md-cite')?.getAttribute('data-tier')).toBe('book');
+  });
+
+  it('tier-ul de pe citare are prioritate, iar un document obișnuit rămâne „general”', () => {
+    const bank = { ...citations[0], tier: 'bank' as const };
+    const { container, rerender } = render(<MarkdownRenderer content="Vezi [1]." citations={[bank]} />);
+    expect(container.querySelector('.ai-md-cite')?.getAttribute('data-tier')).toBe('bank');
+    rerender(<MarkdownRenderer content="Vezi [1]." citations={[citations[0]]} />);
+    expect(container.querySelector('.ai-md-cite')?.getAttribute('data-tier')).toBe('general');
+  });
+});

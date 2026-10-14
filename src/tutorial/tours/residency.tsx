@@ -31,7 +31,7 @@ const overviewSteps: TourStep[] = [
     {
       id: 'residency-add',
       title: 'Grilele tale, cu „+”',
-      body: 'Din acest buton faci grile cu AI (alegi nivelul), imporți grile dintr-un fișier sau dintr-un alt AI, scrii o grilă de mână, creezi un folder sau adaugi o carte.',
+      body: 'Din acest buton faci grile cu AI (alegi nivelul), imporți grile dintr-un fișier sau dintr-un alt AI, scrii o grilă de mână, creezi un folder sau adaugi un material PDF în banca ta.',
       icon: <Plus size={22} />,
       target: '[data-tutorial="rez-quiz-add"]',
       targetPadding: 6,
@@ -56,7 +56,7 @@ const overviewSteps: TourStep[] = [
     {
       id: 'residency-resources',
       title: 'Resurse',
-      body: 'Carduri Kumar, cărțile tale (cu capitole, discuții și grile generate din ele) și un chat care răspunde cu trimitere la capitol. Grilele generate de AI intră singure în Grile › specialitate.',
+      body: 'Cărțile de bază (Kumar, Lawrence, Sinopsis) vin cu aplicația și sunt sursa de adevăr; materialele tale le completează. Aici ai Organizarea, cardurile și un chat care răspunde din cărți, cu pagina. Grilele generate de AI intră singure în Grile › specialitate.',
       icon: <BookOpen size={22} />,
       target: '[data-tutorial="residency-resources"]',
       targetPadding: 8,

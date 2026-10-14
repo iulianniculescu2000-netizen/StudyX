@@ -7,7 +7,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { copyText } from './diagramExport';
 import { BR_MARK, hasMath, isDiagramLang, isMermaidSource, normalizeMarkdown, safeUrl, splitMarkdownBlocks } from './markdown';
 import { CitationsContext, DiagramActionsContext, StreamingBlockContext, type DiagramActions } from './markdownContext';
-import { citationAriaLabel, citationLabel, openBookCitation } from './citations';
+import { citationAriaLabel, citationLabel, openBookCitation, useCitationTiers } from './citations';
 import { parseInlineCitations } from '../../ai/contextBuilder';
 import type { Citation } from './shared';
 import { useMathPlugins, type MathPlugins } from './mathLoader';
@@ -81,6 +81,7 @@ function rehypeCitations(options: { citations: readonly Citation[] }) {
 function CiteChip({ n }: { n: number }) {
   const citations = useContext(CitationsContext);
   const citation = citations.find((entry) => entry.n === n);
+  const tier = useCitationTiers(citation ? [citation] : NO_CITATIONS)[0] ?? 'general';
   if (!citation) return <span>{`[${n}]`}</span>;
   const label = citationLabel(citation);
   const canOpen = citation.page !== undefined || citation.printedPage !== undefined || citation.sourceId || bookOfSource(citation.source);
@@ -89,6 +90,7 @@ function CiteChip({ n }: { n: number }) {
     <button
       type="button"
       className="ai-md-cite"
+      data-tier={tier}
       aria-label={citationAriaLabel(citation)}
       title={citation.excerpt}
       onClick={() => openBookCitation(citation)}

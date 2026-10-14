@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { FileText, Image, MoreHorizontal, RefreshCw, X } from 'lucide-react';
+import { FileText, Image, Lock, MoreHorizontal, RefreshCw, X } from 'lucide-react';
 import type { AIKnowledgeSource } from '../../store/aiStore';
 import { useTheme } from '../../theme/ThemeContext';
 import type { ReindexState } from '../../hooks/useReindexSources';
@@ -32,15 +32,19 @@ interface SourceRowProps {
   onCancelMove: () => void;
   onMove: (sourceId: string, folderId: string | null) => void;
   onRequestDelete: (source: AIKnowledgeSource) => void;
+  /** Carte de bază: fără mutare, ștergere sau reindexare; se deschide în cititorul cărții, nu în previzualizarea de text. */
+  locked?: boolean;
+  onOpenBook?: (source: AIKnowledgeSource) => void;
 }
 
 export default function SourceRow({
   source, index, performanceLite, folderName, isSearchingTop, menuOpen, menuPos, moving, missingPages,
   reindexState, reindexBusy, folderOptions, onOpenReader, onAsk, onOpenStudio, onReindex, onToggleMenu,
-  onCloseMenu, onStartMove, onCancelMove, onMove, onRequestDelete,
+  onCloseMenu, onStartMove, onCancelMove, onMove, onRequestDelete, locked = false, onOpenBook,
 }: SourceRowProps) {
   const theme = useTheme();
   const isReady = source.indexStatus !== 'indexing' && source.indexStatus !== 'error';
+  const open = locked && onOpenBook ? onOpenBook : onOpenReader;
   return (
     <motion.div
       layout={!performanceLite}
@@ -54,7 +58,7 @@ export default function SourceRow({
       <div className="flex items-center gap-3">
         <button
           type="button"
-          onClick={() => onOpenReader(source)}
+          onClick={() => open(source)}
           className="flex min-w-0 flex-1 items-center gap-3 text-left"
           aria-label={`${isReady ? 'Deschide' : 'Vezi starea pentru'} ${source.name}`}
         >
@@ -65,12 +69,12 @@ export default function SourceRow({
               color: source.type === 'image' ? theme.warning : theme.accent,
             }}
           >
-            {source.type === 'image' ? <Image size={18} /> : <FileText size={18} />}
+            {source.type === 'image' ? <Image size={18} /> : locked ? <Lock size={16} /> : <FileText size={18} />}
           </div>
           <div className="min-w-0 flex-1">
             <div className="truncate text-[14px] font-semibold" style={{ color: theme.text }}>{source.name.replace(/\.(pdf|docx|txt|md)$/i, '')}</div>
             <div className="truncate text-[12px]" style={{ color: theme.text3 }}>
-              {source.type.toUpperCase()}
+              {locked ? 'Carte de bază · inclusă în aplicație' : source.type.toUpperCase()}
               {(source.chunkCount ?? 0) > 0 && ` · ${source.chunkCount!.toLocaleString('ro-RO')} fragmente`}
               {` · ${source.wordCount.toLocaleString('ro-RO')} cuvinte`}
               {` · ${new Date(source.addedAt).toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' })}`}
@@ -101,7 +105,7 @@ export default function SourceRow({
         </button>
       </div>
 
-      {missingPages && isReady && reindexState?.sourceId !== source.id && (
+      {!locked && missingPages && isReady && reindexState?.sourceId !== source.id && (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <span className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold" style={{ background: `${theme.warning}18`, color: theme.warning }}>
             Fără pagini
@@ -158,10 +162,10 @@ export default function SourceRow({
             role="menu"
           >
             {[
-              { label: isReady ? 'Deschide' : 'Vezi starea', run: () => onOpenReader(source), needsReady: false },
+              { label: isReady ? 'Deschide' : 'Vezi starea', run: () => open(source), needsReady: false },
               { label: 'Întreabă AI', run: () => onAsk(source), needsReady: true },
               { label: 'AI Studio', run: () => onOpenStudio(source), needsReady: true },
-              { label: 'Mută în folder', run: () => onStartMove(source.id), needsReady: false },
+              ...(locked ? [] : [{ label: 'Mută în folder', run: () => onStartMove(source.id), needsReady: false }]),
             ].map((item) => (
               <button
                 key={item.label}
@@ -175,16 +179,20 @@ export default function SourceRow({
                 {item.label}
               </button>
             ))}
-            <div className="my-1" style={{ borderTop: '1px solid var(--hairline)' }} />
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => { onCloseMenu(); onRequestDelete(source); }}
-              className="fine-row block w-full px-3.5 py-2 text-left text-[13px]"
-              style={{ color: theme.danger, borderRadius: 0 }}
-            >
-              Șterge documentul
-            </button>
+            {!locked && (
+              <>
+                <div className="my-1" style={{ borderTop: '1px solid var(--hairline)' }} />
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => { onCloseMenu(); onRequestDelete(source); }}
+                  className="fine-row block w-full px-3.5 py-2 text-left text-[13px]"
+                  style={{ color: theme.danger, borderRadius: 0 }}
+                >
+                  Șterge documentul
+                </button>
+              </>
+            )}
           </div>
         </Portal>
       )}

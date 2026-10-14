@@ -80,7 +80,7 @@ export default function PlanChapters({ code, source, overview, plan, focusIndex 
   };
 
   const unavailableReason = !source
-    ? 'Cartea nu e în bibliotecă'
+    ? 'Cartea se pregătește pentru căutare'
     : !ready
       ? 'Cartea nu e indexată încă'
       : 'Capitolul nu a fost găsit în textul indexat';
@@ -98,7 +98,7 @@ export default function PlanChapters({ code, source, overview, plan, focusIndex 
     <div className="py-1">
       {!source && (
         <p className="py-3 text-[12.5px]" style={{ color: theme.text3 }}>
-          Cartea nu e în bibliotecă: capitolele rămân aici, dar fără text pentru citit sau AI. Adaug-o din Bibliotecă.
+          Cartea se pregătește pentru căutare și AI. Poți citi capitolele chiar acum, direct din carte.
         </p>
       )}
       {chapters.map((chapter, position) => {
@@ -220,10 +220,11 @@ export default function PlanChapters({ code, source, overview, plan, focusIndex 
                     <ChapterLink icon={<ListChecks size={12} />} label={`Grile din aplicație${bank.count > 0 ? ` · ${bank.count.toLocaleString('ro-RO')}` : ''}`} to={bank.href} />
                   )}
                   <ChapterLink icon={<CalendarRange size={12} />} label="Deschide în Organizare" to={organizareChapterHref(chapter.index, { phase: plan.phase })} />
-                  {canOpenFile && (
+                  {/* Cartea de bază se deschide din aplicație, fără folder ales; doar fișierul propriu al studentului cere folderul cu materiale. */}
+                  {canOpenFile && topics[0].file && (
                     <ChapterAction
                       icon={<FileText size={12} />}
-                      label={topics[0].file ? 'Deschide fișierul' : 'Deschide cartea'}
+                      label="Deschide fișierul"
                       onClick={() => void openStudyFile(plan.profileId, fileForTopic(topics[0]))}
                     />
                   )}

@@ -1,6 +1,7 @@
 import { getVaultChunksBySource } from '../../ai/vectorStore';
 import type { ChunkRecord } from '../../ai/types';
 import type { AIKnowledgeSource } from '../../store/aiStore';
+import { isBundledLibraryBookName } from '../../lib/rezidentiatLibrary';
 
 export interface SourceCitationTarget {
   sourceId?: string;
@@ -8,12 +9,20 @@ export interface SourceCitationTarget {
   pdfPage?: number;
   printedPage?: number;
   excerpt?: string;
+  /** Nivelul sursei citate (carte de bază / material), dacă se știe. */
+  tier?: 'book' | 'bank' | 'general';
 }
 
 export function findCitationSource(sources: readonly AIKnowledgeSource[], target: SourceCitationTarget): AIKnowledgeSource | undefined {
-  if (target.sourceId) return sources.find((source) => source.id === target.sourceId);
   const normalized = (name: string) => name.trim().replace(/\.(pdf|docx?|txt|md)$/i, '').toLocaleLowerCase();
   const name = target.sourceName ? normalized(target.sourceName) : '';
+  if (target.sourceId) {
+    const byId = sources.find((source) => source.id === target.sourceId);
+    if (byId) return byId;
+    // Id-ul unei cărți de bază se schimbă dacă a fost refăcută (ștearsă și readăugată): numele ei garantează același conținut,
+    // deci citările mai vechi din chat tot se deschid. La un document obișnuit un id dispărut rămâne dispărut.
+    return name && isBundledLibraryBookName(target.sourceName ?? '') ? sources.find((source) => normalized(source.name) === name) : undefined;
+  }
   return name ? sources.find((source) => normalized(source.name) === name) : undefined;
 }
 

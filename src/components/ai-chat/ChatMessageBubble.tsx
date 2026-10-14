@@ -8,7 +8,8 @@ import AIMarkdown from './AIMarkdown';
 import Mascot from '../Mascot';
 import AIThinkingIndicator from './AIThinkingIndicator';
 import CrossCheckCard from './CrossCheckCard';
-import { citationChipParts, citationLabel, citationOpenLabel } from './citations';
+import { CITATION_TIER_TAG, citationChipParts, citationLabel, citationOpenLabel, useCitationTiers } from './citations';
+import type { Citation as CitationType } from './shared';
 import { CHAT_MODES, getContextState, type ChatMessage, type ChatMode, type Citation, type OptionCard } from './shared';
 import OptionCardView from './OptionCardView';
 import { servedBadgeText } from './servedBadge';
@@ -58,11 +59,13 @@ interface ChatMessageBubbleProps {
   actions: ChatMessageActions;
 }
 
+const NO_CITATIONS: readonly CitationType[] = [];
 const citationKeyOf = (index: number, citation: Citation) => `${index}-${citation.n ?? ''}-${citation.source}-${citation.topic}`;
 
 function ChatMessageBubble({
   message, index, isLastAssistant, streaming, question, activeCitationKey, agentResult, fallbackMode, theme, calmMotion, actions,
 }: ChatMessageBubbleProps) {
+  const tiers = useCitationTiers(message.citations ?? NO_CITATIONS);
   return (
     <motion.div
       initial={false}
@@ -168,8 +171,9 @@ function ChatMessageBubble({
               <span className="citation-pill">{getContextState(message.citations)}</span>
             </div>
             <div className="flex flex-wrap gap-2">
-              {message.citations.map((citation) => {
+              {message.citations.map((citation, citationIndex) => {
                 const citationKey = citationKeyOf(index, citation);
+                const tier = tiers[citationIndex] ?? 'general';
                 const isActiveCitation = activeCitationKey === citationKey;
                 const chip = citationChipParts(citation);
                 return (
@@ -177,11 +181,13 @@ function ChatMessageBubble({
                     key={citationKey}
                     onClick={() => actions.toggleCitation(isActiveCitation ? null : citationKey)}
                     className="citation-source"
+                    data-tier={tier}
                     data-active={isActiveCitation}
                     title={chip.full}
-                    aria-label={`${citation.n ? `Sursa ${citation.n}: ` : ''}${chip.full}`}
+                    aria-label={`${citation.n ? `Sursa ${citation.n}: ` : ''}${CITATION_TIER_TAG[tier] ? `${CITATION_TIER_TAG[tier]}, ` : ''}${chip.full}`}
                   >
                     {citation.n ? <span className="citation-source-n" aria-hidden="true">{citation.n}</span> : null}
+                    {CITATION_TIER_TAG[tier] && <span className="citation-source-tier" aria-hidden="true">{CITATION_TIER_TAG[tier]}</span>}
                     <span className="citation-source-title">{chip.title}</span>
                     {chip.where && <span className="citation-source-page">{chip.where}</span>}
                   </button>

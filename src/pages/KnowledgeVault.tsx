@@ -34,7 +34,13 @@ import ReindexNameConfirm from '../components/residency/ReindexNameConfirm';
 import EmptyState from '../components/ui/EmptyState';
 import { suggestFolderAppearance } from '../lib/folderAppearance';
 import { isBundledLibraryBookName } from '../lib/rezidentiatLibrary';
-import { FILTERS, filterByType, plainSearchText, scopeVaultToGeneral, type TypeFilter } from './knowledge-vault/helpers';
+import { FILTERS, filterByType, plainSearchText, type TypeFilter } from './knowledge-vault/helpers';
+import BaseBooksGroup from './knowledge-vault/BaseBooksGroup';
+import { groupByTier } from '../lib/bookTier';
+import { isProtectedSource } from '../lib/bookProtection';
+import { findRezidentiatRootFolder, isRezidentiatRootFolder } from '../lib/rezidentiatRoot';
+import { bookOfSourceName } from '../lib/curriculum';
+import { dispatchOpenBook } from '../components/pdf/bookRequest';
 import FolderRow from './knowledge-vault/FolderRow';
 import SourceRow, { type MenuPos } from './knowledge-vault/SourceRow';
 import ReaderModal from './knowledge-vault/ReaderModal';
@@ -49,11 +55,11 @@ export default function KnowledgeVault() {
   const removeKnowledgeSource = useAIStore((state) => state.removeKnowledgeSource);
   const findSourcesWithoutPages = useAIStore((state) => state.findSourcesWithoutPages);
   const allLibraryFolders = useAIStore((state) => state.libraryFolders);
-  // Cărțile de Rezidențiat (și folderele lor) trăiesc doar în secțiunea Rezidențiat; Biblioteca AI rămâne pentru restul.
-  const { libraryFolders, knowledgeSources } = useMemo(
-    () => scopeVaultToGeneral(allLibraryFolders, allKnowledgeSources),
-    [allLibraryFolders, allKnowledgeSources],
-  );
+  // Ierarhia din Rezidențiat se vede și aici: cărțile de bază fixate sus, apoi materialele din Rezidențiat, apoi restul bibliotecii.
+  const libraryFolders = allLibraryFolders;
+  const knowledgeSources = allKnowledgeSources;
+  const rezRoot = useMemo(() => findRezidentiatRootFolder(libraryFolders), [libraryFolders]);
+  const baseBookIds = useMemo(() => new Set(groupByTier(knowledgeSources, libraryFolders).book.map((source) => source.id)), [knowledgeSources, libraryFolders]);
   const addLibraryFolder = useAIStore((state) => state.addLibraryFolder);
   const deleteLibraryFolder = useAIStore((state) => state.deleteLibraryFolder);
   const renameLibraryFolder = useAIStore((state) => state.renameLibraryFolder);
@@ -108,14 +114,16 @@ export default function KnowledgeVault() {
     const counts = new Map<string, number>();
     let unfiled = 0;
     for (const source of knowledgeSources) {
+      // Cărțile de bază au grupul lor, deasupra folderelor: nu se numără în foldere.
+      if (baseBookIds.has(source.id)) continue;
       if (source.folderId) counts.set(source.folderId, (counts.get(source.folderId) ?? 0) + 1);
       else unfiled += 1;
     }
     return { counts, unfiled };
-  }, [knowledgeSources]);
+  }, [knowledgeSources, baseBookIds]);
 
   const rootFolders = useMemo(
-    () => libraryFolders.filter((folder) => !folder.parentId),
+    () => libraryFolders.filter((folder) => !folder.parentId && !isRezidentiatRootFolder(folder)),
     [libraryFolders],
   );
 
@@ -177,8 +185,9 @@ export default function KnowledgeVault() {
     if (q) {
       list = list.filter((s) => plainSearchText(s.name).includes(q) || plainSearchText(s.preview).includes(q));
     }
-    return [...list].sort((a, b) => b.addedAt - a.addedAt);
-  }, [knowledgeSources, activeFolderId, search]);
+    // Cărțile de bază primele, apoi cele mai noi.
+    return [...list].sort((a, b) => Number(baseBookIds.has(b.id)) - Number(baseBookIds.has(a.id)) || (baseBookIds.has(a.id) ? 'KLS'.indexOf(bookOfSourceName(a.name) ?? "S") - 'KLS'.indexOf(bookOfSourceName(b.name) ?? "S") : 0) || b.addedAt - a.addedAt);
+  }, [knowledgeSources, activeFolderId, search, baseBookIds]);
 
   // Unfiltered by the search box — the exam plan card needs every source
   // directly in this folder, not just the ones matching the current query.
@@ -394,11 +403,12 @@ export default function KnowledgeVault() {
 
   const showFolderList = isTopLevel && !search.trim();
   const isSearchingTop = isTopLevel && !!search.trim();
-  const showRecents = showFolderList && knowledgeSources.length >= 4;
+  const ownSources = knowledgeSources.filter((source) => !baseBookIds.has(source.id));
+  const showRecents = showFolderList && ownSources.length >= 4;
   const recentSources = showRecents
-    ? [...knowledgeSources].sort((a, b) => b.addedAt - a.addedAt).slice(0, 3)
+    ? [...ownSources].sort((a, b) => b.addedAt - a.addedAt).slice(0, 3)
     : [];
-  const showEmptyHint = showFolderList && knowledgeSources.length === 0 && rootFolders.length === 0;
+  const showEmptyHint = showFolderList && ownSources.length === 0 && rootFolders.length === 0 && !rezRoot;
 
   const typeFilteredSources = filterByType(visibleSources, typeFilter);
 
@@ -421,6 +431,13 @@ export default function KnowledgeVault() {
       ...(room < 220 ? { bottom: window.innerHeight - rect.top + 4 } : { top: rect.bottom + 4 }),
     });
     setMenuSourceId(source.id);
+  };
+
+  /** O carte de bază se deschide în cititorul cărții (din aplicație, fără folder ales); altfel în previzualizarea de text. */
+  const openBaseBook = (source: AIKnowledgeSource) => {
+    const code = bookOfSourceName(source.name);
+    if (code) dispatchOpenBook({ book: code, pdfPage: 1 });
+    else void openReader(source);
   };
 
   const renderSourceRow = (source: AIKnowledgeSource, index: number) => (
@@ -448,6 +465,8 @@ export default function KnowledgeVault() {
       onCancelMove={() => setMovingSourceId(null)}
       onMove={(sourceId, folderId) => { moveSourceToLibraryFolder(sourceId, folderId); setMovingSourceId(null); }}
       onRequestDelete={(s) => setSourceToDelete({ id: s.id, name: s.name })}
+      locked={isProtectedSource(source)}
+      onOpenBook={openBaseBook}
     />
   );
 
@@ -458,7 +477,7 @@ export default function KnowledgeVault() {
       index={index}
       docCount={folderCounts.counts.get(folder.id) ?? 0}
       subCount={subfoldersByParent.get(folder.id)?.length ?? 0}
-      fragments={knowledgeSources.reduce((sum, s) => (s.folderId === folder.id ? sum + (s.chunkCount ?? 0) : sum), 0)}
+      fragments={knowledgeSources.reduce((sum, s) => (s.folderId === folder.id && !baseBookIds.has(s.id) ? sum + (s.chunkCount ?? 0) : sum), 0)}
       onOpen={onOpen}
       onDelete={() => setFolderToDelete({ id: folder.id, name: folder.name })}
       onRename={(name) => renameLibraryFolder(folder.id, name)}
@@ -607,6 +626,8 @@ export default function KnowledgeVault() {
         </div>
 
         {/* ── TOP LEVEL ── */}
+        {showFolderList && <BaseBooksGroup onAsk={askAIAboutSource} />}
+
         {showRecents && (
           <section>
             <SectionLabel className="mb-2">Recente</SectionLabel>
@@ -634,6 +655,15 @@ export default function KnowledgeVault() {
           </section>
         )}
 
+        {showFolderList && rezRoot && (
+          <section>
+            <SectionLabel className="mb-2">Materiale din Rezidențiat</SectionLabel>
+            <div className="glass-panel overflow-hidden rounded-[var(--r-md)]">
+              {renderFolderRow(rezRoot, 0, () => setActiveFolderId(rezRoot.id))}
+            </div>
+          </section>
+        )}
+
         {showFolderList && (
           <section>
             <SectionLabel className="mb-2">Foldere</SectionLabel>
@@ -649,8 +679,8 @@ export default function KnowledgeVault() {
               ) : (
               <EmptyState
                 icon={Library}
-                title="Biblioteca e goală"
-                body="Adaugă PDF-uri, documente Word sau imagini, iar AI-ul le folosește ca sursă pentru răspunsuri."
+                title="Niciun document propriu încă"
+                body="Adaugă PDF-uri, documente Word sau imagini, iar AI-ul le folosește ca sursă pentru răspunsuri, alături de cărțile de bază."
                 primary={{ label: 'Adaugă fișiere', onClick: () => fileInputRef.current?.click() }}
               />
               )

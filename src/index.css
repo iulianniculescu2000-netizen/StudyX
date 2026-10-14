@@ -768,6 +768,61 @@ button.citation-source:hover {
   transform: translateY(-1px);
 }
 
+/* Nivelul sursei: cartea de bază (accent plin, pagina vizibilă) față de un material din banca studentului (mai discret). */
+.citation-source-tier {
+  flex-shrink: 0;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.citation-source[data-tier="book"],
+.citation-source[data-tier="book"][data-active="true"],
+button.citation-source[data-tier="book"]:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 84%, black);
+  color: #fff;
+  font-weight: 700;
+}
+
+.citation-source[data-tier="book"] .citation-source-n {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+.citation-source[data-tier="book"] .citation-source-page {
+  color: #fff;
+  font-weight: 700;
+}
+
+button.citation-source[data-tier="book"]:hover {
+  filter: brightness(1.08);
+}
+
+.citation-source[data-tier="bank"] {
+  background: transparent;
+  box-shadow: none;
+  font-weight: 500;
+  color: var(--text3);
+}
+
+.citation-source[data-tier="bank"] .citation-source-tier {
+  color: var(--text3);
+}
+
+.ai-md-cite[data-tier="book"] {
+  border-color: var(--accent-glow);
+  background: var(--accent-soft);
+  color: inherit;
+}
+
+.ai-md-cite[data-tier="bank"] {
+  border-style: dashed;
+  background: transparent;
+  opacity: 0.85;
+}
+
 .premium-option-card {
   isolation: isolate;
 }

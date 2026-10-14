@@ -67,7 +67,7 @@ export default function FolderRow({ folder, index, docCount, subCount, fragments
           )}
           <div className="truncate text-[12px]" style={{ color: theme.text3 }}>
             {isEmpty
-              ? 'Gol'
+              ? (isRezidentiat ? 'Încă fără materiale proprii' : 'Gol')
               : `${docCount} ${docCount === 1 ? 'document' : 'documente'}${fragments > 0 ? ` · ${fragments.toLocaleString('ro-RO')} fragmente` : ''}${subCount > 0 ? ` · ${subCount} ${subCount === 1 ? 'subfolder' : 'subfoldere'}` : ''}`}
           </div>
         </div>
@@ -94,16 +94,19 @@ export default function FolderRow({ folder, index, docCount, subCount, fragments
             <Pencil size={13} />
           </button>
         )}
-        <button
-          type="button"
-          onClick={onDelete}
-          aria-label={`Șterge folderul ${folder.name}`}
-          title="Șterge folderul"
-          className="fine-row flex h-7 w-7 items-center justify-center rounded-full opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
-          style={{ color: theme.danger }}
-        >
-          <Trash2 size={13} />
-        </button>
+        {/* Folderul Rezidențiat ține cărțile de bază: nu se șterge. */}
+        {!isRezidentiat && (
+          <button
+            type="button"
+            onClick={onDelete}
+            aria-label={`Șterge folderul ${folder.name}`}
+            title="Șterge folderul"
+            className="fine-row flex h-7 w-7 items-center justify-center rounded-full opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+            style={{ color: theme.danger }}
+          >
+            <Trash2 size={13} />
+          </button>
+        )}
         <ChevronRight size={16} style={{ color: theme.text3 }} aria-hidden="true" />
       </div>
     </div>

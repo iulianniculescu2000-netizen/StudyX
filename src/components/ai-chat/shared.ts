@@ -17,6 +17,8 @@ export type Citation = {
   /** Numărul tipărit pe pagină în carte. */
   printedPage?: number;
   heading?: string;
+  /** Nivelul sursei: 'book' (carte de bază) sau 'bank' (material). Lipsește în scopul general și la mesajele vechi. */
+  tier?: 'book' | 'bank' | 'general';
 };
 
 /** Starea unei cereri „fă-mi flashcarduri / grile”: ce a ales utilizatorul și cum a mers generarea. Doar JSON simplu, ca să se salveze cu mesajul. */

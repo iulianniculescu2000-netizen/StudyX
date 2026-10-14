@@ -34,4 +34,28 @@ describe('SourceRow', () => {
     expect(onAsk).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Întreabă' })).toBeDisabled();
   });
+
+  it('o carte de bază e blocată: se deschide în cititorul cărții, iar meniul nu are mutare sau ștergere', () => {
+    const onOpenBook = vi.fn();
+    const onOpenReader = vi.fn();
+    render(
+      <ThemeProvider>
+        <SourceRow
+          source={{ ...source('indexing'), indexStatus: 'ready', name: 'Sinopsis de medicină.pdf' } as AIKnowledgeSource} index={0} performanceLite folderName={null}
+          isSearchingTop={false} menuOpen menuPos={{ right: 8, top: 8 }} moving={false}
+          missingPages reindexState={null} reindexBusy={false} folderOptions={[]}
+          onOpenReader={onOpenReader} onAsk={vi.fn()} onOpenStudio={vi.fn()}
+          onReindex={vi.fn()} onToggleMenu={vi.fn()} onCloseMenu={vi.fn()}
+          onStartMove={vi.fn()} onCancelMove={vi.fn()} onMove={vi.fn()}
+          onRequestDelete={vi.fn()} locked onOpenBook={onOpenBook}
+        />
+      </ThemeProvider>,
+    );
+    expect(screen.queryByText('Șterge documentul')).toBeNull();
+    expect(screen.queryByText('Mută în folder')).toBeNull();
+    expect(screen.queryByText('Fără pagini')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Deschide Sinopsis de medicină.pdf' }));
+    expect(onOpenBook).toHaveBeenCalledOnce();
+    expect(onOpenReader).not.toHaveBeenCalled();
+  });
 });

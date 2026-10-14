@@ -2,11 +2,9 @@ import { useMemo, useState } from 'react';
 import { Download, Loader2 } from 'lucide-react';
 import { useTheme } from '../../theme/ThemeContext';
 import SectionLabel from '../ui/SectionLabel';
-import { useAIStore } from '../../store/aiStore';
 import { useQuizStore } from '../../store/quizStore';
 import { useToastStore } from '../../store/toastStore';
 import { importRezidentiatBank, isBankImported, REZIDENTIAT_BANKS } from '../../lib/rezidentiatBank';
-import { importRezidentiatLibraryBook, isLibraryBookImported, REZIDENTIAT_LIBRARY_BOOKS } from '../../lib/rezidentiatLibrary';
 
 interface PendingItem {
   key: string;
@@ -16,15 +14,13 @@ interface PendingItem {
 }
 
 /**
- * Bundled content (real question banks, reference books) that hasn't been
- * added yet. Renders nothing once everything is imported, so a future bank or
- * book added to the registries shows up here on its own.
+ * Băncile de grile incluse care nu au fost încă adăugate. Nu arată nimic când toate sunt importate, deci o bancă nouă din registru
+ * apare aici singură. Cărțile de bază nu sunt aici: vin cu aplicația și se pregătesc singure (vezi `BundledBooksSection`).
  */
 export default function ImportPanel() {
   const theme = useTheme();
   const addToast = useToastStore((state) => state.addToast);
   const quizzes = useQuizStore((state) => state.quizzes);
-  const knowledgeSources = useAIStore((state) => state.knowledgeSources);
   const [busyKey, setBusyKey] = useState<string | null>(null);
 
   const pending = useMemo<PendingItem[]>(() => {
@@ -37,19 +33,10 @@ export default function ImportPanel() {
         return `${bank.label}: ${result.quizzes} seturi, ${result.questions} grile adăugate.`;
       },
     }));
-    const books = REZIDENTIAT_LIBRARY_BOOKS.filter((book) => !isLibraryBookImported(book)).map((book) => ({
-      key: `book:${book.id}`,
-      label: book.label,
-      description: book.description,
-      run: async () => {
-        await importRezidentiatLibraryBook(book);
-        return `${book.label} adăugată în bibliotecă.`;
-      },
-    }));
-    return [...banks, ...books];
-    // Re-evaluated whenever either store changes (e.g. right after an import).
+    return banks;
+    // Re-evaluated whenever the quiz store changes (e.g. right after an import).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quizzes, knowledgeSources]);
+  }, [quizzes]);
 
   const runItems = async (items: PendingItem[], busy: string) => {
     if (busyKey) return;
@@ -68,7 +55,7 @@ export default function ImportPanel() {
   return (
     <section>
       <div className="mb-2 flex items-center justify-between">
-        <SectionLabel>De adăugat</SectionLabel>
+        <SectionLabel>Bănci de grile de adăugat</SectionLabel>
         {pending.length > 1 && (
           <button
             type="button"

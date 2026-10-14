@@ -1,27 +1,24 @@
 import { plural } from '../lib/plural';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ChevronRight, Layers, Loader2, MessageCircle, Play, Scissors, Stethoscope, Library, HeartPulse, BookOpen, CalendarRange } from 'lucide-react';
+import { ChevronRight, Layers, Loader2, MessageCircle, Play, Scissors, Stethoscope, HeartPulse, CalendarRange } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
-import { useAIStore } from '../store/aiStore';
 import { useQuizStore } from '../store/quizStore';
 import { useFolderStore } from '../store/folderStore';
 import { isFlashcardDeck } from '../lib/deckKind';
 import { buildResidencyContext, classifyResidencyDeck } from '../lib/flashcardGroups';
 import { useUIStore } from '../store/uiStore';
 import { useToastStore } from '../store/toastStore';
-import { useAdaptiveMotion } from '../hooks/useAdaptiveMotion';
 import TourHelpButton from '../tutorial/TourHelpButton';
-import BookShelf from '../components/residency/BookShelf';
-import BookLibraryTools from '../components/residency/BookLibraryTools';
+import BundledBooksSection from '../components/residency/BundledBooksSection';
+import MaterialsBank from '../components/residency/MaterialsBank';
 import RezidentiatQuizActions, { UserQuizFolders } from '../components/residency/RezidentiatQuizActions';
 import { useAddRezidentiatBook } from '../hooks/useAddRezidentiatBook';
 import ImportPanel from '../components/residency/ImportPanel';
-import { useRezidentiatOverview, useResidencyBooks } from '../components/residency/useResidencyData';
+import { useRezidentiatOverview } from '../components/residency/useResidencyData';
 import type { BookCode } from '../lib/curriculum';
 import { disciplineKey } from '../lib/rezidentiatOverview';
 import { startKumarDeckRoute } from '../lib/startKumarDeck';
-import { REZIDENTIAT_ROOT_NAME } from '../lib/rezidentiatRoot';
 import { adoptStrayResidencyQuizzes } from '../lib/rezidentiatPlacement';
 import { useUserStore } from '../store/userStore';
 import { useOrganizareStore } from '../store/organizareStore';
@@ -30,7 +27,6 @@ import FxPage from '../components/fx/FxPage';
 import PageHeader from '../components/ui/PageHeader';
 import SectionLabel from '../components/ui/SectionLabel';
 import PageSkeleton from '../components/ui/PageSkeleton';
-import EmptyState from '../components/ui/EmptyState';
 import DuplicatesPanel from '../components/residency/DuplicatesPanel';
 import PlanCard from '../components/residency/PlanCard';
 import ContinueChapter from '../components/residency/ContinueChapter';
@@ -82,12 +78,9 @@ function ResourceRow({
 export default function Residency() {
   const theme = useTheme();
   const navigate = useNavigate();
-  const { calmMotion } = useAdaptiveMotion();
   const addToast = useToastStore((state) => state.addToast);
   const setChatOpen = useUIStore((state) => state.setChatOpen);
-  const addLibraryFolder = useAIStore((state) => state.addLibraryFolder);
   const overview = useRezidentiatOverview();
-  const { books, hasLibraryRoot } = useResidencyBooks();
   // /rezidentiat?book=K&chapter=10 (din Ctrl+K și din Organizare) deschide cartea și capitolul.
   const [searchParams] = useSearchParams();
   const linked = useMemo(() => {
@@ -96,7 +89,6 @@ export default function Residency() {
     if ((code !== 'K' && code !== 'L' && code !== 'S') || !Number.isInteger(index) || index < 0) return null;
     return { code: code as BookCode, index, token: 1 };
   }, [searchParams]);
-  const [showBooks, setShowBooks] = useState(() => linked !== null);
   const [shelfFocus, setShelfFocus] = useState<{ code: BookCode; index: number; token: number } | null>(() => linked);
   const [showDuplicates, setShowDuplicates] = useState(false);
   const planProgress = usePlanProgress();
@@ -166,7 +158,6 @@ export default function Residency() {
           onOpen={() => {
             const chapter = planProgress.focus?.chapter;
             if (!chapter) return;
-            setShowBooks(true);
             setShelfFocus((previous) => ({ code: chapter.book, index: chapter.index, token: (previous?.token ?? 0) + 1 }));
           }}
         />
@@ -192,6 +183,8 @@ export default function Residency() {
             </Link>
           </div>
         )}
+
+        <BundledBooksSection overview={overview} plan={planProgress} focus={shelfFocus} />
 
         {hasBank && (
           <section data-tutorial="residency-disciplines">
@@ -260,36 +253,15 @@ export default function Residency() {
               busy={startingDeck}
             />
             <ResourceRow
-              icon={<Library size={18} />}
-              title="Cărțile tale"
-              detail={books.length > 0 ? `${books.length} ${books.length === 1 ? 'carte' : 'cărți'} · capitolele din plan, progres, carduri și AI` : 'Capitolele din plan, chiar și fără cărți adăugate'}
-              onClick={() => setShowBooks((open) => !open)}
-            />
-            <ResourceRow
               icon={<MessageCircle size={18} />}
               title="Întreabă din cărți"
-              detail="Răspunsuri cu trimitere la capitol"
+              detail="Răspunsuri din cărțile de bază, cu pagina; materialele completează"
               onClick={() => setChatOpen(true)}
             />
           </div>
         </section>
 
-        {showBooks && (
-          hasLibraryRoot ? (
-            <section className={calmMotion ? '' : 'fx-rise'}>
-              <SectionLabel className="mb-2">Cărțile tale</SectionLabel>
-              <BookLibraryTools />
-              <BookShelf books={books} showPlanBooks focus={shelfFocus} />
-            </section>
-          ) : (
-            <EmptyState
-              icon={BookOpen}
-              title="Secțiunea Rezidențiat lipsește"
-              body="Creează secțiunea Rezidențiat în bibliotecă, apoi încarcă acolo cărțile de referință."
-              primary={{ label: 'Creează secțiunea', onClick: () => addLibraryFolder(REZIDENTIAT_ROOT_NAME, '🩺') }}
-            />
-          )
-        )}
+        <MaterialsBank onAdd={addBook.open} adding={addBook.busy} />
 
         <div data-tutorial="residency-import" className="empty:hidden">
           <ImportPanel />
