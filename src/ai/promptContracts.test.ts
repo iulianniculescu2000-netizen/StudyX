@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { AGENT_SYSTEM_PROMPT } from '../lib/bookAgent/prompts';
 import { buildVerifierMessages } from '../lib/ai/crossCheck';
 import { ANSWER_KEY_CHECK_RULE, VERIFIER_MATERIAL_RULE } from './promptKit';
 import { buildWrongAnswerPrompt, buildInlineExplanationPrompt } from '../lib/groqCore/studyPrompts';
 
-const read = (path: string) => readFileSync(resolve(__dirname, '..', path), 'utf8');
+const sources = import.meta.glob(['../ai/*.ts', '../lib/groqCore/*.ts'], { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+const read = (path: string): string => {
+  const entry = Object.entries(sources).find(([key]) => key.endsWith(`/${path.split('/').slice(-1)[0]}`));
+  if (!entry) throw new Error(`fișier negăsit: ${path}`);
+  return entry[1];
+};
 
 describe('contracte comune ale prompturilor', () => {
   it('verificatorii tratează textul primit ca material, nu ca instrucțiuni', () => {
