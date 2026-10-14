@@ -12,7 +12,9 @@ import { fileURLToPath } from 'node:url';
 import { extractFile, organize, vocabulary } from './extract-book-pages.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const [which, folderArg, outArg] = process.argv.slice(2);
+const [which, folderArg, outArg, extraArg] = process.argv.slice(2);
+// extraArg: fișier JSON cu textul paginilor din folder care lipsesc din PDF-ul aplicației ({ "<pagina tipărită>": "text" }), doar pentru căutare/chat.
+const extra = {};
 const SETUP = {
   lawrence: { app: 'build/books/Carti/Lawrence/Lawrence RO - capitole rezi (345 p).pdf', dir: 'Lawrence - capitole' },
   sinopsis: { app: 'build/books/Carti/Sinopsis/Sinopsis RO - tematica (118 p).pdf', dir: 'Sinopsis - capitole' },
@@ -50,6 +52,7 @@ for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.pdf')).sort())
     // Caz cunoscut Lawrence cap. 26: pagina tipărită 546 lipsește din sursă (după 545 urmează 547).
     const printed = first + i + (which === 'lawrence' && Number(m[1]) === 26 && first + i >= 546 ? 1 : 0);
     rows.push({ chap: Number(m[1]), printed, app: bestScore >= 0.5 ? best : null, score: Number(bestScore.toFixed(3)) });
+    if (bestScore < 0.5) extra[printed] = organize(pg, freq);
   });
 }
 
@@ -74,3 +77,4 @@ const uncovered = [];
 for (let p = 1; p <= app.numPages; p += 1) if (!covered.has(p)) uncovered.push(p);
 console.log(`\nPAGINI DIN PDF-UL APLICAȚIEI CARE NU APAR ÎN FOLDER: ${uncovered.length}${uncovered.length ? ` (${uncovered.join(', ')})` : ''}`);
 if (outArg) fs.writeFileSync(path.resolve(outArg), JSON.stringify(rows, null, 1));
+if (extraArg) fs.writeFileSync(path.resolve(extraArg), JSON.stringify(extra, null, 1));

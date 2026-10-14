@@ -26,4 +26,18 @@ describe('bundledBookText (cărțile incluse, pentru indexarea în chat)', () =>
     expect(chunk).toMatchObject({ page: 57 });
     expect(text).not.toMatch(/funeție|pentrn|[şţ]/);
   }, 60000);
+
+  it('Lawrence: cele 69 de pagini din folder, lipsă din PDF, intră în căutare după paginile PDF-ului, cu pagina tipărită', async () => {
+    const { bundledBookText, loadBookPages } = await import('./bookText');
+    const { takePageMap } = await import('../ai/pageMarkers');
+    const base = (await loadBookPages('L')).length;
+    const text = await bundledBookText('L');
+    const map = takePageMap(text)!;
+    expect(base).toBe(345);
+    expect(map.length).toBe(base + 69);
+    expect(map[base]).toMatchObject({ page: base + 1, printedPage: 13 });
+    expect(text).toContain('Pagina tipărită 143 (nu e în PDF-ul din aplicație)');
+    // paginile PDF-ului rămân exact aceleași, în aceeași ordine
+    expect(map.slice(0, base).every((entry, i) => entry.page === i + 1 && !('printedPage' in entry))).toBe(true);
+  }, 60000);
 });

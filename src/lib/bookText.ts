@@ -16,6 +16,20 @@ const LOADERS: Record<BookCode, () => Promise<{ default: string[] }>> = {
 
 const cache = new Map<BookCode, Promise<string[]>>();
 
+/**
+ * Pagini care există în folderul proprietarului, dar nu în PDF-ul din aplicație (Lawrence: 69 din 414). Intră doar în căutare și chat,
+ * după paginile PDF-ului, cu pagina tipărită în marcaj; numerotarea paginilor din aplicație și cititorul rămân neatinse.
+ * Se regenerează cu: node scripts/map-owner-folder.mjs lawrence <folderCarti> "" src/data/rezidentiat/library/lawrence.extra.json
+ */
+async function extraBookPages(book: BookCode): Promise<Array<{ printed: number; text: string }>> {
+  if (book !== 'L') return [];
+  const extra = (await import('../data/rezidentiat/library/lawrence.extra.json')).default as Record<string, string>;
+  return Object.entries(extra)
+    .map(([printed, text]) => ({ printed: Number(printed), text }))
+    .filter((entry) => Number.isFinite(entry.printed) && entry.text.trim())
+    .sort((a, b) => a.printed - b.printed);
+}
+
 export function loadBookPages(book: BookCode): Promise<string[]> {
   let pages = cache.get(book);
   if (!pages) {
@@ -64,7 +78,11 @@ export function bookTextFor(book: BookCode, topic: Pick<Topic, 'group' | 'pdf'> 
  */
 export async function bundledBookText(book: BookCode): Promise<string> {
   const pages = await loadBookPages(book);
-  const marked = pages.map((text, index) => `${pageMarker(index + 1)}${text.trim()}`).join('\n\n');
+  const extra = await extraBookPages(book);
+  const marked = [
+    ...pages.map((text, index) => `${pageMarker(index + 1)}${text.trim()}`),
+    ...extra.map(({ printed, text }, index) => `${pageMarker(pages.length + index + 1, printed)}Pagina tipărită ${printed} (nu e în PDF-ul din aplicație)\n${text.trim()}`),
+  ].join('\n\n');
   const { text, pages: starts } = extractPageMap(marked);
   const lead = text.length - text.trimStart().length;
   const clean = text.trim();
