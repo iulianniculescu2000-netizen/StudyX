@@ -240,6 +240,9 @@ export function buildExplanationPrompt(
       '**⚠️ Celelalte variante:** listă cu „- ”, câte un rând scurt pentru fiecare variantă greșită rămasă.\n\n' +
       '**🧠 Regula de examen:** o singură propoziție scurtă și memorabilă.',
     'Nu repeta întrebarea. Fii direct ca un profesor care corectează oral.',
+    'JUDECATA MEDICALĂ: [CORECT] este cheia grilei; explică-o fidel, fără să inventezi un mecanism sau un prag care nu se susține. ' +
+      'Dacă cheia contrazice clar practica sau ghidurile consacrate (sau enunțul nu are destule date ca să excludă o altă variantă), păstrează cheia ca răspuns, ' +
+      'dar adaugă la finalul primei secțiuni o propoziție care începe cu „Notă:” și spune sincer ce e discutabil și de ce. Nu o adăuga când cheia e corectă.',
     question ? `ÎNTREBAREA: ${sanitizeUserInput(question.text)}` : '',
     optionLines ? `OPȚIUNI:\n${optionLines}` : '',
     `RĂSPUNS STUDENT: ${sanitizeUserInput(userAnswer)}`,

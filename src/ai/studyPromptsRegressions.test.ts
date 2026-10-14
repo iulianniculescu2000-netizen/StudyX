@@ -26,6 +26,15 @@ describe('explicația după răspuns', () => {
   });
 });
 
+describe('judecata medicală în explicație', () => {
+  it('păstrează cheia grilei, dar cere o notă sinceră când cheia e discutabilă', () => {
+    const prompt = buildExplanationPrompt('Amiodaronă intravenos', 'Cardioversie electrică sincronizată', question);
+    expect(prompt).toContain('JUDECATA MEDICALĂ');
+    expect(prompt).toContain('păstrează cheia ca răspuns');
+    expect(prompt).toContain('„Notă:”');
+  });
+});
+
 describe('indiciul', () => {
   it('primește variantele și răspunsul corect, și nu are voie să-l dezvăluie în primele două niveluri', () => {
     const prompt = buildHintPrompt(question);
