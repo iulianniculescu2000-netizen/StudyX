@@ -46,6 +46,15 @@ describe('findPassageCandidates', () => {
     expect(new Set(sections).size).toBe(sections.length);
   }, 30000);
 
+  it('formulele de enunț („de referință”, „este reprezentat de”) și termenii localizatorului nu blochează pasajul de metotrexat din artrita reumatoidă', async () => {
+    const found = await findPassageCandidates({
+      question: 'Tratamentul de fond, de referință în poliartita reumatoidă este reprezentat de:',
+      answer: 'Metotrexat',
+      extraTerms: ['artrita reumatoida', 'DMARD', 'metotrexat'],
+    }, 3);
+    expect(found.some((candidate) => candidate.paras[0].book === 'K' && candidate.paras[0].page >= 74 && candidate.paras[0].page <= 77)).toBe(true);
+  }, 30000);
+
   it('capitolele indicate de localizator cresc scorul pasajelor din ele, fără să excludă restul', async () => {
     const chapter = chapterRanges().find((c) => c.book === 'K')!;
     const plain = await findPassageCandidates(IRON, 3);

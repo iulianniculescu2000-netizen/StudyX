@@ -38,6 +38,7 @@ import SessionHero from './quiz-play/components/SessionHero';
 import QuestionCard from './quiz-play/components/QuestionCard';
 import OptionList from './quiz-play/components/OptionList';
 import NoteBox from './quiz-play/components/NoteBox';
+import BookSourceButton from './quiz-play/components/BookSourceButton';
 import ChatContinuePanel from './quiz-play/components/ChatContinuePanel';
 import { ActionDock, InlineConfirm } from './quiz-play/components/ActionDock';
 import RelevantDocModal from './quiz-play/RelevantDocModal';
@@ -605,24 +606,19 @@ function QuizPlaySession({ quiz, orderedQuestions, examMode, timedMode, examMinu
                           <span className="font-semibold" style={{ color: theme.accentText }}>Explicație: </span>
                           {cleanQuestionExplanation(question.explanation)}
                         </p>
-                        <div className="mt-3 flex flex-wrap items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => void assist.openQuestionSource()}
-                            disabled={assist.sourceStatus === 'loading'}
-                            className="press-feedback focus-ring glass-panel inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold disabled:opacity-60"
-                            style={{ color: theme.accentText }}
-                          >
-                            <BookOpen size={13} aria-hidden="true" />
-                            {assist.sourceStatus === 'loading' ? assist.sourceStepLabel : 'Vezi în carte'}
-                          </button>
-                          {assist.sourceStatus === 'none' && (
-                            <span role="status" className="text-[12px]" style={{ color: theme.text3 }}>Nu am găsit în cărți un pasaj care să susțină această grilă.</span>
-                          )}
+                        <div className="mt-3">
+                          <BookSourceButton onOpen={() => void assist.openQuestionSource()} status={assist.sourceStatus} loadingLabel={assist.sourceStepLabel} theme={theme} />
                         </div>
                       </motion.div>
                     )}
                   </AnimatePresence>
+
+                  {/* Grilele din bănci nu au explicație proprie: „Vezi în carte” trebuie să existe și fără ea. */}
+                  {revealed && !examMode && !cleanQuestionExplanation(question.explanation) && (
+                    <div className="mb-3">
+                      <BookSourceButton onOpen={() => void assist.openQuestionSource()} status={assist.sourceStatus} loadingLabel={assist.sourceStepLabel} theme={theme} />
+                    </div>
+                  )}
 
                   {/* Explanation and Mnemonic used to be able to stack expanded at once — a single
                       tab switcher keeps one active at a time when both are relevant (wrong answer). */}

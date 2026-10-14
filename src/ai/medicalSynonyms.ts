@@ -36,7 +36,7 @@ export const MEDICAL_ABBREVIATIONS: readonly MedicalAbbreviation[] = [
   { abbr: 'BRGE', full: 'boala de reflux gastroesofagian' },
   { abbr: 'CHC', full: 'carcinom hepatocelular' },
   { abbr: 'LES', full: 'lupus eritematos sistemic' },
-  { abbr: 'PAR', full: 'poliartrita reumatoida' },
+  { abbr: 'PAR', full: 'poliartrita reumatoida', aliases: ['artrita reumatoida'] },
   { abbr: 'TBC', full: 'tuberculoza' },
   { abbr: 'AINS', full: 'antiinflamatoare nesteroidiene' },
   { abbr: 'IECA', full: 'inhibitori ai enzimei de conversie a angiotensinei' },

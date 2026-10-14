@@ -73,7 +73,9 @@ export function foldText(text: string): string {
   return out;
 }
 
-const STOP = new Set(['care', 'este', 'sunt', 'pentru', 'dupa', 'cand', 'cele', 'prin', 'trebuie', 'poate', 'fiind', 'dintre', 'unui', 'unei', 'acest', 'acesta', 'aceasta', 'acestei', 'acestui', 'precum', 'astfel', 'foarte', 'tipul', 'cazul', 'cazuri', 'dintre', 'ceea', 'unde', 'fost', 'poti', 'sale', 'lor', 'mai']);
+const STOP = new Set(['care', 'este', 'sunt', 'pentru', 'dupa', 'cand', 'cele', 'prin', 'trebuie', 'poate', 'fiind', 'dintre', 'unui', 'unei', 'acest', 'acesta', 'aceasta', 'acestei', 'acestui', 'precum', 'astfel', 'foarte', 'tipul', 'cazul', 'cazuri', 'dintre', 'ceea', 'unde', 'fost', 'poti', 'sale', 'lor', 'mai',
+  // Formule de enunț de examen: nu spun nimic medical și nu apar în manual.
+  'reprezentat', 'reprezentata', 'reprezentate', 'reprezinta', 'referinta', 'urmatoarele', 'urmatoarea', 'urmatorul', 'afirmatii', 'afirmatia', 'adevarate', 'adevarat', 'corecte', 'corect', 'false', 'incorecte', 'indicati', 'precizati', 'alegeti']);
 /** Rădăcini de 6 litere: româna flexionează („artritei” / „artrita”), deci cuvintele întregi s-ar rata între ele. */
 export function stemsOf(text: string): string[] {
   return foldText(text).split(/[^a-z0-9]+/).filter((w) => w.length >= 4 && !STOP.has(w)).map((w) => w.slice(0, 6));
@@ -206,6 +208,8 @@ export async function findPassageCandidates(query: PassageQuery, limit = 3): Pro
     return Math.log(1 + (n - df + 0.5) / (df + 0.5));
   };
   const questionIdf = [...question].reduce((sum, stem) => sum + idfOf(stem), 0);
+  // Termenii aduși de dicționar sau de localizator (forme complete, sinonime) susțin enunțul când pasajul nu repetă cuvintele lui.
+  const extra = new Set(stemsOf((query.extraTerms ?? []).join(' ')).filter((stem) => !question.has(stem) && !answer.has(stem)));
   const scores = new Float64Array(n);
   corpus.paras.forEach((para, index) => {
     let score = 0;
@@ -245,9 +249,11 @@ export async function findPassageCandidates(query: PassageQuery, limit = 3): Pro
     const have = new Set([...stemsOf(paras.map((p) => p.text).join(' ')), ...paras.flatMap((p) => [...p.contextStems])]);
     const sharedQuestion = [...question].filter((stem) => have.has(stem)).length;
     const sharedAnswer = [...answer].filter((stem) => have.has(stem)).length;
-    if (sharedQuestion < Math.min(MIN_QUESTION_TERMS, question.size)) continue;
-    const foundIdf = [...question].filter((stem) => have.has(stem)).reduce((sum, stem) => sum + idfOf(stem), 0);
-    if (questionIdf > 0 && foundIdf / questionIdf < MIN_COVERAGE) continue;
+    const sharedExtra = [...extra].filter((stem) => have.has(stem));
+    if (sharedQuestion + Math.min(sharedExtra.length, 2) < Math.min(MIN_QUESTION_TERMS, question.size)) continue;
+    const foundIdf = [...question].filter((stem) => have.has(stem)).reduce((sum, stem) => sum + idfOf(stem), 0)
+      + 0.8 * sharedExtra.reduce((sum, stem) => sum + idfOf(stem), 0);
+    if (questionIdf > 0 && Math.min(foundIdf, questionIdf) / questionIdf < MIN_COVERAGE) continue;
     if (answer.size > 0 && sharedAnswer === 0) continue;
     sections.add(sectionKey);
     out.push({ paras, score: scores[index], sharedQuestion, sharedAnswer });
