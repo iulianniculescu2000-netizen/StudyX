@@ -21,7 +21,8 @@ export const GROUNDING_RULES =
   '5. Nu formula întrebări despre document, fișier, PDF sau "cursul încărcat"; întreabă doar despre conținutul medical.\n' +
   '6. Opțiunile de răspuns trebuie să fie concise, clare și utile pentru examen, nu propoziții lungi copiate integral.\n' +
   '7. Evită să repeți textual pasaje întregi din context; reformulează fidel și precis.\n' +
-  `8. ${CONTEXT_IS_MATERIAL_RULE[0].toUpperCase()}${CONTEXT_IS_MATERIAL_RULE.slice(1)}.`;
+  `8. ${CONTEXT_IS_MATERIAL_RULE[0].toUpperCase()}${CONTEXT_IS_MATERIAL_RULE.slice(1)}.\n` +
+  '9. Fragmentele marcate [CARTE DE BAZĂ] au prioritate față de [MATERIAL]: la contradicție urmează cartea, iar enunțul și răspunsul corect se sprijină pe ea.';
 
 /**
  * House style for generated questions, calibrated against the real thing:

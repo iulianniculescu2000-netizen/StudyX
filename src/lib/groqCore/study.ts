@@ -51,7 +51,7 @@ export async function generateStudyRecommendation(
   weakTopics: string[]
 ): Promise<string> {
   if (!userContext) {
-    if (dueCount > 0) return `Ai ${dueCount} întrebări de recapitulat azi. Începe cu ele pentru a menține SM-2 activ!`;
+    if (dueCount > 0) return `Ai ${dueCount} întrebări de recapitulat azi. Începe cu ele ca să nu uiți ce ai învățat.`;
     return 'Rezolvă prima sesiune de grile pentru a activa recomandările personalizate AI!';
   }
 

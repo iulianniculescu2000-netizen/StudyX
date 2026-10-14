@@ -41,4 +41,9 @@ describe('contracte comune ale prompturilor', () => {
     expect(source).toContain('buildFlashcardAuthorSystem');
     expect(source).not.toContain('Transforma textul');
   });
+
+  it('generarea grilelor știe că [CARTE DE BAZĂ] bate [MATERIAL]', async () => {
+    const { GROUNDING_RULES } = await import('./prompts');
+    expect(GROUNDING_RULES).toContain('[CARTE DE BAZĂ] au prioritate față de [MATERIAL]');
+  });
 });
