@@ -10,7 +10,12 @@ async function main() {
   const data = await fs.mkdtemp(path.join(os.tmpdir(), 'studyx-look-'));
   const out = path.join(root, '.qa-results');
   await fs.mkdir(out, { recursive: true });
-  const app = await electron.launch({ args: [root], env: { ...process.env, STUDYX_USER_DATA: data, STUDYX_DEV_URL: process.env.STUDYX_DEV_URL || 'http://localhost:5199' } });
+  const env = { ...process.env, STUDYX_USER_DATA: data };
+  delete env.ELECTRON_RUN_AS_NODE;
+  // STUDYX_QA_EXECUTABLE: aplicația împachetată (win-unpackedStudyX.exe); altfel codul din repo, cu serverul de pe STUDYX_DEV_URL.
+  const executable = process.env.STUDYX_QA_EXECUTABLE;
+  if (!executable) env.STUDYX_DEV_URL = process.env.STUDYX_DEV_URL || 'http://localhost:5199';
+  const app = await electron.launch({ ...(executable ? { executablePath: executable } : { args: [root] }), cwd: root, env, timeout: 60000 });
   try {
     const page = await app.firstWindow();
     await page.setViewportSize?.({ width: 1280, height: 760 }).catch(() => {});
