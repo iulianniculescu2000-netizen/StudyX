@@ -3,13 +3,20 @@ import type { Theme } from '../../../theme/themes';
 
 interface BookSourceButtonProps {
   onOpen: () => void;
-  status: 'idle' | 'loading' | 'none';
+  /** `ai-*`: AI-ul n-a putut verifica (limită de cereri sau indisponibil) și căutarea locală n-a găsit o potrivire sigură. */
+  status: 'idle' | 'loading' | 'none' | 'ai-rate-limit' | 'ai-unavailable';
   loadingLabel: string;
   theme: Theme;
 }
 
-/** „Vezi în carte”: pornește agentul la cerere; când nu găsește nimic potrivit, spune asta. */
+const AI_DOWN_MESSAGE = {
+  'ai-rate-limit': 'AI indisponibil acum (limită de cereri); am căutat local și n-am găsit un pasaj sigur.',
+  'ai-unavailable': 'AI indisponibil acum; am căutat local și n-am găsit un pasaj sigur.',
+} as const;
+
+/** „Vezi în carte”: pornește agentul la cerere; spune separat „cartea nu are pasajul” și „AI-ul nu a fost disponibil”. */
 export default function BookSourceButton({ onOpen, status, loadingLabel, theme }: BookSourceButtonProps) {
+  const aiDown = status === 'ai-rate-limit' || status === 'ai-unavailable';
   return (
     <div className="flex flex-wrap items-center gap-2">
       <button
@@ -20,10 +27,13 @@ export default function BookSourceButton({ onOpen, status, loadingLabel, theme }
         style={{ color: theme.accentText }}
       >
         <BookOpen size={13} aria-hidden="true" />
-        {status === 'loading' ? loadingLabel : 'Vezi în carte'}
+        {status === 'loading' ? loadingLabel : aiDown ? 'Încearcă din nou' : 'Vezi în carte'}
       </button>
       {status === 'none' && (
         <span role="status" className="text-[12px]" style={{ color: theme.text3 }}>Nu am găsit în cărți un pasaj care să susțină această grilă.</span>
+      )}
+      {aiDown && (
+        <span role="status" className="text-[12px]" style={{ color: theme.text3 }}>{AI_DOWN_MESSAGE[status]}</span>
       )}
     </div>
   );

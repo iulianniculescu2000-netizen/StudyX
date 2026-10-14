@@ -160,7 +160,7 @@ export default function RelevantDocModal({ open, chunk, passage = null, onClose 
                     className="fine-chip text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
                     style={{ background: `${theme.accent}15`, color: theme.accentText }}
                   >
-                    {passage ? (passage.verified ? 'Pasaj verificat' : 'Pasaj posibil relevant') : 'Document relevant'}
+                    {passage ? (passage.verified ? 'Pasaj verificat' : passage.aiChecked === false ? 'Potrivire găsită fără verificare AI' : 'Pasaj posibil relevant') : 'Document relevant'}
                   </span>
                 </div>
                 <p className="text-[12.5px] mt-0.5 truncate" style={{ color: theme.text3 }}>

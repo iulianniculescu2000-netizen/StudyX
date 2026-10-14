@@ -105,13 +105,13 @@ describe('runBookAgent', () => {
   }, 30000);
 
   it('fără AI rămâne cel mai bun candidat dacă scorul e mare, nemarcat ca verificat', async () => {
-    const passage = await runBookAgent(IRON, async () => { throw new Error('fără cheie'); });
+    const passage = await runBookAgent(IRON, async () => { throw new Error('fără cheie'); }, { sleep: async () => undefined });
     expect(passage).toMatchObject({ page: 57, verified: false, highlights: [] });
   }, 30000);
 
   it('fără AI nu arată o potrivire slabă când cartea nu are subiectul (pneumonie comunitară)', async () => {
     const query = { question: 'Care este tratamentul de primă linie în pneumonia comunitară necomplicată?', answer: 'amoxicilină' };
-    const passage = await runBookAgent(query, async () => { throw new Error('fără cheie'); });
+    const passage = await runBookAgent(query, async () => { throw new Error('fără cheie'); }, { sleep: async () => undefined });
     // Cu textul extras pe coloane corect, alineatul „Tratament= … amoxicilină … prima linie” (otita medie, Sinopsis p.46) are
     // paragraf propriu și poate trece pragul doar pe „amoxicilină” + „prima linie”. Fără AI e acceptat cel mult ca potrivire
     // nemarcată „verificat”, niciodată una care pretinde că vorbește despre pneumonie.

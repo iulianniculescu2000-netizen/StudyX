@@ -111,6 +111,7 @@ export function applyJudgeSelection(candidates: readonly PassageCandidate[], sel
   const passage = passageFromCandidate({ ...candidate, paras: picked.length ? picked : candidate.paras });
   passage.highlights = verifiedHighlights(selection.highlights, textOfPassage(passage));
   passage.verified = selection.verdict === 'supports';
+  passage.aiChecked = true;
   if (passage.verified && selection.why) passage.why = selection.why;
   return passage;
 }

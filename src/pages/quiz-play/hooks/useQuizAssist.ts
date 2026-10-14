@@ -3,7 +3,7 @@ import { useToastStore } from '../../../store/toastStore';
 import type { Question } from '../../../types';
 import type { AIAnalysisResult, HintResult } from '../../../ai/types';
 import type { BookPassage, PassageQuery } from '../../../lib/bookPassage';
-import { AGENT_STEP_LABEL, type AgentCall, type AgentStep } from '../../../lib/bookAgent';
+import { AGENT_STEP_LABEL, type AgentCall, type AgentStep, type AiProblem } from '../../../lib/bookAgent';
 import { AGENT_SYSTEM_PROMPT } from '../../../lib/bookAgent/prompts';
 import {
   buildAnalysisFallback,
@@ -15,6 +15,9 @@ import {
 import { getCorrectOptionIds, isCorrectSelection } from '../helpers';
 
 const loadAIEngine = () => import('../../../ai/AIEngine');
+
+/** Starea butonului „Vezi în carte”: `ai-*` = AI-ul n-a putut verifica și local nu s-a găsit o potrivire sigură. */
+export type BookSourceStatus = 'idle' | 'loading' | 'none' | 'ai-rate-limit' | 'ai-unavailable';
 
 /** Ce susține grila: răspunsul corect și explicația. Fragmentul din carte trebuie să aibă legătură cu ele, nu doar cu enunțul. */
 const correctTextOf = (question: Question) => question.options.filter((option) => option.isCorrect).map((option) => option.text).join(', ');
@@ -95,7 +98,7 @@ export function useQuizAssist({ question, revealed, examMode, currentIdx, answer
   const [relevantDocModalOpen, setRelevantDocModalOpen] = useState(false);
   /** Întrebarea pentru care e valabil `relevantPassage`: un pasaj găsit la o întrebare nu se arată la următoarea. */
   const [relevantDocQuestionId, setRelevantDocQuestionId] = useState<string | null>(null);
-  const [sourceLookup, setSourceLookup] = useState<{ questionId: string; status: 'loading' | 'none'; step?: AgentStep } | null>(null);
+  const [sourceLookup, setSourceLookup] = useState<{ questionId: string; status: 'loading' | 'none' | 'ai-down'; step?: AgentStep; aiProblem?: AiProblem } | null>(null);
   /**
    * Generation token for in-flight AI requests. The AI helpers are plain promises with no abort
    * support, so bumping this invalidates any reply still in flight (otherwise a slow explanation
@@ -293,14 +296,15 @@ export function useQuizAssist({ question, revealed, examMode, currentIdx, answer
     const questionId = question.id;
     setSourceLookup({ questionId, status: 'loading', step: 'understand' });
     try {
-      const [{ runBookAgent }, { groqRequest }] = await Promise.all([import('../../../lib/bookAgent'), import('../../../lib/groq')]);
-      const passage = await runBookAgent(
+      const [{ runBookAgentDetailed }, { groqRequest }] = await Promise.all([import('../../../lib/bookAgent'), import('../../../lib/groq')]);
+      const { passage, aiProblem } = await runBookAgentDetailed(
         queryOf(question),
         (prompt, call) => askBookAgentModel(groqRequest, prompt, call),
         { onStep: (step) => setSourceLookup((current) => (current && current.questionId === questionId ? { ...current, step } : current)) },
       );
       if (!passage) {
-        setSourceLookup({ questionId, status: 'none' });
+        // Fără pasaj: dacă AI-ul n-a putut judeca, spunem asta (altfel „cartea nu are pasajul” ar fi fals) și lăsăm „Încearcă din nou”.
+        setSourceLookup(aiProblem ? { questionId, status: 'ai-down', aiProblem } : { questionId, status: 'none' });
         return;
       }
       setRelevantPassage(passage);
@@ -308,12 +312,14 @@ export function useQuizAssist({ question, revealed, examMode, currentIdx, answer
       setSourceLookup(null);
       setRelevantDocModalOpen(true);
     } catch {
-      setSourceLookup({ questionId, status: 'none' });
+      setSourceLookup({ questionId, status: 'ai-down', aiProblem: 'unavailable' });
     }
   }, [question, relevantPassage, relevantDocQuestionId, sourceLookup?.status]);
   useEffect(() => { openSourceRef.current = openQuestionSource; }, [openQuestionSource]);
 
-  const sourceStatus: 'idle' | 'loading' | 'none' = !question || !sourceLookup || sourceLookup.questionId !== question.id ? 'idle' : sourceLookup.status;
+  const sourceStatus: BookSourceStatus = !question || !sourceLookup || sourceLookup.questionId !== question.id
+    ? 'idle'
+    : sourceLookup.status === 'ai-down' ? (sourceLookup.aiProblem === 'rate-limit' ? 'ai-rate-limit' : 'ai-unavailable') : sourceLookup.status;
   const sourceStepLabel = sourceStatus === 'loading' && sourceLookup?.step ? AGENT_STEP_LABEL[sourceLookup.step] : 'Caut în carte…';
 
   return {
