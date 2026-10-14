@@ -5,6 +5,7 @@ import { logDiagnosticEvent } from '../../store/diagnosticsStore';
 import { estimateTokens, useAIUsageStore } from '../../store/aiUsageStore';
 import { parseRateHeaders } from '../ai/rateHeaders';
 import { healPrimaryModelChoice, isModelUnavailableError, nextCandidateModel } from '../ai/modelHealing';
+import { markModelRetired } from '../ai/providerStatus';
 import { JSON_MODE_UNSUPPORTED } from './capabilities';
 import { NonRetryableError, extractApiErrorMessage, isRequestSpecificError } from './errors';
 import { backgroundGovernor, generationGovernor, groqGovernor } from './governors';
@@ -92,6 +93,7 @@ async function attemptOnProvider(
           await sleepMs(delayMs, abortSignal);
           continue;
         }
+        if (response.status === 404 && link.provider && link.key) markModelRetired(link.provider, link.model, link.key);
         if (NON_RETRYABLE_STATUSES.has(response.status)) throw Object.assign(new NonRetryableError(msg), { status: response.status });
         throw Object.assign(new Error(msg), { status: response.status });
       }
