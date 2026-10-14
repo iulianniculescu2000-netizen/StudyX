@@ -8,6 +8,7 @@ import { assignPagesToChunks, takePageMap } from '../ai/pageMarkers';
 import { currentProfileEpoch, ProfileChangedError } from './profileEpoch';
 import { createSafePersistStorage } from './safeStorage';
 import { matchBookByName } from '../data/residencyCurriculum';
+import { canMoveProtectedSourceTo, isFolderDeletionBlocked, isProtectedFolder, isProtectedSource } from '../lib/bookProtection';
 
 export type AIModel =
   // Deprecated by Groq (2026-08-16, see console.groq.com/docs/deprecations) —
@@ -162,6 +163,8 @@ interface AddKnowledgeSourceOptions {
   sync?: AIKnowledgeSource['sync'];
   /** Folderul în care intră sursa de la început (altfel o încărcare întreruptă ar rămâne la „Neclasificate”). */
   folderId?: string | null;
+  /** Doar embeddings locale, fără apeluri API (cărțile incluse în aplicație). */
+  localEmbeddings?: boolean;
 }
 
 export interface AIState {
@@ -218,7 +221,7 @@ export interface AIActions {
   reindexKnowledgeSource: (
     sourceId: string,
     text: string,
-    options?: { signal?: AbortSignal; onIndexProgress?: (progress: { processed: number; total: number; percent: number }) => void },
+    options?: { signal?: AbortSignal; localEmbeddings?: boolean; onIndexProgress?: (progress: { processed: number; total: number; percent: number }) => void },
   ) => Promise<AIKnowledgeSource>;
   addLibraryFolder: (name: string, emoji?: string, parentId?: string | null) => string;
   renameLibraryFolder: (folderId: string, name: string) => void;
@@ -626,6 +629,7 @@ export const useAIStore = create<AIState & AIActions>()(
             const { chunks } = await buildSourceChunks(name, normalizedText);
 
             await addChunksToVault(chunks, name, sourceId, {
+              ...(options.localEmbeddings ? { localEmbeddings: true } : {}),
               onProgress: (progress) => {
                 options.onIndexProgress?.(progress);
                 if (!sameProfile()) return;
@@ -734,6 +738,7 @@ export const useAIStore = create<AIState & AIActions>()(
 
             await addChunksToVault(chunks, existing.name, sourceId, {
               guard,
+              ...(options.localEmbeddings ? { localEmbeddings: true } : {}),
               onProgress: (progress) => {
                 options.onIndexProgress?.(progress);
               },
@@ -762,6 +767,9 @@ export const useAIStore = create<AIState & AIActions>()(
         },
 
         removeKnowledgeSource: async (sourceId) => {
+          const target = get().knowledgeSources.find((source) => source.id === sourceId);
+          // Cărțile de bază nu se șterg (respins în tăcere; interfața ascunde acțiunea prin `isProtectedSource`).
+          if (target && isProtectedSource(target)) return;
           await removeChunksBySource(sourceId);
           set((state) => ({
             knowledgeSources: state.knowledgeSources.filter((source) => source.id !== sourceId),
@@ -785,6 +793,8 @@ export const useAIStore = create<AIState & AIActions>()(
         renameLibraryFolder: (folderId, name) => {
           const trimmed = name.trim();
           if (!trimmed) return;
+          const folder = get().libraryFolders.find((item) => item.id === folderId);
+          if (folder && isProtectedFolder(folder)) return;
           set((state) => ({
             libraryFolders: state.libraryFolders.map((folder) => (
               folder.id === folderId ? { ...folder, name: trimmed } : folder
@@ -793,6 +803,7 @@ export const useAIStore = create<AIState & AIActions>()(
         },
 
         deleteLibraryFolder: (folderId) => {
+          if (isFolderDeletionBlocked(folderId, get().libraryFolders, get().knowledgeSources)) return;
           set((state) => {
             // Collect the folder and all of its descendants so deleting a parent
             // also removes its subfolders (their documents fall back to Neclasificate).
@@ -817,6 +828,8 @@ export const useAIStore = create<AIState & AIActions>()(
         },
 
         moveSourceToLibraryFolder: (sourceId, folderId) => {
+          const target = get().knowledgeSources.find((source) => source.id === sourceId);
+          if (target && isProtectedSource(target) && target.folderId !== folderId && !canMoveProtectedSourceTo(folderId, get().libraryFolders)) return;
           set((state) => ({
             knowledgeSources: state.knowledgeSources.map((source) => (
               source.id === sourceId ? { ...source, folderId } : source

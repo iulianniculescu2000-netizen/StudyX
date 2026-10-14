@@ -2,6 +2,8 @@ import { cosineSimilarity, embedText } from './embeddings';
 import { getVaultChunks } from './vectorStore';
 import { expandMedicalQuery } from './medicalSynonyms';
 import { tokenizeExpansionPhrase, tokenizeForSearch } from './searchText';
+import { isBundledBookFileName } from '../lib/bundledBookNames';
+import type { SourceTier } from '../lib/bookTier';
 import type { ChunkRecord, RetrievedChunk, UserProfileData } from './types';
 
 /**
@@ -23,6 +25,12 @@ const RELATIVE_FLOOR = 0.2;
 const MMR_LAMBDA = 0.6;
 /** Similaritate de la care două chunk-uri sunt considerate același conținut. */
 const NEAR_DUPLICATE = 0.8;
+/**
+ * Întâietatea cărților de bază în Rezidențiat: un bonus moderat la scor (un material mult mai relevant tot câștigă)
+ * plus o cotă minimă de locuri din cărți, când există fragmente relevante în ele.
+ */
+export const BOOK_SCORE_BONUS = 1.25;
+export const BOOK_MIN_SLOTS = 3;
 
 interface DocIndex {
   tokens: string[];
@@ -182,6 +190,11 @@ export interface RetrievalFilters {
   activeScope?: RetrievalScope;
   /** `false` oprește MMR (rezultate pur după scor). Implicit activ. */
   diversify?: boolean;
+  /**
+   * Căutare în scopul Rezidențiat: cărțile de bază primesc bonus la scor și cotă minimă în rezultat, iar fiecare
+   * fragment poartă `tier` ('book' | 'bank'). Fără el (scopul general) clasarea rămâne neschimbată.
+   */
+  rezidentiat?: boolean;
 }
 
 /** Ce are nevoie `rankChunks` dintr-un chunk; `ChunkRecord` se potrivește. */
@@ -225,7 +238,7 @@ export function rankChunks(
   queryEmbedding: number[],
   userProfile: UserProfileData | null,
   k: number,
-  filters: Pick<RetrievalFilters, 'activeHeading' | 'activeScope' | 'diversify'> = {},
+  filters: Pick<RetrievalFilters, 'activeHeading' | 'activeScope' | 'diversify' | 'rezidentiat'> = {},
 ): RetrievedChunk[] {
   if (!query.trim() || chunks.length === 0 || k <= 0) return [];
 
@@ -302,7 +315,10 @@ export function rankChunks(
     const effSemanticWeight = dimMismatch ? 0 : semanticWeight;
     const relevance = bm25Normalized * effBm25Weight + semanticScore * effSemanticWeight;
     const personalBoost = weaknessBoost + recencyBoost + mistakeBankBoost;
-    const score = relevance * rerank * (1 + personalBoost);
+    const isBook = isBundledBookFileName(chunk.source);
+    const bookBonus = filters.rezidentiat && isBook ? BOOK_SCORE_BONUS : 1;
+    const score = relevance * rerank * (1 + personalBoost) * bookBonus;
+    const tier: SourceTier | undefined = isBook ? 'book' : filters.rezidentiat ? 'bank' : undefined;
 
     return {
       chunk,
@@ -324,6 +340,7 @@ export function rankChunks(
         ...(typeof chunk.printedPage === 'number' ? { printedPage: chunk.printedPage } : {}),
         ...(chunk.heading ? { heading: chunk.heading } : {}),
         ...(chunk.chapter ? { chapter: chunk.chapter } : {}),
+        ...(tier ? { tier } : {}),
       } as RetrievedChunk,
     };
   });
@@ -340,8 +357,13 @@ export function rankChunks(
   // exemplar, indiferent de MMR.
   const unique = dedupeOverlapping(candidates);
 
+  const withQuota = (picked: typeof unique): RetrievedChunk[] => {
+    const results = picked.map((entry) => entry.result);
+    return filters.rezidentiat ? applyBookQuota(results, unique.map((entry) => entry.result), k) : results;
+  };
+
   if (filters.diversify === false || unique.length <= 1) {
-    return unique.slice(0, k).map((entry) => entry.result);
+    return withQuota(unique.slice(0, k));
   }
 
   // MMR pe un grup de candidați limitat (sortat deja): relevanță normalizată vs. similaritate cu ce s-a ales.
@@ -372,7 +394,30 @@ export function rankChunks(
     }
     selected.push(pool.splice(bestIndex, 1)[0]);
   }
-  return selected.map((entry) => entry.result);
+  return withQuota(selected);
+}
+
+/**
+ * Cota cărților: dacă există fragmente relevante din cărți (cele care au trecut de prag), primele `BOOK_MIN_SLOTS` locuri
+ * (sau câte există) sunt din cărți, în ordinea scorului; restul rămân în ordinea de până acum. Lungimea nu crește peste `k`:
+ * fragmentele din cărți aduse suplimentar înlocuiesc ultimele fragmente care nu sunt din cărți.
+ */
+export function applyBookQuota(selected: RetrievedChunk[], candidates: RetrievedChunk[], k: number): RetrievedChunk[] {
+  const isBook = (chunk: RetrievedChunk) => chunk.tier === 'book';
+  const booksAvailable = candidates.filter(isBook);
+  const wanted = Math.min(BOOK_MIN_SLOTS, booksAvailable.length, k);
+  if (wanted === 0) return selected;
+
+  const chosenBooks = selected.filter(isBook);
+  for (const book of booksAvailable) {
+    if (chosenBooks.length >= wanted) break;
+    if (!chosenBooks.includes(book)) chosenBooks.push(book);
+  }
+  chosenBooks.sort((a, b) => b.score - a.score);
+  const front = chosenBooks.slice(0, wanted);
+  const rest = selected.filter((chunk) => !front.includes(chunk));
+  // Dacă s-au adus cărți în plus, lista nu depășește k: se pierd cele mai de jos fragmente rămase.
+  return [...front, ...rest].slice(0, k);
 }
 
 export async function retrieveRelevantChunks(

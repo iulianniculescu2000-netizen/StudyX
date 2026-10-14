@@ -1,5 +1,6 @@
 import { isSourceReady, useAIStore } from '../store/aiStore';
 import { findOrCreateRezidentiatLibraryRoot } from './rezidentiatRoot';
+import { BUNDLED_BOOK_NAMES } from './bundledBookNames';
 
 /**
  * Default AI knowledge-library sources for Rezidențiat — the three reference
@@ -19,21 +20,21 @@ export interface RezidentiatLibraryBook {
 export const REZIDENTIAT_LIBRARY_BOOKS: RezidentiatLibraryBook[] = [
   {
     id: 'kumar-clark',
-    name: 'Kumar și Clark – Medicină Clinică.pdf',
+    name: BUNDLED_BOOK_NAMES.kumar,
     label: 'Kumar și Clark — Medicină Clinică',
     description: 'Capitolele de rezidențiat, ~2200 de pagini de text',
     load: async () => (await import('./bookText')).bundledBookText('K'),
   },
   {
     id: 'lawrence',
-    name: 'Lawrence – Chirurgie generală și specialități chirurgicale.pdf',
+    name: BUNDLED_BOOK_NAMES.lawrence,
     label: 'Lawrence — Chirurgie generală',
     description: 'Chirurgie generală și specialități chirurgicale',
     load: async () => (await import('./bookText')).bundledBookText('L'),
   },
   {
     id: 'sinopsis',
-    name: 'Sinopsis de medicină.pdf',
+    name: BUNDLED_BOOK_NAMES.sinopsis,
     label: 'Sinopsis de medicină',
     description: 'Dermatologie, pediatrie, obstetrică-ginecologie și altele',
     load: async () => (await import('./bookText')).bundledBookText('S'),
@@ -71,7 +72,7 @@ export async function findOutdatedBundledBooks(
 
 /** Reindexează o carte inclusă din textul curat; vechiul index rămâne activ până se termină (ca la `reindexKnowledgeSource`). */
 export async function reindexRezidentiatLibraryBook(sourceId: string, book: RezidentiatLibraryBook): Promise<void> {
-  await useAIStore.getState().reindexKnowledgeSource(sourceId, await book.load());
+  await useAIStore.getState().reindexKnowledgeSource(sourceId, await book.load(), { localEmbeddings: true });
 }
 
 export async function importRezidentiatLibraryBook(book: RezidentiatLibraryBook): Promise<void> {
@@ -81,6 +82,6 @@ export async function importRezidentiatLibraryBook(book: RezidentiatLibraryBook)
   }
   const text = await book.load();
   const folderId = findOrCreateRezidentiatLibraryRoot();
-  const source = await useAIStore.getState().addKnowledgeSource(book.name, text, 'pdf');
-  useAIStore.getState().moveSourceToLibraryFolder(source.id, folderId);
+  // Intră direct în folderul Rezidențiat (cărțile de bază nu se mută din el, deci nu există mutare ulterioară).
+  await useAIStore.getState().addKnowledgeSource(book.name, text, 'pdf', { folderId, localEmbeddings: true });
 }

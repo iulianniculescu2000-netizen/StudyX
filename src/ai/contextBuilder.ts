@@ -8,6 +8,7 @@
 
 import { contextDuplicateKey, contextLimit, normalizeContextProse } from './contextBudget';
 import { repairOcr } from '../lib/ocrRepair';
+import type { SourceTier } from '../lib/bookTier';
 
 /** Strictul necesar dintr-un rezultat de retrieval; `RetrievedChunk` și `ChunkRecord` se potrivesc. */
 export interface ContextChunkInput {
@@ -25,6 +26,8 @@ export interface ContextChunkInput {
   /** Forma din contractul parserelor PDF; tolerată alături de câmpurile plate. */
   metadata?: { page?: number; pageEnd?: number; printedPage?: number; heading?: string };
   score?: number;
+  /** Nivelul sursei; când lipsește, fragmentul nu poartă antet de nivel (comportamentul scopului general). */
+  tier?: SourceTier;
 }
 
 export interface ContextSource {
@@ -42,6 +45,8 @@ export interface ContextSource {
   /** Etichetă gata de afișat, ex. „Kumar, p. 151". */
   label: string;
   score?: number;
+  /** Nivelul sursei: „book” (carte de bază) sau „bank” (material); interfața îl citește pentru a deosebi „Carte” de „Material”. */
+  tier?: SourceTier;
   /** Începutul textului inclus, ca extras scurt pentru UI. */
   excerpt: string;
 }
@@ -52,6 +57,8 @@ export interface NumberedContext {
 }
 
 const HEADER = 'Surse numerotate din biblioteca utilizatorului. Când folosești o informație dintr-o sursă, citează-o inline cu numărul ei, ex. [1]; nu cita surse pe care nu le-ai folosit.';
+
+const TIER_TAG: Partial<Record<SourceTier, string>> = { book: 'CARTE DE BAZĂ', bank: 'MATERIAL' };
 
 export function cleanSourceName(name: string): string {
   return name.replace(/\.(pdf|docx?|txt|md)$/i, '').trim() || name;
@@ -144,6 +151,12 @@ function headerFor(n: number, chunk: ContextChunkInput): string {
   const range = pages.printedPage !== undefined ? String(pages.printedPage) : formatPageRange(pages.page, pages.pageEnd);
   const heading = chunk.heading ?? chunk.metadata?.heading;
   const where = heading ? ` — ${heading}` : '';
+  const tag = chunk.tier ? TIER_TAG[chunk.tier] : undefined;
+  // Cu nivel: „[1] [CARTE DE BAZĂ · Kumar p.75] — titlu” / „[2] [MATERIAL · nume fișier] — titlu”.
+  if (tag) {
+    const place = chunk.tier === 'book' ? `${name}${range ? ` p.${range}` : ''}` : `${name}${range ? ` · pag. ${range}` : ''}`;
+    return `[${n}] [${tag} · ${place}]${where}`;
+  }
   return `[${n}] ${name}${range ? ` · pag. ${range}` : ''}${where}`;
 }
 
@@ -201,6 +214,7 @@ export function buildNumberedContext(chunks: ContextChunkInput[], maxChars: numb
       ...(chunk.chapter ? { chapter: chunk.chapter } : {}),
       label: formatCitationLabel(chunk.source, pages.page, pages.pageEnd, pages.printedPage, heading),
       ...(typeof chunk.score === 'number' ? { score: chunk.score } : {}),
+      ...(chunk.tier ? { tier: chunk.tier } : {}),
       excerpt: truncateAtBoundary(body, 220),
     };
   });

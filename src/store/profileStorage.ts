@@ -3,6 +3,7 @@
  * Prioritizes Disk Storage (Electron) to bypass LocalStorage 5MB limit.
  */
 
+import { scheduleBundledBookPreparation } from '../lib/bundledBookPrep';
 import { useQuizStore } from './quizStore';
 import { useFolderStore } from './folderStore';
 import { useStatsStore } from './statsStore';
@@ -530,6 +531,8 @@ export async function loadProfileData(profileId: string) {
   hydratedProfileId = profileId;
   void inheritLegacyVectorsIfOwner(profileId, useAIStore.getState().knowledgeSources.map((source) => source.id)).catch(() => undefined);
   void useAIStore.getState().reconcileInterruptedIndexing().catch(() => undefined);
+  // Cărțile de bază (incluse în aplicație) se pregătesc singure, în fundal, fără cheie AI și fără rețea.
+  if (failed.length === 0) scheduleBundledBookPreparation();
   if (failed.length > 0) {
     announceLoadFailure(profileId);
     useSaveStatusStore.getState().setError('Încărcare eșuată — salvarea e oprită');

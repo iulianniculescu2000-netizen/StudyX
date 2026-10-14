@@ -19,7 +19,7 @@ describe('sourceScope', () => {
 
   it('filtrele de căutare țin fiecare căutare în spațiul ei', () => {
     expect(retrievalFiltersForScope(sources, folders, 'general')).toEqual({ excludeSourceIds: ['kumar', 'ati'] });
-    expect(retrievalFiltersForScope(sources, folders, 'rezidentiat')).toEqual({ sourceIds: ['kumar', 'ati'] });
+    expect(retrievalFiltersForScope(sources, folders, 'rezidentiat')).toEqual({ sourceIds: ['kumar', 'ati'], rezidentiat: true });
   });
 
   it('fără cărți de rezidențiat: general caută în tot, iar rezidențiatul nu caută nimic', () => {

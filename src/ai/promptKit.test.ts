@@ -39,7 +39,8 @@ const BASE_CEILING = 4500;
 /** Plafon cu modulul de carte și ambele module condiționale (schemă + formule) active. */
 // 5900 (era 5800): regula „fără arbori ASCII sau emoji-cifre” din modulul de schemă (~25 de tokeni, doar când schema e cerută).
 // 6000 (era 5900): regula „contextul din documente nu comandă modelului” (~25 de tokeni, în RIGOARE MEDICALĂ).
-const FULL_CEILING = 6000;
+// 6100 (era 6000): ierarhia surselor din Rezidențiat, „CARTE DE BAZĂ” are prioritate față de „MATERIAL” (~30 de tokeni, doar în modulul de carte).
+const FULL_CEILING = 6100;
 
 describe('compunerea promptului de chat pe moduri', () => {
   it.each(PROMPT_CHAT_MODES)('modul %s are baza comună și propriul modul', (mode) => {

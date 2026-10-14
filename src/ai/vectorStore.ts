@@ -1,5 +1,5 @@
 import { idbGet, idbSet, idbRemove } from '../lib/idb';
-import { embedBatch, embedText, cosineSimilarity } from './embeddings';
+import { embedBatch, embedText, embedTextLocal, cosineSimilarity } from './embeddings';
 import type { ChunkRecord } from './types';
 
 const LEGACY_VECTOR_INDEX_KEY = 'studyx-vectors-index-v2';
@@ -21,6 +21,8 @@ interface AddChunksOptions {
    * schimbat, sursă ștearsă) scrierea se oprește și indexul vechi al sursei rămâne neatins.
    */
   guard?: () => void;
+  /** Doar embeddings locale (fără apeluri API): pentru cărțile incluse, ca indexarea automată să nu consume cota cheii. */
+  localEmbeddings?: boolean;
 }
 
 let vectorCache: ChunkRecord[] | null = null;
@@ -161,7 +163,9 @@ export async function addChunksToVault(
       // chunk — matters when a Google key is configured, since that's real
       // network round-trips (hundreds of chunks would otherwise mean hundreds
       // of requests to index a single document).
-      const batchEmbeddings = await embedBatch(batch.map((chunk) => chunk.text));
+      const batchEmbeddings = options.localEmbeddings
+        ? batch.map((chunk) => embedTextLocal(chunk.text))
+        : await embedBatch(batch.map((chunk) => chunk.text));
 
       batch.forEach((chunk, i) => {
         // Extract a meaningful topic: prefer first phrase before colon/newline over raw first N words
@@ -238,6 +242,12 @@ export async function getVaultChunksBySource(sourceId: string): Promise<ChunkRec
   if (!target) return [];
   const items = await idbGet<ChunkRecord[]>(target.key);
   return Array.isArray(items) ? items : [];
+}
+
+/** Câte fragmente are fiecare sursă în index (din indexul mic, fără a citi vectorii). */
+export async function getIndexedChunkCounts(): Promise<Record<string, number>> {
+  const index = await getVectorIndex(activeProfileId);
+  return Object.fromEntries(index.map((entry) => [entry.sourceId, entry.count]));
 }
 
 /** Primitivă internă: cosinus pur pe vectorii stocați. Calea de producție este `retrieveRelevantChunks` (retriever.ts, hibrid BM25 + semantic). */

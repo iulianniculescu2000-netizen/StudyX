@@ -32,11 +32,12 @@ export function retrievalFiltersForScope(
   sources: ReadonlyArray<ScopedSource>,
   folders: ReadonlyArray<AILibraryFolder>,
   scope: SourceScope,
-): { sourceIds?: string[]; excludeSourceIds?: string[] } | null {
+): { sourceIds?: string[]; excludeSourceIds?: string[]; rezidentiat?: boolean } | null {
   const rez = rezidentiatFolderIds(folders);
   if (scope === 'rezidentiat') {
     const ids = sources.filter((source) => isRezidentiatSource(source, rez)).map((source) => source.id);
-    return ids.length > 0 ? { sourceIds: ids } : null;
+    // `rezidentiat`: cărțile de bază au întâietate la clasare și în context (vezi retriever.ts).
+    return ids.length > 0 ? { sourceIds: ids, rezidentiat: true } : null;
   }
   const excluded = sources.filter((source) => isRezidentiatSource(source, rez)).map((source) => source.id);
   return excluded.length > 0 ? { excludeSourceIds: excluded } : {};

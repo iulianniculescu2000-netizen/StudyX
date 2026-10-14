@@ -106,6 +106,8 @@ export interface RecordQuizSessionInput {
   finishedAt: number;
 }
 
+import type { SourceTier } from '../lib/bookTier';
+
 export interface RetrievedChunk {
   id: string;
   sourceId?: string;
@@ -125,6 +127,8 @@ export interface RetrievedChunk {
   printedPage?: number;
   heading?: string;
   chapter?: string;
+  /** Nivelul sursei (carte de bază / material / bibliotecă). Prezent la cărțile de bază și, în scopul Rezidențiat, la tot restul. */
+  tier?: SourceTier;
 }
 
 export interface AIContextPayload {

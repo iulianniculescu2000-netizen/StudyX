@@ -175,13 +175,14 @@ export const BOOK_MODULE = [
   '- pune [n] doar după fapte prezente în fragmentul n (după fiecare afirmație cu sursă, nu doar la final); fără [n] pe cunoștințe generale',
   '- ce NU apare în fragmente („în carte nu apare”): începe cu „În fragmentul din carte nu apare X. Din cunoștințe generale: … (neconfirmat de carte)”, apoi răspunsul; nu-l prezenta ca venind din carte',
   '- dacă textul capitolului nu e indexat, nu pretinde că citezi cartea',
+  '- „[CARTE DE BAZĂ]” are prioritate, „[MATERIAL]” completează; la contradicție urmează cartea și spune asta',
   '- gândește pentru rezidențiat: ce devine grilă (criterii, praguri, clasificări, diferențiale)',
 ].join('\n');
 
 /** True când sursa curentă ori contextul arată că discuția e despre o carte din bibliotecă. */
 export function detectBookSource(scopedSourceName?: string, contextSummary = ''): boolean {
   if (/\b(kumar|clark|lawrence|sinopsis)\b/i.test(scopedSourceName ?? '')) return true;
-  return /\[CAPITOL CURRICULAR\]/.test(contextSummary);
+  return /\[CAPITOL CURRICULAR\]|\[(?:CARTE DE BAZĂ|MATERIAL) ·/.test(contextSummary);
 }
 
 /* ── Context despre aplicație ─────────────────────────────────────────────────────────────── */
@@ -194,7 +195,7 @@ export const APP_CONTEXT_RULES = [
   '- la „ce a făcut agentul / unde s-a salvat X” răspunsul e în istoricul conversației; dacă nu e acolo, spune sincer că nu ai detalii',
   '- dacă un furnizor AI atinge limita sau are probleme, aplicația încearcă următorul furnizor configurat cu cheie',
   '- în acest chat NU poți crea, salva, muta sau șterge nimic: nu spune „am salvat/am creat/am mutat”; spune ce comandă să dea („Fă-mi 5 grile despre X în folderul Y”)',
-  '- nu inventa meniuri; sigure: butonul „Reindexează cărțile” și cardul „Capitole pentru AI” (Rezidențiat › Cărțile tale); dacă nu ești sigur, spune-o',
+  '- nu inventa meniuri; sigure: butonul „Reindexează cărțile” și cardul „Capitole pentru AI” (Rezidențiat › Banca de materiale); dacă nu ești sigur, spune-o',
 ].join('\n');
 
 /** Varianta scurtă, trimisă la fiecare mesaj: doar regulile care previn greșeli grave (pretinsa salvare, „folder” de pe disc). */

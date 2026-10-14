@@ -2,10 +2,16 @@ import type { Folder } from '../../types';
 import { tidyBookText } from '../../pages/quiz-play/relevantDocFormatting';
 
 /** Spreads retrieved chunks across sources instead of letting one document dominate the citation list. */
-export function diversifyChunks<T extends { source: string; score: number }>(
+export function diversifyChunks<T extends { source: string; score: number; tier?: string }>(
   chunks: T[],
   limit: number,
 ): T[] {
+  // Cărțile de bază au întâietate: primele locuri (până la 3) rămân ale lor, în ordinea primită de la căutare.
+  const books = chunks.filter((chunk) => chunk.tier === 'book').slice(0, Math.min(3, limit));
+  if (books.length > 0) {
+    const rest = diversifyChunks(chunks.filter((chunk) => !books.includes(chunk)), limit - books.length);
+    return [...books, ...rest];
+  }
   const bySource = new Map<string, T[]>();
   for (const chunk of chunks) {
     const group = bySource.get(chunk.source) ?? [];
