@@ -53,6 +53,27 @@ export function isLibraryBookImported(book: RezidentiatLibraryBook): boolean {
   return useAIStore.getState().knowledgeSources.some((source) => source.name === book.name && isSourceReady(source) && source.indexStatus !== 'indexing');
 }
 
+/**
+ * Cărțile incluse deja importate al căror index nu vine din textul curat de acum (de ex. importate când se folosea textul OCR):
+ * lungimea textului indexat diferă de cea a textului curat. Întoarce sursa împreună cu cartea ei.
+ */
+export async function findOutdatedBundledBooks(
+  sources: Array<{ id: string; name: string; charCount: number; indexStatus?: 'indexing' | 'ready' | 'error' }>,
+): Promise<Array<{ sourceId: string; book: RezidentiatLibraryBook }>> {
+  const out: Array<{ sourceId: string; book: RezidentiatLibraryBook }> = [];
+  for (const book of REZIDENTIAT_LIBRARY_BOOKS) {
+    const source = sources.find((item) => item.name === book.name && isSourceReady(item) && item.indexStatus !== 'indexing');
+    if (!source) continue;
+    if ((await book.load()).length !== source.charCount) out.push({ sourceId: source.id, book });
+  }
+  return out;
+}
+
+/** Reindexează o carte inclusă din textul curat; vechiul index rămâne activ până se termină (ca la `reindexKnowledgeSource`). */
+export async function reindexRezidentiatLibraryBook(sourceId: string, book: RezidentiatLibraryBook): Promise<void> {
+  await useAIStore.getState().reindexKnowledgeSource(sourceId, await book.load());
+}
+
 export async function importRezidentiatLibraryBook(book: RezidentiatLibraryBook): Promise<void> {
   // Drop an earlier attempt that failed, so retrying does not leave an "error" copy behind.
   for (const stale of useAIStore.getState().knowledgeSources.filter((source) => source.name === book.name && source.indexStatus === 'error')) {

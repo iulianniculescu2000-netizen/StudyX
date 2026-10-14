@@ -6,7 +6,7 @@ import { useUserStore } from '../../store/userStore';
 import { useToastStore } from '../../store/toastStore';
 import { useReindexSources } from '../../hooks/useReindexSources';
 import { isUnderRezidentiatRoot } from '../../lib/rezidentiatRoot';
-import { isBundledLibraryBookName } from '../../lib/rezidentiatLibrary';
+import { findOutdatedBundledBooks, isBundledLibraryBookName, reindexRezidentiatLibraryBook, type RezidentiatLibraryBook } from '../../lib/rezidentiatLibrary';
 import { findDuplicateSources } from '../../lib/ai/bookAutoReindex';
 import { ensureMaterialsRoot } from '../../lib/organizareRoot';
 import { CAPITOLE_SYNC_EVENT } from '../../lib/capitoleSyncEvent';
@@ -46,6 +46,34 @@ export default function BookLibraryTools() {
     });
     return () => { cancelled = true; };
   }, [pdfIndexKey, findSourcesWithoutPages]);
+
+  // Cărți incluse importate înainte de textul curat: se reindexează din text, fără folder și fără PDF.
+  const [outdated, setOutdated] = useState<Array<{ sourceId: string; book: RezidentiatLibraryBook }>>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const bundledKey = knowledgeSources.map((source) => `${source.id}:${source.charCount}:${source.indexStatus ?? ''}`).join('|');
+  useEffect(() => {
+    let cancelled = false;
+    void findOutdatedBundledBooks(knowledgeSources).then((found) => {
+      if (!cancelled) setOutdated(found);
+    }).catch(() => {
+      if (!cancelled) setOutdated([]);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bundledKey]);
+
+  const refreshBundled = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      for (const item of outdated) await reindexRezidentiatLibraryBook(item.sourceId, item.book);
+      addToast('Cărțile incluse au fost reindexate din textul curat.', 'success');
+    } catch (error) {
+      addToast(`Reindexare eșuată: ${error instanceof Error ? error.message : 'eroare necunoscută'}`, 'error', 5000);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const books = useMemo(
     () => knowledgeSources.filter((source) => withoutPages.has(source.id) && !isBundledLibraryBookName(source.name) && !!source.folderId && isUnderRezidentiatRoot(source.folderId, libraryFolders)),
@@ -139,6 +167,27 @@ export default function BookLibraryTools() {
           <span className="min-w-0 flex-1 truncate text-[13px] font-medium" style={{ color: theme.text }}>{reindex.state.label}</span>
           <button type="button" onClick={reindex.cancel} className="fine-chip press-feedback rounded-full px-3 py-1.5 text-[12.5px] font-semibold" style={{ color: theme.danger }}>
             Anulează
+          </button>
+        </div>
+      )}
+      {outdated.length > 0 && (
+        <div className="glass-panel flex flex-wrap items-center gap-3 rounded-[var(--r-md)] px-4 py-3">
+          <div className="min-w-0 flex-1">
+            <div className="text-[13.5px] font-semibold" style={{ color: theme.text }}>
+              {outdated.length === 1 ? 'O carte inclusă are indexul vechi' : `${outdated.length} cărți incluse au indexul vechi`}
+            </div>
+            <div className="truncate text-[12px]" style={{ color: theme.text3 }}>
+              Le reindexez din textul curat, cu pagina din PDF la fiecare citare; indexul vechi rămâne activ până se termină.
+            </div>
+          </div>
+          <button
+            type="button"
+            disabled={refreshing}
+            onClick={() => { void refreshBundled(); }}
+            className="press-feedback flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-60"
+            style={{ background: theme.accent }}
+          >
+            {refreshing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Reindexează din textul curat
           </button>
         </div>
       )}
