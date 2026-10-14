@@ -26,6 +26,8 @@ app.setAppUserModelId(APP_USER_MODEL_ID);
 app.setName('StudyX');
 
 const isDev = !app.isPackaged;
+// Adresa serverului de dezvoltare; STUDYX_DEV_URL permite teste pe alt port fără să atingă 5173 (al lui electron:dev).
+const DEV_URL = process.env.STUDYX_DEV_URL || 'http://localhost:5173';
 // STUDYX_USER_DATA (cale absolută) mută userData într-un director de test; fără ea rămâne %APPDATA%\StudyX.
 const userDataOverride = path.isAbsolute(process.env.STUDYX_USER_DATA || '') ? process.env.STUDYX_USER_DATA : null;
 const sharedUserDataPath = userDataOverride || path.join(app.getPath('appData'), 'StudyX');
@@ -1056,7 +1058,7 @@ function createWindow() {
   mainWindow.webContents.on('will-navigate', (event, url) => {
     const current = mainWindow?.webContents.getURL() ?? '';
     if (url === current) return;
-    const isAppUrl = url.startsWith('file://') || (isDev && url.startsWith('http://localhost:5173'));
+    const isAppUrl = url.startsWith('file://') || (isDev && url.startsWith(DEV_URL));
     if (isAppUrl) return;
 
     event.preventDefault();
@@ -1068,7 +1070,7 @@ function createWindow() {
   });
 
   if (isDev) {
-    mainWindow.loadURL('http://localhost:5173');
+    mainWindow.loadURL(DEV_URL);
     if (!userDataOverride) mainWindow.webContents.openDevTools({ mode: 'detach' });
     // Event-object form (the positional-arguments form is deprecated in Electron 35+).
     mainWindow.webContents.on('console-message', (event) => {
