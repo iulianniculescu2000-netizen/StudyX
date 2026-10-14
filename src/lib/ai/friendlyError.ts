@@ -3,6 +3,7 @@
  * act on. Provider errors carry request ids, org ids and billing URLs that are
  * noise in a chat bubble (and overflow it).
  */
+import { MODEL_CANDIDATES, PROVIDER_NAMES, isModelUnavailableError, modelDisplayName, modelIdFromError, providerOfModel } from './modelCatalog';
 
 /** "8.22s", "1m30.5s", "45 milliseconds", "2 minutes" → seconds, or null when no wait is stated. */
 function parseWaitSeconds(text: string): number | null {
@@ -44,6 +45,18 @@ export function rateLimitWaitSeconds(raw: unknown): number | null {
 
 const LOCAL_HINT = 'Încearcă mai târziu sau așteaptă resetarea limitei.';
 
+/** „Modelul X (Furnizor) nu mai e disponibil pentru cheia ta” + ce face aplicația (trece pe următorul model) sau ce să facă utilizatorul. */
+function modelUnavailableMessage(text: string): string {
+  const id = modelIdFromError(text);
+  const provider = id ? providerOfModel(id) : null;
+  if (!id) return 'Modelul AI ales nu mai este disponibil pentru cheia ta. Alege alt model în Setări AI; aplicația încearcă singură celelalte modele.';
+  const name = modelDisplayName(id);
+  const where = provider ? ` (${PROVIDER_NAMES[provider]})` : '';
+  const next = provider ? MODEL_CANDIDATES[provider].find((candidate) => candidate !== id) : undefined;
+  if (next) return `Modelul ${name}${where} nu mai este disponibil pentru cheia ta. Aplicația trece automat pe ${modelDisplayName(next)}; poți alege alt model în Setări AI.`;
+  return `Modelul ${name}${where} nu mai este disponibil pentru cheia ta. Alege alt model în Setări AI sau verifică cheia.`;
+}
+
 export function friendlyAIError(raw: unknown): string {
   const message = raw instanceof Error ? raw.message : typeof raw === 'string' ? raw : '';
   const text = message.trim();
@@ -64,6 +77,9 @@ export function friendlyAIError(raw: unknown): string {
 
   if (/invalid api key|incorrect api key|api key not valid|unauthorized|\b(?:status|http|code|error)\W{0,4}401\b/i.test(text)) {
     return 'Cheia AI nu este validă. Verific-o în Setări AI.';
+  }
+  if (isModelUnavailableError(text) && !RATE_LIMIT_STATUS_PATTERN.test(text)) {
+    return modelUnavailableMessage(text);
   }
   if (/failed to fetch|networkerror|network request failed|load failed|ERR_INTERNET|ENOTFOUND|ECONNRESET|ETIMEDOUT/i.test(text)) {
     return 'Nu am putut contacta serviciul AI. Verifică conexiunea la internet și încearcă din nou.';

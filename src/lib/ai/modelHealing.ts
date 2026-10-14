@@ -19,62 +19,26 @@
  */
 import { useAIStore, type AIModel, type AIProvider } from '../../store/aiStore';
 import { useToastStore } from '../../store/toastStore';
+import {
+  MODEL_CANDIDATES, PROVIDER_NAMES, isModelUnavailableError, modelDisplayName,
+  type ProviderId as CatalogProviderId,
+} from './modelCatalog';
 
-type ProviderId = 'groq' | 'google' | 'mistral';
+type ProviderId = CatalogProviderId;
 
-/**
- * Known-good models per provider, in preference order. Kept separate from
- * `PROVIDER_MODELS` in `aiStore.ts` (the user-facing picker) so this list can
- * include models we want to silently fall back to without necessarily
- * offering them all as manual choices.
- */
-const MODEL_CANDIDATES: Record<ProviderId, AIModel[]> = {
-  groq: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'],
-  // 2026-08-24: confirmed live against Google's API that every 2.x model
-  // (2.5-flash, 2.0-flash, 2.5-pro, 2.5-flash-lite) 404s with "no longer
-  // available to new users" — not listed as a fallback candidate here even
-  // though `/models` still lists them (the catalog entry outlives actual
-  // invocability, so checkModelAvailability's liveIds check alone isn't
-  // enough to catch this class of retirement).
-  // 2026-10-13, din pagina oficială de modele: stabile gemini-4-argon, gemini-3.8-flash, gemini-3.6-flash, gemini-3.5-flash-lite, gemini-3.1-flash-lite;
-  // gemini-3.1-pro-preview e preview. gemini-3.7-flash și gemini-3.5-flash nu mai sunt listate (se scot din rezerve: ar fi încercări
-  // sigur eșuate). Variantele „lite” sunt ultima rezervă înainte de preview: mai puțin capabile, dar răspund.
-  google: ['gemini-3.8-flash', 'gemini-4-argon', 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-3.1-pro-preview'],
-  // "-latest" aliases, not dated model names — Mistral keeps these pointed at
-  // their current model, so (unlike NVIDIA's dated pick, dead within 2 weeks)
-  // this shouldn't need healing from a rename/retirement in the first place.
-  mistral: ['mistral-small-latest', 'mistral-large-latest'],
-};
-
-const MODELS_ENDPOINT: Record<ProviderId, string> = {
+export const MODELS_ENDPOINT: Record<ProviderId, string> = {
   groq: 'https://api.groq.com/openai/v1/models',
   google: 'https://generativelanguage.googleapis.com/v1beta/openai/models',
   mistral: 'https://api.mistral.ai/v1/models',
 };
 
-const CHAT_ENDPOINT: Record<ProviderId, string> = {
+export const CHAT_ENDPOINT: Record<ProviderId, string> = {
   groq: 'https://api.groq.com/openai/v1/chat/completions',
   google: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
   mistral: 'https://api.mistral.ai/v1/chat/completions',
 };
 
-/**
- * Matches the error shapes providers actually send for a dead model —
- * verified live against Groq's `"The model \`X\` does not exist or you do
- * not have access to it."`. The rest cover the OpenAI-style wording other
- * providers (and Groq itself, in other error paths) use for the same thing.
- *
- * Two independent checks rather than one proximity regex: model IDs routinely
- * contain periods ("llama-3.3-70b", "gpt-4.1"), and a single `model...phrase`
- * pattern with a `[^.]*` gap breaks the moment the ID between them has a dot
- * in it — which is most of them.
- */
-const UNAVAILABLE_PHRASE_RE = /does not exist|not[ _]found|no longer (?:exist|available|supported)|has been decommissioned|is decommissioned|deprecated/i;
-
-export function isModelUnavailableError(message: string): boolean {
-  if (/\bdecommissioned\b/i.test(message)) return true;
-  return /\bmodel\b/i.test(message) && UNAVAILABLE_PHRASE_RE.test(message);
-}
+export { isModelUnavailableError };
 
 /** Modelele cunoscute ca funcționale ale unui furnizor, în ordinea preferinței (rezerve când cota unuia e epuizată). */
 export function candidateModels(provider: ProviderId): readonly AIModel[] {
@@ -84,6 +48,11 @@ export function candidateModels(provider: ProviderId): readonly AIModel[] {
 /** First candidate for this provider that isn't the one that just failed, or null if there's nothing left to try. */
 export function nextCandidateModel(provider: ProviderId, failedModel: string, skip?: (model: AIModel) => boolean): AIModel | null {
   return MODEL_CANDIDATES[provider].find((candidate) => candidate !== failedModel && !skip?.(candidate)) ?? null;
+}
+
+/** Mesajul de comutare, cu numele modelelor: „Gemini 3.1 Pro nu mai e disponibil pentru cheia ta (…); folosesc Gemini 3.8 Flash.” */
+export function modelSwitchMessage(deadModel: string, workingModel: string, providerName: string): string {
+  return `${modelDisplayName(deadModel)} nu mai e disponibil pentru cheia ta (${providerName}); folosesc ${modelDisplayName(workingModel)}.`;
 }
 
 /**
@@ -102,7 +71,7 @@ export function healPrimaryModelChoice(
   if (provider !== primaryProvider) return;
   useAIStore.getState().setModel(workingModel);
   useToastStore.getState().addToast(
-    `${providerName} nu mai oferă modelul "${deadModel}" — am trecut automat pe ${workingModel} și am salvat schimbarea.`,
+    modelSwitchMessage(deadModel, workingModel, providerName),
     'info',
     7000,
   );
@@ -161,10 +130,8 @@ export async function checkModelAvailability(): Promise<void> {
   }
 }
 
-function providerDisplayName(provider: ProviderId): string {
-  if (provider === 'google') return 'Google Gemini';
-  if (provider === 'mistral') return 'Mistral AI';
-  return 'Groq';
+export function providerDisplayName(provider: ProviderId): string {
+  return PROVIDER_NAMES[provider];
 }
 
 /**

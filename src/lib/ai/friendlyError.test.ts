@@ -40,3 +40,22 @@ describe('friendlyAIError', () => {
     expect(friendlyAIError('')).toContain('Încearcă din nou');
   });
 });
+
+describe('friendlyAIError: model indisponibil', () => {
+  it('names the model and provider and says what the app does', () => {
+    const out = friendlyAIError(new Error('models/gemini-3.1-pro-preview is not found or no longer available to new users. This model is not supported.'));
+    expect(out).toContain('Gemini 3.1 Pro');
+    expect(out).toContain('Google Gemini');
+    expect(out).toContain('trece automat pe Gemini 3.8 Flash');
+  });
+
+  it('understands the Groq wording and Mistral aliases', () => {
+    expect(friendlyAIError('The model `openai/gpt-oss-120b` does not exist or you do not have access to it.')).toContain('GPT-OSS 120B (Groq)');
+    expect(friendlyAIError('Eroare Mistral: Invalid model: mistral-large-latest, model not found')).toContain('Mistral Large (Mistral AI)');
+  });
+
+  it('falls back to a generic sentence when no model id is present, and leaves rate limits alone', () => {
+    expect(friendlyAIError('model not found')).toContain('Setări AI');
+    expect(friendlyAIError('Rate limit reached for model openai/gpt-oss-120b. Please try again in 3s')).toContain('limita');
+  });
+});

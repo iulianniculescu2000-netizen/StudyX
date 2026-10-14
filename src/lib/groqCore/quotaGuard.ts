@@ -99,6 +99,11 @@ export function isModelCoolingDown(provider: string, model: string, now = Date.n
   return true;
 }
 
+/** Momentul (ms) până la care modelul e sărit, sau null când nu e în pauză. Pentru afișare în Setări AI. */
+export function modelCooldownUntil(provider: string, model: string, now = Date.now()): number | null {
+  return isModelCoolingDown(provider, model, now) ? (cooldownUntil.get(keyOf(provider, model)) ?? null) : null;
+}
+
 /** Pentru teste. */
 export function resetQuotaGuard(): void {
   cooldownUntil.clear();

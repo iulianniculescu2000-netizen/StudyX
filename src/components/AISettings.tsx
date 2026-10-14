@@ -6,7 +6,7 @@ import {
   Loader2, Gift, ChevronDown, ArrowUpRight, Brain, RefreshCw, Sparkles
 } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
-import { useAIStore, type AIModel, type AIProvider } from '../store/aiStore';
+import { useAIStore, type AIProvider } from '../store/aiStore';
 import { useUserStore } from '../store/userStore';
 import { clearStudyPatterns, getProfileSummaryText } from '../ai/UserProfile';
 import { refreshAllProviderModels, type ProviderModelCheck } from '../lib/ai/modelHealing';
@@ -15,6 +15,10 @@ import ChatMemoryPanel from './ai-chat/ChatMemoryPanel';
 import AIUsagePanel from './AIUsagePanel';
 import { PROVIDER_CATALOG } from '../lib/ai/providerCatalog';
 import { friendlyAIError } from '../lib/ai/friendlyError';
+import { MODEL_OPTIONS } from '../lib/ai/modelCatalog';
+import { isModelSelectable } from '../lib/ai/providerStatus';
+import ProviderStatusCard from './ai-settings/ProviderStatusCard';
+import { useProviderStatus } from './ai-settings/useProviderStatus';
 import { useAdaptiveMotion } from '../hooks/useAdaptiveMotion';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useScrollLock } from '../hooks/useScrollLock';
@@ -30,23 +34,7 @@ const PROVIDER_DESC: Record<AIProvider, string> = {
 
 const PROVIDERS = PROVIDER_CATALOG.map((entry) => ({ ...entry, desc: PROVIDER_DESC[entry.id] }));
 
-const MODELS: Record<AIProvider, { id: AIModel; name: string; desc: string; speed: string }[]> = {
-  groq: [
-    { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B', desc: 'Cel mai inteligent, foarte rapid', speed: 'Rapid' },
-    { id: 'openai/gpt-oss-20b', name: 'GPT-OSS 20B', desc: 'Ultra rapid', speed: 'Instant' },
-  ],
-  google: [
-    { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash', desc: 'Cel mai nou, rapid și inteligent', speed: 'Rapid' },
-    { id: 'gemini-4-argon', name: 'Gemini 4 Argon', desc: 'Generația 4, stabil; cotă gratuită proprie (încearcă-l când 3.8 se epuizează)', speed: 'Smart' },
-    { id: 'gemini-3.6-flash', name: 'Gemini 3.6 Flash', desc: 'Echilibrat, foarte stabil', speed: 'Rapid' },
-    { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash-Lite', desc: 'Cel mai economic: folosește mai puțin din limita gratuită', speed: 'Instant' },
-    { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro', desc: 'Cel mai bun pentru raționament', speed: 'Smart' },
-  ],
-  mistral: [
-    { id: 'mistral-small-latest', name: 'Mistral Small', desc: 'Rapid, echilibrat', speed: 'Rapid' },
-    { id: 'mistral-large-latest', name: 'Mistral Large', desc: 'Cel mai puternic, mai lent', speed: 'Smart' },
-  ],
-};
+const MODELS = MODEL_OPTIONS;
 
 // Step-by-step guide for getting a FREE API key, per provider. Shown inline so
 // users (especially on the free Google tier) know exactly where to go.
@@ -106,6 +94,8 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
   const [saved, setSaved] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [verifyResult, setVerifyResult] = useState<{ ok: boolean; error?: string; warning?: string } | null>(null);
+  const providerStatus = useProviderStatus(open);
+  const keyInputRef = useRef<HTMLInputElement>(null);
   const [refreshingModel, setRefreshingModel] = useState(false);
   const [providerCheckResults, setProviderCheckResults] = useState<ProviderModelCheck[] | null>(null);
   const [showProviderCheck, setShowProviderCheck] = useState(false);
@@ -124,6 +114,14 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
     } finally {
       setRefreshingModel(false);
     }
+  };
+  const handleAddKey = (target: AIProvider) => {
+    setProvider(target);
+    setSaved(false);
+    setVerifyResult(null);
+    setShowGuide(true);
+    keyInputRef.current?.scrollIntoView({ block: 'center', behavior: calmMotion ? 'auto' : 'smooth' });
+    keyInputRef.current?.focus();
   };
   const activeProfileId = useUserStore((s) => s.activeProfileId);
   const [memorySummary, setMemorySummary] = useState('');
@@ -266,6 +264,7 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
                   </label>
                   <div className="relative">
                     <input
+                      ref={keyInputRef}
                       type={showKey ? 'text' : 'password'}
                       value={draft}
                       onChange={(e) => { setDraft(e.target.value); setVerifyResult(null); }}
@@ -388,6 +387,8 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
                   </div>
                 </div>
 
+                <ProviderStatusCard status={providerStatus} onAddKey={handleAddKey} />
+
                 {/* Model Selection */}
                 <div className="mb-8">
                   <div className="mb-2.5 flex items-center justify-between gap-3">
@@ -408,19 +409,30 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
                     </motion.button>
                   </div>
                   <div className="space-y-2">
-                    {modelOptions.map((m) => (
-                      <button key={m.id} onClick={() => setModel(m.id)} className="w-full flex items-center gap-3 px-4 py-3 rounded-[var(--r-md)] text-left transition-colors"
-                        style={{
-                          background: model === m.id ? `${theme.accent}14` : theme.surface2,
-                          border: `1px solid ${model === m.id ? theme.accent + '50' : theme.border}`,
-                        }}>
-                        <div className="flex-1">
-                          <p className="text-sm font-bold" style={{ color: theme.text }}>{m.name}</p>
-                          <p className="text-[11px] font-medium opacity-50" style={{ color: theme.text }}>{m.desc} · {m.speed}</p>
-                        </div>
-                        {model === m.id && <div className="elev-1 w-6 h-6 rounded-full flex items-center justify-center" style={{ background: theme.accent }}><Check size={12} color="white" strokeWidth={4} /></div>}
-                      </button>
-                    ))}
+                    {modelOptions.map((m) => {
+                      const st = providerStatus.statusOf(provider, m.id);
+                      const selectable = isModelSelectable(st);
+                      return (
+                        <button
+                          key={m.id}
+                          disabled={!selectable}
+                          onClick={() => setModel(m.id)}
+                          className="w-full flex items-center gap-3 px-4 py-3 rounded-[var(--r-md)] text-left transition-colors disabled:cursor-not-allowed focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
+                          style={{
+                            background: model === m.id ? `${theme.accent}14` : theme.surface2,
+                            border: `1px solid ${model === m.id ? theme.accent + '50' : theme.border}`,
+                            opacity: selectable ? 1 : 0.55,
+                          }}>
+                          <div className="flex-1">
+                            <p className="text-sm font-bold" style={{ color: theme.text }}>{m.name}</p>
+                            <p className="text-[11px] font-medium opacity-50" style={{ color: theme.text }}>
+                              {selectable ? `${m.desc} · ${m.speed}` : 'indisponibil pentru cheia ta'}
+                            </p>
+                          </div>
+                          {model === m.id && <div className="elev-1 w-6 h-6 rounded-full flex items-center justify-center" style={{ background: theme.accent }}><Check size={12} color="white" strokeWidth={4} /></div>}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
