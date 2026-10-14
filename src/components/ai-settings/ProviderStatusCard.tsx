@@ -54,7 +54,8 @@ export default function ProviderStatusCard({ status, onAddKey }: ProviderStatusC
 
       <p className="mb-4 text-[11.5px] leading-relaxed" style={{ color: theme.text2 }}>
         Cererile pornesc pe furnizorul ales. Când un model își epuizează cota, aplicația încearcă automat celelalte modele ale lui,
-        apoi următorul furnizor cu cheie (Groq, Gemini, Mistral). Groq are cea mai mare cotă, de aceea cererile ajung adesea acolo.
+        apoi ceilalți furnizori cu cheie, în ordinea Groq, Gemini, Mistral. După o trecere, aplicația rămâne 10 minute pe furnizorul care a răspuns,
+        iar Groq are cea mai mare cotă, de aceea cererile ajung adesea acolo.
       </p>
 
       <ul className="space-y-2.5">
