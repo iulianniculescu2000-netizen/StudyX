@@ -83,7 +83,7 @@ export default function ChatContinuePanel({
         <button
           onClick={() => openStudyChat(
             'explain',
-            'Te rog să îmi explici această grilă. De ce am greșit și de ce este corect răspunsul indicat?',
+            'Explică-mi această întrebare: de ce am greșit și de ce este corect răspunsul indicat? Adaugă și o schemă scurtă a raționamentului.',
             {
               questionText: question.text,
               correctAnswerText,

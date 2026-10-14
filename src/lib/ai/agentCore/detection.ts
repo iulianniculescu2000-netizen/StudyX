@@ -31,10 +31,26 @@ export const COMMAND_PATTERNS = [
 
 export const COMMAND_HINTS = new RegExp(`\\b(?:${COMMAND_PATTERNS.join('|')})`, 'i');
 
+const foldText = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+/**
+ * Mesajul vorbește despre ceva ce există deja pe ecran („explică această grilă”, „debrief al sesiunii”), nu cere să se creeze ceva.
+ * Cuvântul „grilă” sau „fă-mi o schemă” dintr-un astfel de mesaj nu e comandă: mesajul merge în chat, cu contextul grilei.
+ */
+export function refersToCurrentStudyItem(text: string): boolean {
+  const norm = foldText(text);
+  if (/\b(?:aceasta|asta|actuala|curenta|aceea|acea)\s+(?:grila|intrebare)\b/.test(norm)) return true;
+  if (/\bgrila\s+(?:asta|aceasta|curenta|de mai sus|rezolvata|de pe ecran)\b/.test(norm)) return true;
+  if (/\b(?:debrief|sesiunii|sesiunea mea)\b/.test(norm)) return true;
+  // „explică-mi grila” fără număr: se explică una existentă. „explică-mi și fă-mi 10 grile” are număr și rămâne comandă.
+  return /\bexplic\w*/.test(norm) && /\bgril\w*/.test(norm) && !/\d/.test(norm);
+}
+
 /** Cheap pre-filter so normal chat questions never pay for a planning round-trip. */
 export function looksLikeAgentCommand(text: string): boolean {
   const value = text.trim();
   if (value.length < 4) return false;
+  if (refersToCurrentStudyItem(value)) return false;
   if (value.endsWith('?') && !COMMAND_HINTS.test(value)) return false;
   // „Ce face metformina?”, „Cum se pune diagnosticul de lupus?”: cuvinte-comandă într-o întrebare, nu o comandă.
   if (QUESTION_START.test(value) && !EXPLICIT_COMMAND.test(value)) return false;

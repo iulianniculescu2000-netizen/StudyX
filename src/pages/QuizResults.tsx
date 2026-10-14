@@ -264,9 +264,20 @@ export default function QuizResults() {
       : isMistakeDeck
         ? 'Deck-ul din greșeli e excelent pentru fixare rapidă. După ce scorul urcă, continuă cu o recuperare focalizată sau cu un examen adaptiv.'
         : 'Poți continua inteligent: recuperezi punctele slabe, creezi flashcards din greșeli sau intri direct într-un examen adaptiv.';
+  // Chatul nu vede sesiunea: întrebările greșite intră în mesaj, ca debrief-ul să fie despre ele și nu un răspuns general.
+  const missedSummary = wrongEntries.slice(0, 8).map(({ question }, index) => {
+    const given = session.answers[question.id] ?? [];
+    const chosen = question.options.filter((option) => given.includes(option.id)).map((option) => option.text).join(' / ') || 'niciun răspuns';
+    const correct = question.options.filter((option) => option.isCorrect).map((option) => option.text).join(' / ');
+    return `${index + 1}. ${question.text} | răspunsul meu: ${chosen} | corect: ${correct}`;
+  }).join('\n');
   const debriefPrompt = wrongEntries.length > 0
-    ? `Fă-mi un debrief al sesiunii "${quiz.title}". Am obținut ${session.score}/${session.total} (${pct}%). Mă interesează mai ales unde am greșit și ce trebuie să corectez prioritar pentru examen.`
-    : `Fă-mi un debrief scurt al sesiunii "${quiz.title}". Am obținut ${session.score}/${session.total} (${pct}%). Spune-mi ce am făcut bine și cum să păstrez nivelul.`;
+    ? `Vreau un debrief al sesiunii "${quiz.title}". Am obținut ${session.score}/${session.total} (${pct}%). Mă interesează mai ales unde am greșit și ce trebuie să corectez prioritar pentru examen.
+
+Întrebările pe care le-am pierdut:
+${missedSummary}${wrongEntries.length > 8 ? `
+(și încă ${wrongEntries.length - 8})` : ''}`
+    : `Vreau un debrief scurt al sesiunii "${quiz.title}". Am obținut ${session.score}/${session.total} (${pct}%). Spune-mi ce am făcut bine și cum să păstrez nivelul.`;
 
   return (
     <div className="premium-shell h-full overflow-y-auto">

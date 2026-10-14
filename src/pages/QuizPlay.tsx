@@ -160,6 +160,8 @@ function QuizPlaySession({ quiz, orderedQuestions, examMode, timedMode, examMinu
   const activeProfileId = useUserStore((s) => s.activeProfileId);
   const focusMode = useFocusModeStore((s) => s.focusMode);
   const toggleFocusMode = useFocusModeStore((s) => s.toggleFocusMode);
+  // Modul Focus ascunde bara laterală și bara de titlu: dacă rămâne pornit la ieșirea din grilă, nu mai există cum să-l oprești.
+  useEffect(() => () => useFocusModeStore.getState().setFocusMode(false), []);
 
   const [currentIdx, setCurrentIdx] = useState(0);
   const [questionQueue, setQuestionQueue] = useState<Question[]>(orderedQuestions);

@@ -4,6 +4,7 @@
  */
 import type { FlashcardDifficulty } from '../../ai/flashcardPrompts';
 import type { StudyKind } from './studyDestinations';
+import { refersToCurrentStudyItem } from './agentCore/detection';
 
 export type MissingField = 'topic' | 'count' | 'difficulty' | 'folder';
 
@@ -111,6 +112,7 @@ export function detectStudyRequest(text: string, sourceNames: readonly string[] 
   if (original.length < 6 || original.length > 600) return null;
   const folded = fold(original);
 
+  if (refersToCurrentStudyItem(original)) return null;
   if (BLOCKERS.test(folded) || !CREATE_VERB.test(folded)) return null;
   const wantsCards = FLASHCARD_WORD.test(folded);
   const wantsQuiz = QUIZ_WORD.test(folded);

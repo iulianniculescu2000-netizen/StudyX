@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isAppQuestion } from './routerPolicy';
-import { looksLikeAgentCommand } from './agentCore/detection';
+import { looksLikeAgentCommand, refersToCurrentStudyItem } from './agentCore/detection';
 import { detectStudyRequest } from './optionRequest';
 
 /** Întrebări medicale obișnuite care erau confundate cu comenzi sau cu întrebări despre aplicație (găsite la auditul prompturilor). */
@@ -49,4 +49,23 @@ describe('cererile de grile și carduri', () => {
     ['fă-mi flashcarduri despre pancreatita acută', 'flashcards'],
     ['pregătește-mi fișe de studiu despre nefrologie', 'flashcards'],
   ])('rămân cereri: %s', (text, kind) => expect(detectStudyRequest(text)?.kind).toBe(kind));
+});
+
+describe('mesaje despre ceva existent nu sunt comenzi', () => {
+  const own = [
+    'Explică-mi această întrebare: de ce am greșit și de ce este corect răspunsul indicat? Adaugă și o schemă scurtă a raționamentului.',
+    'Te rog să îmi explici această grilă. De ce am greșit și de ce este corect răspunsul indicat? fa mi o schema',
+    'Vreau un debrief al sesiunii "Sepsis". Am obținut 6/10 (60%).\n\nÎntrebările pe care le-am pierdut:\n1. Vasopresorul de primă linie',
+    'Fă-mi un debrief al sesiunii "Sepsis"',
+  ];
+  it.each(own)('%s', (text) => {
+    expect(refersToCurrentStudyItem(text)).toBe(true);
+    expect(looksLikeAgentCommand(text)).toBe(false);
+    expect(detectStudyRequest(text)).toBeNull();
+  });
+  it('„fă-mi 10 grile” rămâne comandă', () => {
+    expect(refersToCurrentStudyItem('Fă-mi 10 grile despre sepsis')).toBe(false);
+    expect(looksLikeAgentCommand('Fă-mi 10 grile despre sepsis')).toBe(true);
+    expect(detectStudyRequest('Fă-mi 10 grile despre sepsis')).not.toBeNull();
+  });
 });
