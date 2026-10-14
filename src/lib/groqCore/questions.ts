@@ -154,11 +154,11 @@ export async function generateQuestionsFromText(
     const userPrompt = `Creează exact ${needed} întrebări grilă bazate EXCLUSIV pe textul de mai jos.
 
 REGULI:
-- Un singur răspuns corect (isCorrect: true), 3 distractori plauzibili
+- Exact 5 opțiuni (A-E): un singur răspuns corect (isCorrect: true) și 4 distractori plauzibili
 - Distractori: din ACEEAȘI categorie, lungime similară cu răspunsul corect, plauzibili medical dar greșiți; NU folosi "toate de mai sus", "niciunul", "ambele A și B"
 - Câmp "explanation": justificare medicală (2-3 fraze scurte, separate prin punct, fără „;”): de ce varianta corectă e corectă + de ce fiecare distractor e greșit
 - Câmp "tags": 3-5 cuvinte cheie ex: ["cardiologie","fibrilație"]
-- Câmp "reference": referință Harrison/Gomella sau "" dacă nu există
+- Câmp "reference": "" (referința o completează aplicația; nu inventa titluri, ediții sau pagini)
 - NU genera întrebări despre JSON/format
 - Răspunde DOAR cu JSON pur, fără markdown${typeInstruction}
 
@@ -270,7 +270,7 @@ STRUCTURA OBLIGATORIE:
 - "options": 5 opțiuni (A-E), un singur răspuns corect — formatul de la rezidențiat
 - "explanation": argumentare medicală (3-4 fraze scurte, separate prin punct, fără „;”)
 - "tags": 3-5 cuvinte cheie
-- "reference": Harrison/Gomella sau ""
+- "reference": "" (nu inventa titluri, ediții sau pagini)
 
 TEXT:
 ---

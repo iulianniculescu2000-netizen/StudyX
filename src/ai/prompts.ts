@@ -181,7 +181,7 @@ export function buildQuestionPrompt(
   const optionList = questionType === 'multiple'
     ? [option(true), option(true), option(false), option(false), option(false)]
     : [option(true), ...Array.from({ length: examStyle === 'residency' ? 4 : 3 }, () => option(false))];
-  const jsonSchema = `{"questions":[{"text":"","options":[${optionList.join(',')}],"explanation":"1-2 propoziții scurte, fără „;”: de ce e corectă și care e capcana principală","tags":["topic"],"difficulty":"easy|medium|hard","sources":[""]}]}`;
+  const jsonSchema = `{"questions":[{"text":"","options":[${optionList.join(',')}],"explanation":"1-2 propoziții scurte, fără „;”: de ce e corectă și care e capcana principală","tags":["topic"],"difficulty":"easy|medium|hard","sources":[]}]}`;
 
   return [
     AI_PERSONALITY,
@@ -250,7 +250,7 @@ export function buildExplanationPrompt(
     `RĂSPUNS CORECT: ${sanitizeUserInput(correctAnswer)}`,
     contextPayload?.summary ? `CONTEXT RELEVANT:\n${contextPayload.summary}` : '',
     'Returnează strict JSON:\n' +
-      '{"explanation":"cele patru secțiuni Markdown de mai sus, separate prin \\n\\n","mistakeType":"confuzie_mecanism|inversare_tratament|diagnostic_diferential|lipsa_cunostinte|citire_superficiala|altul","rule":"regula scurta de retinut","confidence":0.0,"missingConcept":"concept lipsa","recommendedTopic":"topic recomandat","relatedConcepts":[""],"sources":[""]}',
+      '{"explanation":"cele patru secțiuni Markdown de mai sus, separate prin \\n\\n","mistakeType":"confuzie_mecanism|inversare_tratament|diagnostic_diferential|lipsa_cunostinte|citire_superficiala|altul","rule":"regula scurta de retinut","missingConcept":"concept lipsa","recommendedTopic":"topic recomandat","relatedConcepts":[""],"sources":[]}',
   ]
     .filter(Boolean)
     .join('\n\n');

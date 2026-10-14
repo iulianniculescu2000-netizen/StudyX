@@ -18,7 +18,7 @@ describe('compact study prompts preserve the request contract', () => {
     for (const option of options) expect(prompt.split(option.text)).toHaveLength(2);
     expect(prompt).toContain('"corect":true');
     expect(prompt).toContain('"corect":false');
-    expect(prompt).toContain('TOATĂ cheia');
+    expect(prompt).toContain('verifică toată cheia');
     expect(prompt).toContain('nu ești sigur');
     expect(callback).toBe(chunks);
     expect(temperature).toBe(0.3);
@@ -33,7 +33,7 @@ describe('compact study prompts preserve the request contract', () => {
     const prompt = messages[1].content as string;
     expect(prompt.split('Cheia completă QA')).toHaveLength(2);
     expect(prompt).toContain('Alegerea studentului QA');
-    expect(prompt).toContain('nu apăra cheia');
+    expect(prompt).toContain('nu justifica o cheie');
     expect(prompt).toContain('Maximum 4–5 propoziții');
     expect(messages[0].content).toContain('Profil QA');
   });
