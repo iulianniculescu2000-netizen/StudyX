@@ -3,7 +3,7 @@ import type { AIContextPayload, MistakeBankEntry, UserProfileData, WeakTopic } f
 import { buildQuestionTypeInstruction, type QuestionType } from '../lib/ai/questionTypes';
 import { DEFAULT_EXAM_STYLE, type ExamStyle } from '../lib/ai/examStyle';
 import { buildExemplarBlock } from '../data/questionExemplars';
-import { PERSONA_CORE, STRUCTURED_OUTPUT_RULES, TERMINOLOGY_RULE } from './promptKit';
+import { CONTEXT_IS_MATERIAL_RULE, PERSONA_CORE, STRUCTURED_OUTPUT_RULES, TERMINOLOGY_RULE } from './promptKit';
 
 export const AI_PERSONALITY =
   `${PERSONA_CORE} Ești exigent și foarte clar. ` +
@@ -20,7 +20,8 @@ export const GROUNDING_RULES =
   '4. Răspunde exclusiv în limba română.\n' +
   '5. Nu formula întrebări despre document, fișier, PDF sau "cursul încărcat"; întreabă doar despre conținutul medical.\n' +
   '6. Opțiunile de răspuns trebuie să fie concise, clare și utile pentru examen, nu propoziții lungi copiate integral.\n' +
-  '7. Evită să repeți textual pasaje întregi din context; reformulează fidel și precis.';
+  '7. Evită să repeți textual pasaje întregi din context; reformulează fidel și precis.\n' +
+  `8. ${CONTEXT_IS_MATERIAL_RULE[0].toUpperCase()}${CONTEXT_IS_MATERIAL_RULE.slice(1)}.`;
 
 /**
  * House style for generated questions, calibrated against the real thing:
