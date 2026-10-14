@@ -21,6 +21,7 @@
 import type { Question } from '../types';
 import { groqRequest } from '../lib/groq';
 import { validateJson } from './validator';
+import { VERIFIER_MATERIAL_RULE } from './promptKit';
 
 export interface MedicalJudgeResult {
   questions: Question[];
@@ -57,6 +58,7 @@ function formatQuestionForReview(question: Question, index: number): string {
 function buildJudgePrompt(questions: Question[], groundingText: string | undefined): string {
   const lines = [
     'Ești medic examinator senior. Verifici RIGID corectitudinea medicală a unor grile deja generate, ÎNAINTE ca un student să le vadă. NU genera conținut nou, NU reformula — doar verifică.',
+    VERIFIER_MATERIAL_RULE,
     'Pentru fiecare întrebare, decide dacă varianta/variantele marcate [MARCAT CORECT] sunt cu adevărat corecte din punct de vedere medical (mecanism, criterii de diagnostic, valori de referință, indicații, contraindicații).',
     groundingText
       ? `Ai la dispoziție și sursa din care au fost generate (curs) — folosește-o ca referință principală când e relevantă:\n"""\n${groundingText.slice(0, MAX_GROUNDING_CHARS)}\n"""`

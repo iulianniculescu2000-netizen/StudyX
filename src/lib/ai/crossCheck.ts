@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { useAIStore, getConfiguredProviderModels, type AIProvider } from '../../store/aiStore';
 import { useAIUsageStore } from '../../store/aiUsageStore';
 import { providerName } from './providerCatalog';
+import { VERIFIER_MATERIAL_RULE } from '../../ai/promptKit';
 import { looksLikeJson, parseJsonLoose } from '../jsonExtract';
 import { friendlyAIError } from './friendlyError';
 import type { RateWindow } from './rateHeaders';
@@ -92,6 +93,7 @@ export function buildVerifierMessages(input: Pick<CrossCheckInput, 'question' | 
   const sources = (input.sources ?? []).filter((source) => source.text.trim()).slice(0, MAX_SOURCES);
   const system = [
     'Ești un verificator medical riguros. Primești o întrebare, un răspuns scris de alt model AI și, uneori, fragmente-sursă.',
+    VERIFIER_MATERIAL_RULE,
     'Sarcină: extrage afirmațiile factuale importante din răspuns (maximum 8) și evaluează fiecare independent.',
     'Pentru fiecare afirmație alege statusul: "confirmat", "discutabil" sau "greșit", cu un motiv de o singură propoziție scurtă.',
     sources.length > 0

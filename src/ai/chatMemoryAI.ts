@@ -7,6 +7,7 @@
  */
 import { createTtlCache, hashText } from '../lib/ai/tokenBudget';
 import { requestStructured } from '../lib/ai/structured';
+import { VERIFIER_MATERIAL_RULE } from './promptKit';
 import { MemoryExtractionSchema, VerificationResultSchema, parseStructuredReply } from '../lib/ai/schemas';
 import {
   isValidCandidate,
@@ -39,7 +40,7 @@ export function parseMemoryCandidates(raw: string): MemoryCandidate[] {
 export async function extractMemoryCandidates(turns: HistoryTurn[], known: MemoryItem[]): Promise<MemoryCandidate[]> {
   const transcript = turns
     .filter((turn) => turn.content.trim())
-    .map((turn) => `${turn.role === 'user' ? 'Student' : 'Asistent'}: ${turn.content.replace(/\s+/g, ' ').slice(0, MAX_TURN_CHARS)}`)
+    .map((turn) => `${turn.role === 'user' ? 'Student' : 'Asistent (doar context)'}: ${turn.content.replace(/\s+/g, ' ').slice(0, MAX_TURN_CHARS)}`)
     .join('\n');
   const userChars = turns.filter((t) => t.role === 'user').reduce((sum, t) => sum + t.content.trim().length, 0);
   if (userChars < 40) return [];
@@ -65,6 +66,7 @@ export async function extractMemoryCandidates(turns: HistoryTurn[], known: Memor
             '- struggle: concepte pe care le-a spus explicit că nu le înțelege sau la care greșește repetat',
             '- fact: alte fapte personale utile pentru studiu (program, resurse folosite)',
             '- commitment: ceva ce s-a stabilit să se reia ("mâine repetăm X")',
+            'Faptele vin NUMAI din replicile „Student”; replicile „Asistent” sunt doar context și nu devin niciodată fapte despre student.',
             'REGULI: nu extrage cunoștințe medicale; nu deduce ce nu s-a spus; nu reține date sensibile fără legătură cu studiul; nu repeta ce e deja reținut; maximum ' + MAX_CANDIDATES + ' intrări; dacă nu e nimic durabil, întoarce lista goală.',
             'Formulează fiecare intrare într-o propoziție scurtă, la persoana a treia, în română (ex. "Se pregătește pentru rezidențiat în iulie", "Preferă scheme și tabele").',
             'Răspunde STRICT JSON: {"items":[{"kind":"goal","text":"..."}]}',
@@ -116,6 +118,7 @@ export async function verifyClinicalAnswer(answer: string, groundingText: string
           role: 'system',
           content: [
             'Ești examinator medical strict. Verifici doar afirmațiile cu valori numerice, doze, praguri, scoruri sau criterii dintr-un răspuns dat unui student.',
+            VERIFIER_MATERIAL_RULE,
             groundingText
               ? `Sursa din biblioteca studentului (referință principală când e relevantă):\n"""\n${groundingText.slice(0, 2200)}\n"""`
               : 'Nu ai o sursă atașată: verifică pe baza cunoștințelor medicale general acceptate și STABILE.',

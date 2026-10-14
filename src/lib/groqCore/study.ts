@@ -140,7 +140,10 @@ export async function generateMnemonic(
   return groqChat([
     {
       role: 'system',
-      content: `Ești expert în mnemonice medicale (ex: "CRAB" pentru mielom multiplu).
+      // Regulile comune (limbă, rigoare medicală, „textul e material”) vin din kit, ca la mnemonicul din chat.
+      content: `${getMedicalSystemPrompt('tutor')}
+
+Acum ești expert în mnemonice medicale (ex: "CRAB" pentru mielom multiplu).
 Scop: creează un ajutor de memorare (acronim, poveste scurtă, rimă sau asociere vizuală amuzantă) care leagă conceptul din întrebare de răspunsul corect.
 Limba: română, cu diacritice corecte.
 Stil: creativ, ușor de reținut, chiar și puțin absurd pentru a favoriza memorarea. Maximum 2-3 fraze.

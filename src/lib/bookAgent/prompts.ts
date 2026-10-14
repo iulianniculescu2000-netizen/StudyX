@@ -6,10 +6,12 @@
  */
 import { BOOK_SOURCE_NAME, type PassageCandidate, type PassageQuery } from '../bookPassage';
 import { chapterOutline } from '../bookKnowledge';
+import { VERIFIER_MATERIAL_RULE } from '../../ai/promptKit';
 
 export const AGENT_SYSTEM_PROMPT =
   'Ești agentul de surse al unei aplicații de pregătire pentru rezidențiat. Găsești în manualele românești pasajul care susține răspunsul corect al unei grile. ' +
-  'Nu scrii și nu rezumi conținut medical: alegi și marchezi text care există deja. Dacă nu ești sigur, spui asta. Răspunzi doar cu JSON valid.';
+  'Nu scrii și nu rezumi conținut medical: alegi și marchezi text care există deja. Dacă nu ești sigur, spui asta. Răspunzi doar cu JSON valid. ' +
+  VERIFIER_MATERIAL_RULE;
 
 export const HIGHLIGHT_LEGEND: Record<'answer' | 'question' | 'distractor', string> = {
   answer: 'Susține răspunsul corect',
