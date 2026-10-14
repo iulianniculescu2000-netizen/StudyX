@@ -133,3 +133,15 @@ describe('spaceProse', () => {
     expect(spaceProse(once)).toBe(once);
   });
 });
+
+describe('listă numerotată cu etichetă îngroșată', () => {
+  it('„1. **Etichetă:** text lung” rămâne un singur element de listă (nu „1.” singur pe rând)', () => {
+    const line = '1. **Definiție și mecanism:** Șocul septic este o formă de șoc distributiv caracterizată prin vasodilatație periferică severă și hipotensiune refractară la resuscitarea volemică, iar noradrenalina acționează pe receptorii alfa-1.';
+    expect(structureRawText(line)).toBe(line);
+    expect(structureRawText(`- ${line.slice(3)}`)).toBe(`- ${line.slice(3)}`);
+  });
+  it('eticheta din mijlocul unui rând lung tot se desparte', () => {
+    const line = 'Noradrenalina este vasopresorul de primă linie în ghidurile internaționale pentru șocul septic și are efect alfa-1 puternic asupra tonusului vascular. **Capcana:** adrenalina e linia a doua.';
+    expect(structureRawText(line)).toContain('\n\n**Capcana:**');
+  });
+});

@@ -11,8 +11,8 @@
 /** Inline enumerations: "… 2. text" where the number opens a new step. */
 const INLINE_ENUM_RE = /(?<=[^\s])\s+(?=(?:[2-9]|1\d)\.\s+[A-ZĂÂÎȘȚ(])/g;
 
-/** Inline bold labels used as section leads: "**Mecanism:** …". */
-const INLINE_LABEL_RE = /(?<=[^\s])\s+(?=\*\*[^*\n]{2,42}:\*\*)/g;
+/** Inline bold labels used as section leads: "**Mecanism:** …". Nu după marcatorul de listă: „1. **Mecanism:** …” rămâne un singur element. */
+const INLINE_LABEL_RE = /(?<=[^\s])(?<!^\s*(?:[-*+•]|\d+[.)]))\s+(?=\*\*[^*\n]{2,42}:\*\*)/g;
 
 /** Mid-sentence bullet glyphs. */
 const INLINE_BULLET_RE = /\s+[•·]\s+/g;
