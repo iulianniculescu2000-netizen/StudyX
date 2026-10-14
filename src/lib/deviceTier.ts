@@ -32,12 +32,12 @@ export function detectDeviceCapabilities(): DeviceCapabilities {
   const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1440;
   const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 900;
 
+  // Mărimea ferestrei NU e un semnal de dispozitiv slab: aplicația desktop rulează adesea într-o fereastră de ≤1280 px (laptop,
+  // scalare Windows 125-150%), iar asta o arunca în profilul „economic” (sticlă plată, fără animații), pe când în browser, pe tot
+  // ecranul, arăta complet. Mișcarea redusă și economia de date sunt tratate separat, în resolvePerformanceProfile.
   const lowSignals = [
-    reducedMotion,
-    lowPowerPreference,
     hardwareConcurrency <= 4,
     deviceMemory <= 4,
-    viewportWidth <= 1280,
   ].filter(Boolean).length;
 
   const highSignals = [
@@ -48,7 +48,7 @@ export function detectDeviceCapabilities(): DeviceCapabilities {
     !reducedMotion,
   ].filter(Boolean).length;
 
-  const tier: DeviceTier = lowSignals >= 2 ? 'low' : highSignals >= 4 ? 'high' : 'mid';
+  const tier: DeviceTier = lowSignals >= 2 ? 'low' : highSignals >= 3 ? 'high' : 'mid';
 
   return {
     tier,
@@ -70,4 +70,18 @@ export function resolvePerformanceProfile(
   if (mode === 'full') return 'full';
   if (lowPowerMode) return 'lite';
   return capabilities.tier === 'low' || capabilities.reducedMotion || capabilities.lowPowerPreference ? 'lite' : 'full';
+}
+
+/** De ce e activ profilul economic (sticlă plată, fără animații); `null` când aspectul e complet. Apare în Setări › Performanță. */
+export function liteReason(
+  capabilities: DeviceCapabilities,
+  mode: PerformanceMode,
+  lowPowerMode: boolean,
+): string | null {
+  if (resolvePerformanceProfile(capabilities, mode, lowPowerMode) === 'full') return null;
+  if (mode === 'lite') return 'ales de tine (Performanță: Economic)';
+  if (lowPowerMode) return 'economisire de energie activă pentru această sesiune';
+  if (capabilities.reducedMotion) return 'Windows are animațiile oprite (mișcare redusă)';
+  if (capabilities.lowPowerPreference) return 'sistemul cere economie de date';
+  return 'calculator cu puține resurse (≤4 thread-uri și ≤4 GB RAM)';
 }

@@ -29,7 +29,7 @@ import { WHATS_NEW_OPEN_EVENT } from '../components/WhatsNewTour';
 import { WELCOME_FILM_OPEN_EVENT } from '../components/film/filmEvents';
 import { GUIDE_LIST } from '../tutorial/tourMeta';
 import { useAdaptiveMotion } from '../hooks/useAdaptiveMotion';
-import { detectDeviceCapabilities } from '../lib/deviceTier';
+import { detectDeviceCapabilities, liteReason } from '../lib/deviceTier';
 import { getHealthBadgeLabel } from '../lib/healthReporter';
 import { runStartupHealthCheck } from '../lib/startupHealthCheck';
 import { clearRollbackSnapshot, formatSnapshotDate, getRollbackSnapshot } from '../lib/rollback';
@@ -434,6 +434,9 @@ export default function Settings() {
                 </div>
                 <div className="text-[11px]" style={{ color: theme.text2 }}>
                   Nivel dispozitiv: {deviceInfo.tier} · {deviceInfo.hardwareConcurrency} thread-uri · {deviceInfo.deviceMemory} GB RAM estimat
+                </div>
+                <div className="text-[11px]" style={{ color: theme.text2 }}>
+                  Aspect: {liteReason(deviceInfo, performanceMode, lowPowerMode) ? `economic, pentru că ${liteReason(deviceInfo, performanceMode, lowPowerMode)}` : 'complet (sticlă, animații)'}
                 </div>
               </div>
               <span
