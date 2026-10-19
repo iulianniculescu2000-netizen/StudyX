@@ -311,11 +311,13 @@ function ActiveTour({ tourId, profileId }: { tourId: SpotlightTourId; profileId:
             initial={enter}
             animate={{ opacity: 1, x: 0, z: 0, rotateX: 0, rotateY: 0, transition: t.modal }}
             exit={{ opacity: 0, transition: t.modalExit }}
-            style={{ display: 'flex', flexDirection: 'column', width: '100%', minHeight: 0, flex: '1 1 auto', transformStyle: 'preserve-3d' }}
+            // Stratul de intrare nu primește clicuri: când cardul se înclină spre spate, planul lui ar acoperi butoanele.
+            style={{ display: 'flex', flexDirection: 'column', width: '100%', minHeight: 0, flex: '1 1 auto', transformStyle: 'preserve-3d', pointerEvents: 'none' }}
           >
           <motion.div
             className="relative overflow-hidden"
             style={{
+              pointerEvents: 'auto',
               rotateX: tilt.rotateX,
               rotateY: tilt.rotateY,
               display: 'flex',
