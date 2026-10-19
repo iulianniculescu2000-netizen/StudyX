@@ -26,18 +26,6 @@ export function easeInOut(k: number): number {
   return k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2;
 }
 
-/** Legănarea lentă a scenei, derivată din ceas (grade); zero cu mișcare redusă. */
-export function sway(elapsedMs: number, calm: boolean): { x: number; y: number } {
-  if (calm) return { x: 0, y: 0 };
-  return { x: Math.sin(elapsedMs / 2600) * 2.2, y: Math.cos(elapsedMs / 3400) * 1.2 };
-}
-
-/** Înclinarea țintă (grade) după poziția indicatorului în scenă, limitată ca să rămână discretă. */
-export function pointerTilt(px: number, py: number): { x: number; y: number } {
-  const clamp = (v: number, limit: number) => Math.max(-limit, Math.min(limit, v));
-  return { x: clamp((px - 0.5) * 12, 6), y: clamp(-(py - 0.5) * 9, 4.5) };
-}
-
 /** Un card în scenă: aceeași suprafață, margine, rază și umbră ca restul aplicației. */
 export function sceneCard(theme: Theme, elevation: 1 | 2 | 3 = 2): CSSProperties {
   return {

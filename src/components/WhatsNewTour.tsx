@@ -463,15 +463,15 @@ export default function WhatsNewTour() {
   // Ediția 1.1 schimbă slide-urile ca pe niște carduri în spațiu: cel vechi se rotește spre fundal, cel nou vine din adâncime.
   const slideVariants = useMemo(() => (depth
     ? {
-      enter: (dir: number) => ({ opacity: 0, x: dir * 70, z: -160, rotateY: dir * -22 }),
+      enter: (custom?: number) => { const dir = custom === -1 ? -1 : 1; return { opacity: 0, x: dir * 70, z: -160, rotateY: dir * -22 }; },
       center: { opacity: 1, x: 0, z: 0, rotateY: 0 },
-      exit: (dir: number) => ({ opacity: 0, x: dir * -70, z: -160, rotateY: dir * 22 }),
+      exit: (custom?: number) => { const dir = custom === -1 ? -1 : 1; return { opacity: 0, x: dir * -70, z: -160, rotateY: dir * 22, transition: t.modalExit }; },
     }
     : {
-      enter: (dir: number) => ({ opacity: 0, x: dir * 56, scale: 0.985 }),
+      enter: (custom?: number) => { const dir = custom === -1 ? -1 : 1; return { opacity: 0, x: dir * 56, scale: 0.985 }; },
       center: { opacity: 1, x: 0, scale: 1 },
-      exit: (dir: number) => ({ opacity: 0, x: dir * -56, scale: 0.985 }),
-    }), [depth]);
+      exit: (custom?: number) => { const dir = custom === -1 ? -1 : 1; return { opacity: 0, x: dir * -56, scale: 0.985 }; },
+    }), [depth, t.modalExit]);
   const dialogRef = useFocusTrap(open, close);
 
   return (
@@ -545,7 +545,7 @@ export default function WhatsNewTour() {
                   initial="enter"
                   animate="center"
                   exit="exit"
-                  transition={depth ? t.panel : t.modal}
+                  transition={t.modal}
                   style={depth ? { transformStyle: 'preserve-3d' } : undefined}
                 >
                   {slide.scene ? <WhatsNewStage scene={slide.scene} /> : slide.Demo && <slide.Demo theme={theme} />}

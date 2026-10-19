@@ -1,16 +1,15 @@
-import { useEffect, type PointerEvent } from 'react';
-import { motion, useMotionValue, useSpring, useTransform, type SpringOptions } from 'framer-motion';
+import { useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { Pause, Play, RotateCcw } from 'lucide-react';
 import { useTheme } from '../../theme/ThemeContext';
 import { useAdaptiveMotion } from '../../hooks/useAdaptiveMotion';
-import { spring } from '../../theme/motion';
 import { FilmTime } from '../film/useTimeline';
 import { usePlayback } from '../film/usePlayback';
-import { pointerTilt, sway, type WhatsNewScene } from './stage3d';
+import { sway, useTilt } from '../depth/useTilt';
+import type { WhatsNewScene } from './stage3d';
 
 /** După ultimul cadru, scena rămâne puțin pe rezultat, apoi pornește din nou (ca micro-demo-urile). */
 const LOOP_HOLD_MS = 2200;
-const TILT_SPRING = spring.panel as SpringOptions;
 
 /**
  * Scena 3D a unui slide din „Ce e nou”: o lume în perspectivă, legănată lent din ceasul filmului, înclinată discret după
@@ -31,22 +30,7 @@ export default function WhatsNewStage({ scene }: { scene: WhatsNewScene }) {
     return () => window.clearTimeout(timer);
   }, [finished, paused, reset]);
 
-  const targetX = useMotionValue(0);
-  const targetY = useMotionValue(0);
-  const tiltX = useSpring(targetX, TILT_SPRING);
-  const tiltY = useSpring(targetY, TILT_SPRING);
-  const sheen = theme.isDark ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.55)';
-  const light = useTransform([tiltX, tiltY], ([x, y]: number[]) =>
-    `radial-gradient(60% 70% at ${50 + x * 6}% ${30 - y * 6}%, ${sheen}, transparent 70%)`);
-
-  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
-    if (calmMotion) return;
-    const box = event.currentTarget.getBoundingClientRect();
-    const tilt = pointerTilt((event.clientX - box.left) / box.width, (event.clientY - box.top) / box.height);
-    targetX.set(tilt.x);
-    targetY.set(tilt.y);
-  };
-  const onPointerLeave = () => { targetX.set(0); targetY.set(0); };
+  const { rotateX, rotateY, light, onPointerMove, onPointerLeave } = useTilt({ calm: calmMotion, isDark: theme.isDark });
 
   const drift = sway(clock.elapsedMs, calmMotion);
   const stage = Math.max(0, scene.marks.filter((mark) => elapsedMs >= mark).length - 1);
@@ -74,7 +58,7 @@ export default function WhatsNewStage({ scene }: { scene: WhatsNewScene }) {
             className="pointer-events-none absolute -bottom-16 left-[10%] right-[10%] h-[120px] rounded-full"
             style={{ background: theme.accent, opacity: 0.12, filter: 'blur(40px)' }}
           />
-          <motion.div className="absolute inset-0" style={{ rotateX: tiltY, rotateY: tiltX, transformStyle: 'preserve-3d' }}>
+          <motion.div className="absolute inset-0" style={{ rotateX, rotateY, transformStyle: 'preserve-3d' }}>
             <div
               className="absolute inset-0"
               style={{ transform: `rotateX(${drift.y}deg) rotateY(${drift.x}deg)`, transformStyle: 'preserve-3d' }}

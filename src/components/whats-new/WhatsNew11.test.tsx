@@ -11,7 +11,7 @@ import { useSceneTime } from '../film/useTimeline';
 import WhatsNewTour, { WHATS_NEW_OPEN_EVENT } from '../WhatsNewTour';
 import WhatsNewStage from './WhatsNewStage';
 import { RELEASE_11_SLIDES, whatsNewEditionFor } from './release11';
-import { pointerTilt, sway } from './stage3d';
+import { pointerTilt, sway } from '../depth/useTilt';
 import { expectNoA11yViolations } from '../../test/a11y';
 
 const motion = vi.hoisted(() => ({ calm: true }));

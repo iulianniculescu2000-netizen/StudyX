@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Check, ExternalLink, Loader2 } from 'lucide-react';
+import { Check, ExternalLink, KeyRound, Loader2 } from 'lucide-react';
+import GlassIconStack from '../components/depth/GlassIconStack';
 import { useTheme } from '../theme/ThemeContext';
 import { useAIStore, type AIProvider } from '../store/aiStore';
 import { PROVIDER_CATALOG } from '../lib/ai/providerCatalog';
@@ -59,7 +60,10 @@ export default function AIKeyGuide({ onSaved }: { onSaved?: () => void }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-[12.5px] leading-relaxed" style={{ color: theme.text2 }}>{keyGuideIntro(aiKeyCount, aiProviders)}</p>
+      <div className="flex items-start gap-3">
+        <GlassIconStack icon={done ? <Check size={15} /> : <KeyRound size={15} />} color={done ? theme.success : theme.accent} size={30} />
+        <p className="text-[12.5px] leading-relaxed" style={{ color: theme.text2 }}>{keyGuideIntro(aiKeyCount, aiProviders)}</p>
+      </div>
 
       <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Furnizor AI">
         {PROVIDER_CATALOG.map((item) => {
@@ -72,11 +76,14 @@ export default function AIKeyGuide({ onSaved }: { onSaved?: () => void }) {
               role="radio"
               aria-checked={selected}
               onClick={() => { setChoice(item.id); setStatus({ kind: 'idle' }); setDone(null); }}
-              className="press-feedback flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-semibold"
+              className={`press-feedback flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-transform ${selected ? 'elev-1' : ''}`}
               style={{
-                background: selected ? `${theme.accent}18` : 'var(--fill-subtle)',
+                // Furnizorul ales se ridică puțin deasupra celorlalți, ca o placă de sticlă.
+                background: selected ? `color-mix(in srgb, ${theme.accent} 10%, ${theme.surface})` : 'var(--fill-subtle)',
                 color: selected ? theme.accentText : theme.text2,
-                boxShadow: selected ? `inset 0 0 0 1px ${theme.accent}55` : 'none',
+                outline: selected ? `1px solid ${theme.accent}55` : 'none',
+                outlineOffset: -1,
+                transform: selected ? 'translateY(-1px)' : undefined,
               }}
             >
               {saved && <Check size={12} />}

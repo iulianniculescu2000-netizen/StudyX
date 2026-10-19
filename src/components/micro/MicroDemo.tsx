@@ -1,9 +1,11 @@
 import { useEffect, type ReactNode } from 'react';
+import { motion } from 'framer-motion';
 import { Pause, Play, RotateCcw } from 'lucide-react';
 import { useTheme } from '../../theme/ThemeContext';
 import { useAdaptiveMotion } from '../../hooks/useAdaptiveMotion';
 import { FilmTime } from '../film/useTimeline';
 import { usePlayback } from '../film/usePlayback';
+import { sway, useTilt } from '../depth/useTilt';
 
 /** După ultimul cadru, demo-ul rămâne puțin pe rezultat, apoi pornește din nou. */
 const LOOP_HOLD_MS = 2200;
@@ -24,7 +26,8 @@ export interface MicroDemoProps {
 
 /**
  * Micro-demo de câteva secunde, în buclă: același ceas și aceleași reguli ca filmul de bun venit (`usePlayback`, `FilmTime`).
- * Cu mișcare redusă arată direct cadrul final, fix. Conținutul e inert (nu primește focus și nu se poate apăsa), dar
+ * Stă într-o scenă în perspectivă, ca „Ce e nou”: se leagănă lent din același ceas, se înclină discret după mouse și o lumină
+ * fină urmează înclinarea. Cu mișcare redusă arată direct cadrul final, fix și drept. Conținutul e inert (nu primește focus și nu se poate apăsa), dar
  * există pauză și reluare, iar textul complet e în `transcript`.
  */
 export default function MicroDemo({ label, transcript, durationMs, marks, captions, height = 156, children }: MicroDemoProps) {
@@ -44,16 +47,26 @@ export default function MicroDemo({ label, transcript, durationMs, marks, captio
   const stage = Math.max(0, marks.filter((mark) => elapsedMs >= mark).length - 1);
   const caption = captions[stage] ?? '';
   const control = 'press-feedback focus-ring flex h-7 w-7 items-center justify-center rounded-full';
+  const tilt = useTilt({ calm: calmMotion, isDark: theme.isDark, maxX: 4, maxY: 3 });
+  const drift = sway(clock.elapsedMs, calmMotion, 0.5);
 
   return (
     <figure aria-label={label} className="m-0">
-      <div
-        inert
-        aria-hidden="true"
-        className="relative overflow-hidden rounded-[var(--r-md)]"
-        style={{ height, background: theme.surface2, border: `1px solid ${theme.border}` }}
-      >
-        <FilmTime.Provider value={{ elapsedMs, calm: calmMotion }}>{children}</FilmTime.Provider>
+      <div onPointerMove={tilt.onPointerMove} onPointerLeave={tilt.onPointerLeave} style={{ perspective: 900 }}>
+        <motion.div
+          inert
+          aria-hidden="true"
+          className="relative overflow-hidden rounded-[var(--r-md)]"
+          style={{
+            height, background: theme.surface2, border: `1px solid ${theme.border}`, boxShadow: 'var(--elev-1)',
+            rotateX: tilt.rotateX, rotateY: tilt.rotateY,
+          }}
+        >
+          <div className="absolute inset-0" style={{ transform: `rotateX(${drift.y}deg) rotateY(${drift.x}deg)` }}>
+            <FilmTime.Provider value={{ elapsedMs, calm: calmMotion }}>{children}</FilmTime.Provider>
+          </div>
+          <motion.div className="pointer-events-none absolute inset-0" style={{ background: tilt.light, mixBlendMode: 'soft-light' }} />
+        </motion.div>
       </div>
       <p className="sr-only">{transcript}</p>
       <figcaption className="mt-2 flex items-center gap-2">
