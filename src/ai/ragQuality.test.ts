@@ -113,6 +113,23 @@ describe('expandarea abrevierilor și normalizarea', () => {
     expect(expandMedicalQuery('tema de mâine').phrases).toEqual([]);
   });
 
+  it('sinonimele se potrivesc și pe forme flexionate („anemiei feriprive” → „deficit de fier”)', () => {
+    expect(expandMedicalQuery('Care e managementul anemiei feriprive?').phrases).toContain('deficit de fier');
+    expect(expandMedicalQuery('anemia sideropenică').phrases).toContain('anemie feripriva');
+    expect(expandMedicalQuery('fibrilației atriale').phrases).toContain('fibrilatie auriculara');
+    expect(expandMedicalQuery('tratamentul chirurgical al acalaziei').phrases).toContain('achalazie');
+    expect(expandMedicalQuery('managementul anemiei').phrases).toContain('tratament');
+    // Kumar tratează tema sub „deficit de fier”: pagina de tratament trebuie să vină înaintea unei mențiuni în treacăt.
+    const corpus = [
+      chunk('fier-trat', 'Gestionarea corectă a deficitului de fier constă în tratarea cauzei și administrarea preparatelor de fier oral.', { page: 57 }),
+      chunk('koilon', 'Semnele specifice includ koilonichia, care apare în anemia feriprivă de lungă durată, și icterul din anemia hemolitică.', { page: 52 }),
+      chunk('ic', CORPUS[0].text, { page: 151 }),
+    ];
+    const query = 'Care e managementul anemiei feriprive?';
+    const ids = rankChunks(query, corpus, embedTextLocal(query), null, 3, { diversify: false }).map((r) => r.id);
+    expect(ids).toContain('fier-trat');
+  });
+
   it('ICC nu e confundat cu IC la forma completă', () => {
     const phrases = expandMedicalQuery('insuficiență cardiacă congestivă').phrases;
     expect(phrases).toContain('icc');
@@ -128,6 +145,8 @@ describe('expandarea abrevierilor și normalizarea', () => {
     expect(stemRo('atriala')).toBe(stemRo('atriale'));
     expect(tokenizeForSearch('IC și DZ în HTA')).toEqual(['ic', 'dz', 'hta']);
     expect(tokenizeForSearch('ic')).toEqual([]);
+    // Cererea despre sursă nu e subiect: „după Kumar, dă-mi și pagina” nu trebuie să dilueze potrivirea.
+    expect(tokenizeForSearch('anemia feriprivă după Kumar, dă-mi și pagina din carte')).toEqual(tokenizeForSearch('anemia feriprivă'));
   });
 });
 

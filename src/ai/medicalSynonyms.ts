@@ -7,6 +7,8 @@
  *
  * Fără diacritice în date: potrivirea se face pe text normalizat (vezi `normalizeSearchText`).
  */
+// Import circular cu searchText.ts (care citește KNOWN_ABBREVIATION_KEYS): sigur, ambele se folosesc doar în funcții.
+import { stemRo } from './searchText';
 
 export interface MedicalAbbreviation {
   /** Forma scrisă în majuscule, ca în cărți (ex. "IC"). */
@@ -53,6 +55,14 @@ export const MEDICAL_SYNONYM_GROUPS: readonly (readonly string[])[] = [
   ['fibrilatie atriala', 'fibrilatie auriculara'],
   ['insuficienta cardiaca', 'decompensare cardiaca'],
   ['hipertensiune arteriala', 'tensiune arteriala crescuta'],
+  // Kumar scrie „deficit de fier”, studentul întreabă de „anemia feriprivă”: fără grup, căutarea nu găsea pagina de tratament.
+  ['anemie feripriva', 'anemie sideropenica', 'anemie prin deficit de fier', 'deficit de fier'],
+  // Kumar scrie „acalazia”, Lawrence „achalazia”: fără grup, întrebarea „acalazia” rata capitolul din Lawrence.
+  ['acalazie', 'achalazie'],
+  // „Tratament de fond” în reumatologie = DMARD (remisive), cum scrie Kumar la artrita reumatoidă.
+  ['tratament de fond', 'dmard', 'antireumatice modificatoare de boala', 'remisive'],
+  // „Managementul X” în întrebare, „Tratament” / „Gestionarea” ca titlu în carte.
+  ['management', 'tratament', 'gestionare', 'conduita terapeutica'],
 ];
 
 /** Text de căutare: litere mici, fără diacritice (inclusiv ș/ț cu virgulă sau cu sedilă), spații normalizate. */
@@ -93,6 +103,11 @@ function queryAbbreviations(query: string): MedicalAbbreviation[] {
   return found;
 }
 
+/** Fraza normalizată cu fiecare cuvânt redus la rădăcină (aceeași stemare ca la căutare). */
+function stemPhrase(normalized: string): string {
+  return normalized.split(' ').filter(Boolean).map(stemRo).join(' ');
+}
+
 /** Expandează o interogare cu forma completă a abrevierilor și cu abrevierea formelor complete. */
 export function expandMedicalQuery(query: string): QueryExpansion {
   const phrases: string[] = [];
@@ -115,10 +130,14 @@ export function expandMedicalQuery(query: string): QueryExpansion {
     // ca IC: fraza trebuie să apară cuvânt întreg (spațiile de mai sus), deci ICC rămâne separat.
     if (!matched.some((m) => m.abbr === entry.abbr)) matched.push({ abbr: entry.abbr, full: entry.full });
     push(entry.abbr.toLowerCase());
+    // Și celelalte formulări: „poliartrita reumatoidă” aduce „artrita reumatoidă” (cum scrie Kumar), nu doar „PAR”.
+    forms.filter((form) => !normalized.includes(` ${form} `)).forEach(push);
   }
 
+  // Grupurile se potrivesc și pe forme flexionate („anemiei feriprive” = „anemie feripriva”): se compară rădăcinile.
+  const stemmed = ` ${stemPhrase(normalized)} `;
   for (const group of MEDICAL_SYNONYM_GROUPS) {
-    const hit = group.find((form) => normalized.includes(` ${form} `));
+    const hit = group.find((form) => normalized.includes(` ${form} `) || stemmed.includes(` ${stemPhrase(form)} `));
     if (hit) group.filter((form) => form !== hit).forEach(push);
   }
 

@@ -13,6 +13,9 @@ const STOP = new Set([
   'unde', 'cum', 'ce', 'fie', 'acest', 'aceasta', 'acesta', 'aceste', 'acesti', 'intre', 'dupa', 'catre',
   'spre', 'dintre', 'asupra', 'foarte', 'cat', 'cate', 'prezinta', 'spune', 'explica', 'spuneti',
   'the', 'and', 'of', 'to', 'is', 'are', 'with', 'for', 'this', 'that',
+  // Cererea despre sursă, nu despre subiect: „după Kumar, dă-mi și pagina” diluau potrivirea sub prag (test live 19 oct 2026).
+  'kumar', 'clark', 'lawrence', 'sinopsis', 'carte', 'cartea', 'cartii', 'cartile', 'manual', 'manualul', 'manualului',
+  'pagina', 'paginile', 'pagini', 'pag', 'conform', 'citeaza', 'indica',
 ]);
 
 // Cele mai lungi întâi; se scoate un singur sufix și rămân minimum 4 litere.

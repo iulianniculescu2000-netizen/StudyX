@@ -3,6 +3,8 @@ import { getVaultChunks } from './vectorStore';
 import { expandMedicalQuery } from './medicalSynonyms';
 import { tokenizeExpansionPhrase, tokenizeForSearch } from './searchText';
 import { isBundledBookFileName } from '../lib/bundledBookNames';
+import { bookOfSourceName, topicTitlesForPages } from '../lib/curriculum';
+import { headingIntentsInOrder, nextChunkId, previousChunkId, queryIntents, type SectionIntent } from './sectionIntent';
 import type { SourceTier } from '../lib/bookTier';
 import type { ChunkRecord, RetrievedChunk, UserProfileData } from './types';
 
@@ -31,31 +33,64 @@ const NEAR_DUPLICATE = 0.8;
  */
 export const BOOK_SCORE_BONUS = 1.25;
 export const BOOK_MIN_SLOTS = 3;
+/** Fragmentul din subsecțiunea cerută („tratamentul X” → `## Tratament`) urcă față de restul capitolului. */
+export const SECTION_INTENT_BONUS = 1.25;
+/** Fragmentul care continuă subsecțiunea cerută primește cel puțin această parte din scorul fragmentului dinainte. */
+const CONTINUATION_SCORE_SHARE = 0.9;
 
 interface DocIndex {
   tokens: string[];
   tf: Map<string, number>;
   bigrams: Set<string>;
   headingTokens: Set<string>;
+  /** Subsecțiunile deschise de titlurile `## …` din fragment și cea în care se termină (pentru fragmentul următor). */
+  ownIntents: Set<SectionIntent>;
+  endIntents: SectionIntent[];
+  startsWithHeading: boolean;
 }
 
 const docCache = new Map<string, DocIndex>();
 const DOC_CACHE_LIMIT = 30000;
 
-function indexDoc(chunk: Pick<ChunkRecord, 'id' | 'text' | 'heading' | 'topic'>): DocIndex {
-  const key = `${chunk.id}:${chunk.text.length}:${chunk.heading ?? ''}`;
+/**
+ * Titlul de secțiune al unui fragment dintr-o carte de bază, luat din plan după pagină (Kumar 56 → „Anemia microcitară
+ * (deficit de fier)”). Fără el, un fragment care continuă secțiunea („Fierul oral… sulfatul feros”) nu conține cuvântul
+ * căutat și nu era găsit; titlul detectat la indexare e adesea greșit în cărți („TERAPIE INTENSIVĂ” la anemie).
+ * Paginile din afara PDF-ului (Lawrence, cu `printedPage`) nu au corespondent în plan.
+ */
+export function bookSectionTitle(chunk: Partial<Pick<ChunkRecord, 'source' | 'page' | 'pageEnd' | 'printedPage'>>): string {
+  if (!chunk.source || !isBundledBookFileName(chunk.source) || typeof chunk.page !== 'number' || chunk.printedPage !== undefined) return '';
+  const book = bookOfSourceName(chunk.source);
+  return book ? topicTitlesForPages(book, chunk.page, chunk.pageEnd ?? chunk.page).join(' · ') : '';
+}
+
+/** Un singur titlu pentru afișare (eticheta citării, sugestii): subiectul în curs la începutul fragmentului. */
+export function bookSectionHeading(chunk: Partial<Pick<ChunkRecord, 'source' | 'page' | 'printedPage'>>): string {
+  if (!chunk.source || !isBundledBookFileName(chunk.source) || typeof chunk.page !== 'number' || chunk.printedPage !== undefined) return '';
+  const book = bookOfSourceName(chunk.source);
+  return book ? topicTitlesForPages(book, chunk.page)[0] ?? '' : '';
+}
+
+function indexDoc(chunk: Pick<ChunkRecord, 'id' | 'text' | 'heading' | 'topic'>, sectionTitle = ''): DocIndex {
+  const key = `${chunk.id}:${chunk.text.length}:${chunk.heading ?? ''}:${sectionTitle}`;
   const cached = docCache.get(key);
   if (cached) return cached;
 
-  const tokens = tokenizeForSearch(chunk.text);
+  // Titlul secțiunii intră în text ca un antet: aduce fragmentul la căutările pe subiect, chiar dacă textul lui nu-l numește.
+  const tokens = tokenizeForSearch(sectionTitle ? `${sectionTitle}\n${chunk.text}` : chunk.text);
   const tf = new Map<string, number>();
   for (const token of tokens) tf.set(token, (tf.get(token) ?? 0) + 1);
   const bigrams = new Set<string>();
   for (let i = 0; i < tokens.length - 1; i += 1) bigrams.add(`${tokens[i]} ${tokens[i + 1]}`);
-  const headingTokens = new Set(tokenizeForSearch(`${chunk.heading ?? ''} ${chunk.topic ?? ''}`));
+  const headingTokens = new Set(tokenizeForSearch(`${sectionTitle || chunk.heading || ''} ${chunk.topic ?? ''}`));
+
+  const heads = headingIntentsInOrder(chunk.text);
+  const ownIntents = new Set(heads.flat());
+  const endIntents = heads.at(-1) ?? [];
+  const startsWithHeading = /^\s*#{1,4}\s/.test(chunk.text);
 
   if (docCache.size >= DOC_CACHE_LIMIT) docCache.clear();
-  const index = { tokens, tf, bigrams, headingTokens };
+  const index = { tokens, tf, bigrams, headingTokens, ownIntents, endIntents, startsWithHeading };
   docCache.set(key, index);
   return index;
 }
@@ -261,7 +296,18 @@ export function rankChunks(
     (userProfile?.recentMistakes ?? []).map((m) => m.topic.toLowerCase()),
   );
 
-  const docs = chunks.map(indexDoc);
+  const sectionTitles = chunks.map(bookSectionTitle);
+  const docs = chunks.map((chunk, i) => indexDoc(chunk, sectionTitles[i]));
+  const intents = queryIntents(query);
+  const docById = intents.length ? new Map(chunks.map((chunk, i) => [chunk.id, docs[i]])) : null;
+  const inWantedSection = (chunk: RankableChunk, doc: DocIndex): boolean => {
+    if (!docById) return false;
+    if (intents.some((intent) => doc.ownIntents.has(intent))) return true;
+    // Continuarea: textul de dinaintea primului titlu propriu e încă în subsecțiunea în care s-a oprit fragmentul anterior.
+    const previousId = doc.startsWithHeading ? null : previousChunkId(chunk.id);
+    const previous = previousId ? docById.get(previousId) : undefined;
+    return !!previous && intents.some((intent) => previous.endIntents.includes(intent));
+  };
   const avgDocLength = docs.reduce((sum, doc) => sum + doc.tokens.length, 0) / (docs.length || 1) || 1;
   const idf = buildIdfMap([...wq.weights.keys()], docs);
 
@@ -317,7 +363,8 @@ export function rankChunks(
     const personalBoost = weaknessBoost + recencyBoost + mistakeBankBoost;
     const isBook = isBundledBookFileName(chunk.source);
     const bookBonus = filters.rezidentiat && isBook ? BOOK_SCORE_BONUS : 1;
-    const score = relevance * rerank * (1 + personalBoost) * bookBonus;
+    const sectionBonus = inWantedSection(chunk, doc) ? SECTION_INTENT_BONUS : 1;
+    const score = relevance * rerank * (1 + personalBoost) * bookBonus * sectionBonus;
     const tier: SourceTier | undefined = isBook ? 'book' : filters.rezidentiat ? 'bank' : undefined;
 
     return {
@@ -338,7 +385,8 @@ export function rankChunks(
         ...(typeof chunk.page === 'number' ? { page: chunk.page } : {}),
         ...(typeof chunk.pageEnd === 'number' ? { pageEnd: chunk.pageEnd } : {}),
         ...(typeof chunk.printedPage === 'number' ? { printedPage: chunk.printedPage } : {}),
-        ...(chunk.heading ? { heading: chunk.heading } : {}),
+        // Cărțile de bază primesc titlul din plan (cel detectat la indexare e adesea greșit); restul își păstrează titlul.
+        ...(sectionTitles[i] ? { heading: bookSectionHeading(chunk) || sectionTitles[i] } : chunk.heading ? { heading: chunk.heading } : {}),
         ...(chunk.chapter ? { chapter: chunk.chapter } : {}),
         ...(tier ? { tier } : {}),
       } as RetrievedChunk,
@@ -357,9 +405,28 @@ export function rankChunks(
   // exemplar, indiferent de MMR.
   const unique = dedupeOverlapping(candidates);
 
+  // Continuarea subsecțiunii cerute: când un fragment ales se termină în `## Tratament` (și întrebarea cere tratamentul),
+  // conținutul e de obicei în fragmentul următor, care nu mai numește boala („Fierul oral… sulfatul feros”). Intră imediat după.
+  const entryById = intents.length ? new Map(scored.map((entry) => [entry.result.id, entry])) : null;
+  const withContinuations = (results: RetrievedChunk[]): RetrievedChunk[] => {
+    if (!entryById) return results;
+    const out: RetrievedChunk[] = [];
+    for (const result of results) {
+      if (!out.some((chunk) => chunk.id === result.id)) out.push(result);
+      const entry = entryById.get(result.id);
+      if (!entry || !intents.some((intent) => entry.doc.endIntents.includes(intent))) continue;
+      const nextId = nextChunkId(result.id);
+      const next = nextId ? entryById.get(nextId) : undefined;
+      if (!next || out.some((chunk) => chunk.id === next.result.id)) continue;
+      const already = results.find((chunk) => chunk.id === next.result.id);
+      out.push(already ?? { ...next.result, score: Math.max(next.result.score, result.score * CONTINUATION_SCORE_SHARE) });
+    }
+    return out.slice(0, k);
+  };
+
   const withQuota = (picked: typeof unique): RetrievedChunk[] => {
     const results = picked.map((entry) => entry.result);
-    return filters.rezidentiat ? applyBookQuota(results, unique.map((entry) => entry.result), k) : results;
+    return withContinuations(filters.rezidentiat ? applyBookQuota(results, unique.map((entry) => entry.result), k) : results);
   };
 
   if (filters.diversify === false || unique.length <= 1) {

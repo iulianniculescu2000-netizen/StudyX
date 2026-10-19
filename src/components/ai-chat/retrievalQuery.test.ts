@@ -55,4 +55,13 @@ describe('filterRelevantChunks', () => {
   it('întoarce lista goală când niciun fragment nu e legat de întrebare', () => {
     expect(filterRelevantChunks([{ score: 0.22 }, { score: 0.21 }])).toEqual([]);
   });
+
+  it('cărțile de bază au prag propriu (0,3): pasajul corect cu scor lexical 0,31–0,37 nu mai e aruncat', () => {
+    const chunks = [
+      { score: 0.36, tier: 'book' }, // CHA2DS2-VASc, Kumar p. 222
+      { score: 0.24, tier: 'book' }, // „scrie o poezie”: tot afară
+      { score: 0.36, tier: 'bank' }, // materialele păstrează pragul 0,4
+    ];
+    expect(filterRelevantChunks(chunks)).toEqual([{ score: 0.36, tier: 'book' }]);
+  });
 });

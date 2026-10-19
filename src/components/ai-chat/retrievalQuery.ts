@@ -9,6 +9,12 @@
 
 /** Sub acest scor un fragment nu e legat de întrebare (în istoric: 0,2–0,4 pentru fragmente fără legătură, 0,8–1,5 pentru cele bune). */
 export const MIN_CHUNK_SCORE = 0.4;
+/**
+ * Pragul pentru fragmentele din cărțile de bază. Ele au vectori locali, deci scorul lor e aproape doar lexical și mai mic:
+ * măsurat live (19 oct 2026), pasajul corect stătea la 0,31–0,37 (D-dimeri, gută, CHA2DS2-VASc) și era aruncat, iar
+ * mesaje fără legătură („scrie o poezie”, „algoritm de sortare”, „cum îmi organizez timpul”) stăteau sub 0,25.
+ */
+export const MIN_BOOK_CHUNK_SCORE = 0.3;
 
 export interface HistoryMessage {
   role: 'user' | 'assistant';
@@ -66,6 +72,6 @@ export function resolveRetrievalText(
 }
 
 /** Păstrează fragmentele cu legătură de subiect; dacă niciunul nu are, întoarce lista goală (răspuns neancorat, nu surse fără legătură). */
-export function filterRelevantChunks<T extends { score: number }>(chunks: readonly T[], minScore: number = MIN_CHUNK_SCORE): T[] {
-  return chunks.filter((chunk) => chunk.score >= minScore);
+export function filterRelevantChunks<T extends { score: number; tier?: string }>(chunks: readonly T[], minScore: number = MIN_CHUNK_SCORE): T[] {
+  return chunks.filter((chunk) => chunk.score >= (chunk.tier === 'book' ? Math.min(minScore, MIN_BOOK_CHUNK_SCORE) : minScore));
 }

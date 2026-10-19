@@ -8,6 +8,7 @@ import raw from '../data/organizare/plan.json';
 import { normalizePlan } from './organizare/engine';
 import { fold, withoutNumber } from './organizare/format';
 import type { Plan, RawPlan, Topic } from './organizare/types';
+import { parsePageRange } from './bookPages';
 
 export type BookCode = 'K' | 'L' | 'S';
 
@@ -84,6 +85,29 @@ export function bookOfSourceName(name: string): BookCode | null {
   if (text.includes('lawrence')) return 'L';
   if (text.includes('sinopsis')) return 'S';
   return null;
+}
+
+const topicRangesByBook = new Map<BookCode, Array<{ first: number; last: number; title: string }>>();
+
+/**
+ * Subiectele din plan care acoperă paginile [first, last] ale unei cărți de bază (pagini din PDF-ul inclus), fără numerotare:
+ * Kumar 56 → „Anemia microcitară (deficit de fier)”. Căutarea le folosește ca titlu de secțiune al fragmentului.
+ */
+export function topicTitlesForPages(book: BookCode, first: number, last: number = first): string[] {
+  let ranges = topicRangesByBook.get(book);
+  if (!ranges) {
+    ranges = basePlan().topics
+      .filter((topic) => topic.book === book)
+      .map((topic) => ({ range: parsePageRange(topic.pdf), title: withoutNumber(topic.name) }))
+      .filter((entry): entry is { range: NonNullable<typeof entry.range>; title: string } => !!entry.range && !!entry.title)
+      .map((entry) => ({ first: entry.range.first, last: entry.range.last, title: entry.title }));
+    topicRangesByBook.set(book, ranges);
+  }
+  const titles: string[] = [];
+  for (const range of ranges) {
+    if (range.first <= last && range.last >= first && !titles.includes(range.title)) titles.push(range.title);
+  }
+  return titles;
 }
 
 /** Denumiri scurte folosite în cardurile existente → numărul capitolului din plan (index). */
