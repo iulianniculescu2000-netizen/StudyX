@@ -1873,10 +1873,10 @@ a:focus-visible,
 .studyx-custom-cursor-active.studyx-custom-cursor-active :is(.cursor-zoom-out, .cursor-zoom-out *) {
   cursor: var(--cursor-zoom-out, zoom-out) !important;
 }
-.studyx-custom-cursor-active.studyx-custom-cursor-active :is(.cursor-grab, .cursor-grab *, [data-grabbable="true"], [data-drag-handle="true"], [style*="cursor-grab,"], [style*="cursor-grab,"] *, [style*="cursor: grab;"], [style*="cursor: grab;"] *) {
+.studyx-custom-cursor-active.studyx-custom-cursor-active :is(.cursor-grab, .cursor-grab *, [data-grabbable="true"], [data-drag-handle="true"], [style*="cursor-grab,"], [style*="cursor-grab,"] *) {
   cursor: var(--cursor-grab, grab) !important;
 }
-.studyx-custom-cursor-active.studyx-custom-cursor-active :is(.cursor-grabbing, .cursor-grabbing *, [style*="cursor-grabbing"], [style*="cursor-grabbing"] *, [style*="cursor: grabbing"], [style*="cursor: grabbing"] *) {
+.studyx-custom-cursor-active.studyx-custom-cursor-active :is(.cursor-grabbing, .cursor-grabbing *, [style*="cursor-grabbing"], [style*="cursor-grabbing"] *) {
   cursor: var(--cursor-grabbing, grabbing) !important;
 }
 .studyx-custom-cursor-active.studyx-custom-cursor-active :is(.cursor-not-allowed, [style*="cursor: not-allowed"]) {
