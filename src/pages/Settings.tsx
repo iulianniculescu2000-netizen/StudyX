@@ -417,7 +417,7 @@ export default function Settings() {
           <ToggleRow
             icon={<MousePointer size={16} />}
             label="Cursor fin StudyX"
-            description="Activează cursorul fin și elegant (săgeată și pointer stil Windows, micuț și precis, fără urmă)."
+            description="Săgeată, mână și cursor de text în stilul StudyX, desenate direct de sistem: se mișcă fără nicio întârziere."
             checked={cursorEnabled}
             onChange={setCursorEnabled}
           />

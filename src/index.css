@@ -1848,26 +1848,40 @@ a:focus-visible,
   .composer-send[data-ready='true']:active { transform: scale(0.92); }
 }
 
-/* ── StudyX Custom Hand Cursor & Microinteractions ── */
+/* ── Cursorul StudyX ──
+   Imaginile SVG vin din variabilele puse de StudyXHandCursor (cursorImages.ts) și le desenează sistemul,
+   deci cursorul nu rămâne în urma mouse-ului. Ordinea contează: săgeată → text → mână → cursoare speciale. */
 .studyx-custom-cursor-active,
 .studyx-custom-cursor-active * {
-  cursor: none !important;
+  cursor: var(--sx-cursor-arrow) !important;
 }
-
-@keyframes cursorShockwave {
-  0% {
-    transform: scale(0.6);
-    opacity: 0.9;
-  }
-  100% {
-    transform: scale(2.2);
-    opacity: 0;
-  }
+.studyx-custom-cursor-active :is(input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="color"]):not([type="button"]):not([type="submit"]), textarea, [contenteditable="true"], [contenteditable="true"] *, .note-body, .note-body *, .explanation-body, .explanation-body *, [data-selectable="true"], [data-selectable="true"] *) {
+  cursor: var(--sx-cursor-text) !important;
 }
-
-/* Umbra mâinii/săgeții cursorului StudyX (filtru, nu box-shadow). */
-.cursor-hand-shadow-sm { filter: drop-shadow(0 1px 2px rgb(0 0 0 / .3)); }
-.cursor-hand-shadow-lg { filter: drop-shadow(0 1.5px 3px rgb(0 0 0 / .3)); }
+.studyx-custom-cursor-active :is(a[href], button:not(:disabled), [role="button"]:not([aria-disabled="true"]), [role="tab"], [role="menuitem"], [role="option"], [role="switch"], [role="checkbox"], [role="radio"], label[for], summary, select, input[type="checkbox"], input[type="radio"], input[type="range"], input[type="file"], input[type="color"], input[type="button"], input[type="submit"], [data-interactive="true"], [data-tab], .clickable, .cursor-pointer, [style*="cursor: pointer"]),
+.studyx-custom-cursor-active :is(a[href], button:not(:disabled), [role="button"]:not([aria-disabled="true"]), [role="tab"], [role="menuitem"], [role="option"], [role="switch"], [role="checkbox"], [role="radio"], label[for], summary, select, [data-interactive="true"], [data-tab], .clickable, .cursor-pointer, [style*="cursor: pointer"]) * {
+  cursor: var(--sx-cursor-hand) !important;
+}
+.studyx-custom-cursor-active :is(a[href], button:not(:disabled), [role="button"]:not([aria-disabled="true"]), [role="tab"], [role="menuitem"], [role="option"], [role="switch"], [role="checkbox"], [role="radio"], label[for], summary, [data-interactive="true"], [data-tab], .clickable, .cursor-pointer, [style*="cursor: pointer"]):active,
+.studyx-custom-cursor-active :is(a[href], button:not(:disabled), [role="button"]:not([aria-disabled="true"]), [role="tab"], [role="menuitem"], [role="option"], [role="switch"], [role="checkbox"], [role="radio"], label[for], summary, [data-interactive="true"], [data-tab], .clickable, .cursor-pointer, [style*="cursor: pointer"]):active * {
+  cursor: var(--sx-cursor-hand-pressed) !important;
+}
+/* Cursoarele cu sens propriu (lupă, tras, interzis) rămân ale lor; clasa dublată le dă prioritate peste mână. */
+.studyx-custom-cursor-active.studyx-custom-cursor-active :is(.ai-md-diagram-body, .ai-md-diagram-body *, .cursor-zoom-in, .cursor-zoom-in *) {
+  cursor: var(--cursor-zoom-in, zoom-in) !important;
+}
+.studyx-custom-cursor-active.studyx-custom-cursor-active :is(.cursor-zoom-out, .cursor-zoom-out *) {
+  cursor: var(--cursor-zoom-out, zoom-out) !important;
+}
+.studyx-custom-cursor-active.studyx-custom-cursor-active :is(.cursor-grab, .cursor-grab *, [data-grabbable="true"], [data-drag-handle="true"], [style*="cursor-grab,"], [style*="cursor-grab,"] *, [style*="cursor: grab;"], [style*="cursor: grab;"] *) {
+  cursor: var(--cursor-grab, grab) !important;
+}
+.studyx-custom-cursor-active.studyx-custom-cursor-active :is(.cursor-grabbing, .cursor-grabbing *, [style*="cursor-grabbing"], [style*="cursor-grabbing"] *, [style*="cursor: grabbing"], [style*="cursor: grabbing"] *) {
+  cursor: var(--cursor-grabbing, grabbing) !important;
+}
+.studyx-custom-cursor-active.studyx-custom-cursor-active :is(.cursor-not-allowed, [style*="cursor: not-allowed"]) {
+  cursor: not-allowed !important;
+}
 
 /* ── Regula de text: acțiunile se scriu cu litere normale, etichetele mici cu majuscule discrete ──
    Butoane de acțiune (dreptunghiuri rotunjite, MagneticButton): litere normale, fără spațiere extinsă.
