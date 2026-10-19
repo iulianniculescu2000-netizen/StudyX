@@ -10,6 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { extractFile, organize, vocabulary } from './extract-book-pages.mjs';
+import { cleanExtraPages, wordFrequency } from './lib/figureText.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const [which, folderArg, outArg, extraArg] = process.argv.slice(2);
@@ -35,7 +36,8 @@ const sim = (a, b) => {
 
 const app = await extractFile(path.join(root, cfg.app));
 const appFreq = vocabulary(app.pages);
-const appBags = app.pages.map((p) => bag(organize(p, appFreq)));
+const appTexts = app.pages.map((p) => organize(p, appFreq));
+const appBags = appTexts.map(bag);
 
 const rows = [];
 for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.pdf')).sort()) {
@@ -77,4 +79,5 @@ const uncovered = [];
 for (let p = 1; p <= app.numPages; p += 1) if (!covered.has(p)) uncovered.push(p);
 console.log(`\nPAGINI DIN PDF-UL APLICAȚIEI CARE NU APAR ÎN FOLDER: ${uncovered.length}${uncovered.length ? ` (${uncovered.join(', ')})` : ''}`);
 if (outArg) fs.writeFileSync(path.resolve(outArg), JSON.stringify(rows, null, 1));
-if (extraArg) fs.writeFileSync(path.resolve(extraArg), JSON.stringify(extra, null, 1));
+// Etichetele de figură din OCR (săgeți, U+FFFD, etichete rupte) se curăță conservator: scripts/lib/figureText.mjs.
+if (extraArg) fs.writeFileSync(path.resolve(extraArg), JSON.stringify(cleanExtraPages(extra, wordFrequency([...appTexts, ...Object.values(extra)])), null, 1));
