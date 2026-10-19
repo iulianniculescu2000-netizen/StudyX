@@ -94,7 +94,7 @@ export default function BundledBooksSection({ overview, plan, focus = null }: Pr
               <div className="flex items-start justify-between gap-2">
                 <div
                   aria-hidden
-                  className="relative flex h-[84px] w-[64px] flex-shrink-0 items-end justify-center overflow-hidden rounded-[var(--r-sm)] pb-2.5"
+                  className="depth-book relative flex h-[84px] w-[64px] flex-shrink-0 items-end justify-center overflow-hidden rounded-[var(--r-sm)] pb-2.5"
                   style={{ background: `linear-gradient(160deg, ${tint}40, ${tint}12)`, outline: `1px solid ${tint}38`, color: tint }}
                 >
                   <span className="absolute left-2 top-0 h-full w-px" style={{ background: `${tint}40` }} />

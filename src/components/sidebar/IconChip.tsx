@@ -34,7 +34,7 @@ export default function IconChip({
     color: active ? theme.text : theme.text3,
   };
 
-  return (
+  const chip = (
     <motion.span
       initial={calmMotion ? false : { scale: 0.8, opacity: 0 }}
       animate={{ scale: active && !calmMotion ? [1, 1.14, 1] : 1, opacity: 1, rotate: 0 }}
@@ -49,5 +49,17 @@ export default function IconChip({
         {icon}
       </span>
     </motion.span>
+  );
+  if (!hue || !active) return chip;
+  // Iconița paginii active stă pe o a doua placă de sticlă, ușor în spate (aceeași idee ca în tururi și Rezidențiat).
+  return (
+    <span className="relative flex-shrink-0" style={{ width: size, height: size }}>
+      <span
+        aria-hidden="true"
+        className="absolute inset-0"
+        style={{ borderRadius: 'var(--r-sm)', background: `color-mix(in srgb, ${hue} 22%, transparent)`, transform: 'translate(3px, -3px)' }}
+      />
+      <span className="relative flex">{chip}</span>
+    </span>
   );
 }

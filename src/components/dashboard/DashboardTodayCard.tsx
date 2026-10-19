@@ -49,7 +49,7 @@ export default function DashboardTodayCard({ dueCount, plan, today }: DashboardT
   return (
     <section aria-label="Azi" className={`mb-5 ${calmMotion ? '' : 'fx-rise'}`} style={{ '--i': 1 } as CSSProperties}>
       <SectionLabel className="mb-2">Azi</SectionLabel>
-      <div className="glass-panel overflow-hidden rounded-[var(--r-lg)]" style={{
+      <div className="glass-panel depth-card overflow-hidden rounded-[var(--r-lg)]" style={{
         background: 'linear-gradient(125deg, var(--accent-soft), transparent 65%), var(--glass-panel-strong)',
         borderColor: 'color-mix(in srgb, var(--accent) 28%, var(--glass-border))',
       }}>

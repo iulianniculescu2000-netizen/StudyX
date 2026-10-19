@@ -1570,6 +1570,50 @@ button.press-feedback:not(:disabled):active {
 .premium-card-hover:hover {
   box-shadow: var(--elev-3), var(--edge);
 }
+/* ── Adâncime 3D (polish): totul pornește doar la hover, apăsare sau deschidere; nimic nu rulează în buclă. ──
+   .fx-lift / .depth-card – cardul se înclină cel mult 3° spre mouse (--tilt-x/--tilt-y vin din useFxSpotlight)
+   .depth-book            – coperta unei cărți stă în perspectivă și se îndreaptă când treci peste card
+   butoanele pline        – volum: lumină sus, umbră jos, coborâre în suprafață la apăsare
+   .premium-modal         – ferestrele se ridică din adâncime, o singură dată, la deschidere
+   Sub lite, economisire de energie și reduced-motion rămân doar umbrele (vezi blocul de la final). */
+.depth-card {
+  transition: transform var(--dur-base) var(--ease-standard), box-shadow var(--dur-base) var(--ease-standard);
+}
+.fx-lift:hover,
+.depth-card:hover {
+  transform: perspective(1000px) rotateX(var(--tilt-y, 0deg)) rotateY(var(--tilt-x, 0deg)) scale(1.006);
+}
+.depth-card:hover {
+  box-shadow: var(--elev-2), var(--edge);
+}
+.depth-book {
+  transform: perspective(520px) rotateY(-16deg);
+  box-shadow: -5px 0 0 color-mix(in srgb, currentColor 34%, transparent), var(--elev-1);
+  transition: transform var(--dur-slow) var(--ease-emphasized), box-shadow var(--dur-slow) var(--ease-emphasized);
+}
+.fx-lift:hover .depth-book,
+.depth-card:hover .depth-book {
+  transform: perspective(520px) rotateY(-5deg) translateY(-2px);
+  box-shadow: -3px 0 0 color-mix(in srgb, currentColor 34%, transparent), var(--elev-2);
+}
+:is(button, a).press-feedback.text-white:not(:disabled) {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .24), inset 0 -1px 0 rgb(0 0 0 / .1), var(--elev-1);
+}
+:is(button, a).press-feedback.text-white:not(:disabled):hover {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .24), inset 0 -1px 0 rgb(0 0 0 / .1), var(--elev-2), var(--edge);
+}
+:is(button, a).press-feedback.text-white:not(:disabled):active {
+  transform: translateY(1px) scale(0.98);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / .18), var(--elev-1);
+  transition-duration: var(--dur-instant);
+}
+.premium-modal {
+  animation: depth-rise var(--dur-base) var(--ease-emphasized) backwards;
+  transform-origin: 50% 20%;
+}
+@keyframes depth-rise {
+  from { opacity: 0; rotate: x 8deg; scale: 0.975; }
+}
 .fx-spot::before {
   background:
     radial-gradient(260px circle at var(--mx, -999px) var(--my, -999px), color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
@@ -1691,9 +1735,12 @@ button:hover > .pip-motion .pip-hand,
   .glow-pulse, .float-gentle, .shimmer-text, .animate-streak-fire, .streaming-cursor,
   .skeleton-block, .fx-mesh i, .animated-background-orb, .animated-background-orb--drift, .fx-rise,
   .pip-motion .pip-float, .pip-motion .pip-eyes, .pip-motion .pip-ant,
-  .pip-motion[data-state="thinking"] .pip-dots circle
+  .pip-motion[data-state="thinking"] .pip-dots circle, .premium-modal
 ) {
   animation: none;
+}
+:root:is([data-performance="lite"], [data-power-save="true"]) :is(.depth-book, .fx-lift:hover .depth-book, .depth-card:hover, .depth-card:hover .depth-book) {
+  transform: none;
 }
 :root:is([data-performance="lite"], [data-power-save="true"]) .skeleton-block {
   background: var(--skeleton);
@@ -1748,9 +1795,11 @@ button:hover > .pip-motion .pip-hand,
   button:hover, button:active, a[role="button"]:hover, a[role="button"]:active,
   [role="button"]:hover, [role="button"]:active, .press-feedback:hover, .press-feedback:active,
   .fx-lift:hover, .interactive-lift:hover, .lift-card:hover, .premium-card-hover:hover,
-  .icon-pop:hover, .back-pill:hover, .back-pill:hover svg, .back-pill:active {
+  .icon-pop:hover, .back-pill:hover, .back-pill:hover svg, .back-pill:active,
+  .depth-card:hover, .depth-book, .fx-lift:hover .depth-book, .depth-card:hover .depth-book {
     transform: none !important;
   }
+  .premium-modal { animation: none !important; }
   .fx-mesh { display: none; }
   .embed-frame { transform: none; }
 }

@@ -27,7 +27,7 @@ export default function DashboardFocusCard({ items, onPractice, onGenerate, gene
   return (
     <section aria-label="Pentru tine" className={`mb-5 ${calmMotion ? '' : 'fx-rise'}`} style={{ '--i': 2 } as CSSProperties}>
       <SectionLabel className="mb-2">Pentru tine</SectionLabel>
-      <div className="glass-panel overflow-hidden rounded-[var(--r-lg)]" style={{ background: 'var(--glass-panel-strong)' }}>
+      <div className="glass-panel depth-card overflow-hidden rounded-[var(--r-lg)]" style={{ background: 'var(--glass-panel-strong)' }}>
         {items.map(({ kind, topic }, index) => {
           const weak = kind === 'weak';
           const Icon = weak ? Target : RotateCcw;

@@ -25,7 +25,7 @@ export default function DashboardCrunchCard() {
   return (
     <section aria-label="Aproape de examen" className={`mb-5 ${calmMotion ? '' : 'fx-rise'}`} style={{ '--i': 2 } as CSSProperties}>
       <SectionLabel className="mb-2">Aproape de examen</SectionLabel>
-      <div className="glass-panel fx-spot flex flex-wrap items-center gap-3 rounded-[var(--r-lg)] px-4 py-3.5" style={{ boxShadow: 'var(--elev-1)' }}>
+      <div className="glass-panel depth-card fx-spot flex flex-wrap items-center gap-3 rounded-[var(--r-lg)] px-4 py-3.5" style={{ boxShadow: 'var(--elev-1)' }}>
         <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[var(--r-sm)]" style={{ background: `${theme.accent}18`, color: theme.accentText }}>
           <Hourglass size={18} aria-hidden="true" />
         </div>

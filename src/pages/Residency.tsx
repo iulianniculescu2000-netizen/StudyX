@@ -28,6 +28,7 @@ import PageHeader from '../components/ui/PageHeader';
 import SectionLabel from '../components/ui/SectionLabel';
 import PageSkeleton from '../components/ui/PageSkeleton';
 import DuplicatesPanel from '../components/residency/DuplicatesPanel';
+import GlassIconStack from '../components/depth/GlassIconStack';
 import PlanCard from '../components/residency/PlanCard';
 import ContinueChapter from '../components/residency/ContinueChapter';
 import { usePlanProgress } from '../components/residency/useResidencyData';
@@ -197,9 +198,7 @@ export default function Residency() {
                     className="glass-panel fx-lift fx-spot press-feedback block rounded-2xl p-4"
                   >
                     <div className="flex items-start justify-between">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-[var(--r-sm)]" style={{ background: `${theme.accent}18`, color: theme.accentText }}>
-                        <DisciplineIcon name={discipline.folder.name} />
-                      </div>
+                      <GlassIconStack icon={<DisciplineIcon name={discipline.folder.name} />} color={theme.accentText} />
                       <ChevronRight size={16} style={{ color: theme.text3 }} />
                     </div>
                     <div className="mt-3 text-[16px] font-semibold" style={{ color: theme.text }}>{discipline.folder.name}</div>

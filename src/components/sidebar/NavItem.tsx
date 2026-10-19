@@ -71,7 +71,8 @@ export default function NavItem({
                 aria-hidden="true"
                 transition={indicatorTransition}
                 className="pointer-events-none absolute inset-0"
-                style={{ zIndex: -1, borderRadius: 14, background: 'var(--accent-soft)', boxShadow: 'var(--glow-1)' }}
+                // Placa de sticlă a paginii active: lumină fină sus, ca butoanele și cardurile cu adâncime.
+                style={{ zIndex: -1, borderRadius: 14, background: 'var(--accent-soft)', boxShadow: 'inset 0 1px 0 var(--glass-highlight), var(--glow-1)' }}
               />
               {/* Bar: same spring as the pill; vertical centering by margin, not a CSS transform that framer would overwrite. */}
               <motion.span
