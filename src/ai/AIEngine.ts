@@ -562,6 +562,12 @@ export function buildChatSystemPrompt(contextSummary: string, options: ChatRespo
   });
 }
 
+/** Chatul trimite istoricul cu tot cu mesajul curent; acesta se adaugă oricum la final, deci copia din istoric se scoate (altfel pleca de două ori). */
+export function withoutTrailingCopy<T extends { role: 'user' | 'assistant'; content: string }>(history: T[], message: string): T[] {
+  const last = history.at(-1);
+  return last && last.role === 'user' && last.content.trim() === message.trim() ? history.slice(0, -1) : history;
+}
+
 export async function generateChatResponse(
   message: string,
   contextSummary: string,
@@ -569,7 +575,7 @@ export async function generateChatResponse(
   options: ChatResponseOptions = {},
 ): Promise<string> {
   const systemPrompt = buildChatSystemPrompt(contextSummary, options, message);
-  const recentHistory = fitHistoryToBudget(compactOldAssistantTurns(history));
+  const recentHistory = fitHistoryToBudget(compactOldAssistantTurns(withoutTrailingCopy(history, message)));
 
   return groqRequest({
     task: 'chat',
@@ -592,7 +598,7 @@ export async function generateChatResponseStream(
   abortSignal?: AbortSignal,
 ): Promise<string> {
   const systemPrompt = buildChatSystemPrompt(contextSummary, options, message);
-  const recentHistory = fitHistoryToBudget(compactOldAssistantTurns(history));
+  const recentHistory = fitHistoryToBudget(compactOldAssistantTurns(withoutTrailingCopy(history, message)));
 
   const outgoing = [
     { role: 'system' as const, content: systemPrompt },

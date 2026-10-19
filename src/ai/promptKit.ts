@@ -191,6 +191,10 @@ export const BOOK_MODULE = [
   '- gândește pentru rezidențiat: ce devine grilă (criterii, praguri, clasificări, diferențiale)',
 ].join('\n');
 
+/** Reamintirea de la finalul promptului, după fragmentele din cărți. */
+export const BOOK_CITATION_REMINDER =
+  'ÎNAINTE SĂ RĂSPUNZI: fiecare afirmație luată din fragmentele de mai sus se termină cu [n]-ul fragmentului (ex. „…sulfatul feros [2].”); ce nu e în fragmente marchezi „din cunoștințe generale”.';
+
 /** True când sursa curentă ori contextul arată că discuția e despre o carte din bibliotecă. */
 export function detectBookSource(scopedSourceName?: string, contextSummary = ''): boolean {
   if (/\b(kumar|clark|lawrence|sinopsis)\b/i.test(scopedSourceName ?? '')) return true;
@@ -347,6 +351,8 @@ export function composeChatSystemPrompt(input: ChatPromptInput): string {
 ${contextSummary}`
       : 'NU EXISTĂ CONTEXT din biblioteca utilizatorului: răspunde natural din cunoștințe medicale, fără meta-comentarii despre bibliotecă, documente sau folder („nu am găsit…”, „nu e din biblioteca ta”); doar dacă a cerut explicit ceva din documentele lui, spune scurt că nu ai găsit.',
   );
+  // Ultimul lucru citit de model: fără reamintire, modelele lăsau des răspunsul fără niciun [n] deși aveau fragmentele (3 din 6, test live 19 oct 2026).
+  if (hasContext && book) live.push(BOOK_CITATION_REMINDER);
 
   return [buildChatBase(mode, { book, diagrams, math, app }), ...live].join('\n\n');
 }

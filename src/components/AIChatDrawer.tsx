@@ -496,7 +496,7 @@ export default function AIChatDrawer() {
     const searchText = queryForRetrieval(retrievalTextFor(text));
 
     if (!targetSourceId) {
-      const scopeFilters = retrievalFiltersForScope(knowledgeSources, aiLibraryFolders, sourceScope);
+      const scopeFilters = retrievalFiltersForScope(knowledgeSources, aiLibraryFolders, sourceScope, { includeBaseBooks: true });
       if (scopeFilters === null) return [];
       const candidates = await retrieveRelevantChunks(searchText, null, 8, { ...scopeFilters, ...(chapterScopeRef.current ? { activeScope: chapterScopeRef.current } : {}) });
       return filterRelevantChunks(diversifyChunks(candidates, 5));

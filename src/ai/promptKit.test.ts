@@ -11,6 +11,7 @@ vi.mock('./medicalJudge', () => ({ verifyQuestionsMedically: vi.fn() }));
 vi.mock('../lib/jsonExtract', () => ({ extractBalancedJson: vi.fn(), extractJsonArrayLenient: vi.fn(), parseJsonLoose: vi.fn(), looksLikeJson: vi.fn() }));
 
 import {
+  BOOK_CITATION_REMINDER,
   BOOK_MODULE,
   DIAGRAM_RULES,
   EXAM_REASONING_RULES,
@@ -26,7 +27,7 @@ import {
   suggestsDiagram,
   suggestsMath,
 } from './promptKit';
-import { buildChatSystemPrompt } from './AIEngine';
+import { buildChatSystemPrompt, withoutTrailingCopy } from './AIEngine';
 import { getMedicalSystemPrompt } from '../lib/aiContext';
 import { RESIDENCY_STYLE_RULES } from './prompts';
 import { normalizeRomanianDiacritics } from '../lib/flashcardText';
@@ -220,6 +221,15 @@ describe('modul carte / Rezidențiat', () => {
     expect(BOOK_MODULE).toContain('nu inventa numere');
   });
 
+  it('reamintirea citărilor [n] vine ultima, după fragmentele din cărți, și doar când există fragmente', () => {
+    const context = ['[1] [CARTE DE BAZĂ · Kumar p.57] — Anemia', 'Sulfatul feros este cel mai eficient preparat.'].join('\n');
+    const prompt = composeChatSystemPrompt({ mode: 'grounded', contextSummary: context });
+    expect(prompt.endsWith(BOOK_CITATION_REMINDER)).toBe(true);
+    expect(prompt.indexOf('Sulfatul feros')).toBeLessThan(prompt.indexOf(BOOK_CITATION_REMINDER));
+    expect(composeChatSystemPrompt({ mode: 'grounded', bookMode: true })).not.toContain(BOOK_CITATION_REMINDER);
+    expect(composeChatSystemPrompt({ mode: 'grounded', scopedSourceName: 'Curs.pdf', contextSummary: 'x' })).not.toContain(BOOK_CITATION_REMINDER);
+  });
+
   it('lipsește pe sursă obișnuită și poate fi forțat sau oprit explicit', () => {
     expect(composeChatSystemPrompt({ mode: 'grounded', scopedSourceName: 'Curs.pdf', contextSummary: 'x' })).not.toContain(BOOK_MODULE);
     expect(composeChatSystemPrompt({ mode: 'grounded', bookMode: true })).toContain(BOOK_MODULE);
@@ -364,5 +374,17 @@ describe('„capcana de examen” doar la subiecte medicale', () => {
     const prompt = composeChatSystemPrompt({ userMessage: 'Ce este sepsisul?' });
     expect(prompt).not.toContain('CONTEXT DESPRE APLICAȚIE');
     expect(prompt).toContain('NU creezi, salvezi, muți sau ștergi nimic');
+  });
+});
+
+describe('istoricul trimis la chat', () => {
+  it('mesajul curent nu pleacă de două ori (istoricul din chat îl conține deja)', () => {
+    const history = [
+      { role: 'user' as const, content: 'Ce este acalazia?' },
+      { role: 'assistant' as const, content: 'Acalazia este…' },
+      { role: 'user' as const, content: 'Care e tratamentul?' },
+    ];
+    expect(withoutTrailingCopy(history, 'Care e tratamentul?')).toEqual(history.slice(0, 2));
+    expect(withoutTrailingCopy(history.slice(0, 2), 'Care e tratamentul?')).toEqual(history.slice(0, 2));
   });
 });

@@ -22,6 +22,16 @@ describe('sourceScope', () => {
     expect(retrievalFiltersForScope(sources, folders, 'rezidentiat')).toEqual({ sourceIds: ['kumar', 'ati'], rezidentiat: true });
   });
 
+  it('chatul general poate căuta și în cele trei cărți de bază; materialele din Rezidențiat rămân acolo', () => {
+    const withNames = [
+      { id: 'kumar', folderId: 'rez', name: 'Kumar și Clark – Medicină Clinică.pdf' },
+      { id: 'ati', folderId: 'disc', name: 'Curs ATI.pdf' },
+      { id: 'curs', folderId: 'mine', name: 'Cursul meu.pdf' },
+    ];
+    expect(retrievalFiltersForScope(withNames, folders, 'general', { includeBaseBooks: true })).toEqual({ excludeSourceIds: ['ati'] });
+    expect(retrievalFiltersForScope(withNames, folders, 'general')).toEqual({ excludeSourceIds: ['kumar', 'ati'] });
+  });
+
   it('fără cărți de rezidențiat: general caută în tot, iar rezidențiatul nu caută nimic', () => {
     const own = [source('curs', 'mine')];
     expect(retrievalFiltersForScope(own, folders, 'general')).toEqual({});

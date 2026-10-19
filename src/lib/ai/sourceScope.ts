@@ -6,6 +6,7 @@
 import { useMemo } from 'react';
 import { useAIStore, type AIKnowledgeSource, type AILibraryFolder } from '../../store/aiStore';
 import { isUnderRezidentiatRoot } from '../rezidentiatRoot';
+import { isBundledBookFileName } from '../bundledBookNames';
 
 export type SourceScope = 'general' | 'rezidentiat';
 
@@ -27,11 +28,17 @@ export function filterSourcesByScope<T extends ScopedSource>(sources: ReadonlyAr
   return sources.filter((source) => isRezidentiatSource(source, rez) === (scope === 'rezidentiat'));
 }
 
-/** Retriever filters that keep a search inside one scope. `null` means the scope has no sources at all: search nothing. */
+/**
+ * Retriever filters that keep a search inside one scope. `null` means the scope has no sources at all: search nothing.
+ * `includeBaseBooks` (chatul general): cele trei cărți de bază incluse în aplicație intră și în căutarea generală, ca o
+ * întrebare medicală de oriunde să primească pasajul cu pagina (decizia proprietarului, 19 oct 2026); materialele proprii
+ * din Rezidențiat rămân doar acolo.
+ */
 export function retrievalFiltersForScope(
-  sources: ReadonlyArray<ScopedSource>,
+  sources: ReadonlyArray<ScopedSource & { name?: string }>,
   folders: ReadonlyArray<AILibraryFolder>,
   scope: SourceScope,
+  options: { includeBaseBooks?: boolean } = {},
 ): { sourceIds?: string[]; excludeSourceIds?: string[]; rezidentiat?: boolean } | null {
   const rez = rezidentiatFolderIds(folders);
   if (scope === 'rezidentiat') {
@@ -39,7 +46,8 @@ export function retrievalFiltersForScope(
     // `rezidentiat`: cărțile de bază au întâietate la clasare și în context (vezi retriever.ts).
     return ids.length > 0 ? { sourceIds: ids, rezidentiat: true } : null;
   }
-  const excluded = sources.filter((source) => isRezidentiatSource(source, rez)).map((source) => source.id);
+  const keepBook = (source: { name?: string }) => !!options.includeBaseBooks && isBundledBookFileName(source.name ?? '');
+  const excluded = sources.filter((source) => isRezidentiatSource(source, rez) && !keepBook(source)).map((source) => source.id);
   return excluded.length > 0 ? { excludeSourceIds: excluded } : {};
 }
 
