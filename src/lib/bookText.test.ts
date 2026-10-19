@@ -40,4 +40,13 @@ describe('bundledBookText (cărțile incluse, pentru indexarea în chat)', () =>
     // paginile PDF-ului rămân exact aceleași, în aceeași ordine
     expect(map.slice(0, base).every((entry, i) => entry.page === i + 1 && !('printedPage' in entry))).toBe(true);
   }, 60000);
+
+  it('extraPageAt: pagina citată peste PDF e pagina din folder cu numărul tipărit; paginile PDF-ului nu sunt „extra”', async () => {
+    const { extraPageAt } = await import('./bookText');
+    await expect(extraPageAt('L', 345)).resolves.toBeNull();
+    await expect(extraPageAt('L', 346)).resolves.toMatchObject({ printed: 13 });
+    expect((await extraPageAt('L', 346))!.text.trim().length).toBeGreaterThan(50);
+    await expect(extraPageAt('L', 345 + 69 + 1)).resolves.toBeNull();
+    await expect(extraPageAt('K', 9999)).resolves.toBeNull();
+  }, 60000);
 });

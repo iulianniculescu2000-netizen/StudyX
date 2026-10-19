@@ -40,6 +40,18 @@ export function loadBookPages(book: BookCode): Promise<string[]> {
   return pages;
 }
 
+/**
+ * Pagina din afara PDF-ului inclus pe care o citează chatul: în indexare, paginile din `extraBookPages` vin după ultima pagină a PDF-ului
+ * (pagina N + 1, N + 2…), deci o citare cu `pdfPage` peste N nu are ce deschide în cititorul de PDF. `null` pentru paginile din PDF.
+ */
+export async function extraPageAt(book: BookCode, pdfPage: number): Promise<{ printed: number; text: string } | null> {
+  if (!Number.isFinite(pdfPage)) return null;
+  const pages = await loadBookPages(book);
+  if (pdfPage <= pages.length) return null;
+  const extra = await extraBookPages(book);
+  return extra[Math.round(pdfPage) - pages.length - 1] ?? null;
+}
+
 /** Marcajul de început de pagină din textul compus; cititorul îl desenează ca separator discret. */
 export const PAGE_HEADING = '§ ';
 
