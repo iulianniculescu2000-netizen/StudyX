@@ -1,4 +1,5 @@
 import { cosineSimilarity, embedText } from './embeddings';
+import { API_EMBEDDING_DIM } from './apiEmbeddings';
 import { getVaultChunks } from './vectorStore';
 import { expandMedicalQuery } from './medicalSynonyms';
 import { tokenizeExpansionPhrase, tokenizeForSearch } from './searchText';
@@ -35,6 +36,10 @@ export const BOOK_SCORE_BONUS = 1.25;
 export const BOOK_MIN_SLOTS = 3;
 /** Fragmentul din subsecțiunea cerută („tratamentul X” → `## Tratament`) urcă față de restul capitolului. */
 export const SECTION_INTENT_BONUS = 1.25;
+/** Partea minimă din IDF-ul maxim cu care un termen al întrebării intră în normalizarea BM25. */
+const MIN_TERM_IDF_SHARE = 0.5;
+/** Ponderea maximă a similarității când vectorul întrebării e cel local (hash de cuvinte, nu semantic). */
+const LOCAL_SEMANTIC_WEIGHT = 0.08;
 /** Fragmentul care continuă subsecțiunea cerută primește cel puțin această parte din scorul fragmentului dinainte. */
 const CONTINUATION_SCORE_SHARE = 0.9;
 
@@ -311,14 +316,24 @@ export function rankChunks(
   const avgDocLength = docs.reduce((sum, doc) => sum + doc.tokens.length, 0) / (docs.length || 1) || 1;
   const idf = buildIdfMap([...wq.weights.keys()], docs);
 
-  // Normalizare BM25: raportată la termenii scriși de utilizator (expandarea nu o dilată).
-  const maxBm25 = Math.max(wq.base.length, 1) * Math.log(chunks.length + 1);
+  // Normalizare BM25: raportată la termenii scriși de utilizator (expandarea nu o dilată). Fiecare termen cântărește cât
+  // IDF-ul lui, dar cel puțin jumătate din maxim: la „formele clinice ale artritei psoriazice și ce tratament se evită”,
+  // cuvintele generale („clinice”, „tratament”, „evita”) nu mai cer cât numele bolii, iar pagina despre boală nu mai cade
+  // sub prag. O întrebare doar din cuvinte generale rămâne exigentă (podeaua de jumătate).
+  const maxIdf = Math.log(chunks.length + 1);
+  const maxBm25 = wq.base.reduce((sum, term) => sum + Math.max(idf.get(term) ?? 0, maxIdf * MIN_TERM_IDF_SHARE), 0) || maxIdf;
   const baseIdfTotal = wq.base.reduce((sum, term) => sum + (idf.get(term) ?? 0), 0) || 1;
 
   // Ponderi adaptive după lungimea interogării: scurt (cuvinte-cheie) → BM25; lung (limbaj natural) → semantic.
   const queryLen = query.trim().length;
-  const bm25Weight = queryLen <= 25 ? 0.65 : queryLen <= 60 ? 0.55 : 0.42;
-  const semanticWeight = queryLen <= 25 ? 0.12 : queryLen <= 60 ? 0.25 : 0.38;
+  const baseBm25Weight = queryLen <= 25 ? 0.65 : queryLen <= 60 ? 0.55 : 0.42;
+  const baseSemanticWeight = queryLen <= 25 ? 0.12 : queryLen <= 60 ? 0.25 : 0.38;
+  // Vectorul local (fără cheie de embeddings) e un hash de cuvinte fără IDF, în care „tratament” și „diagnostic” au pondere
+  // mărită: nu e semantic. La întrebări lungi, fragmentul care împarte doar cuvintele generale (nefrita lupică) bătea pagina
+  // despre boala cerută. Rămâne doar departajare; restul ponderii trece la BM25.
+  const localVector = queryEmbedding.length > 0 && queryEmbedding.length !== API_EMBEDDING_DIM;
+  const semanticWeight = localVector ? Math.min(baseSemanticWeight, LOCAL_SEMANTIC_WEIGHT) : baseSemanticWeight;
+  const bm25Weight = baseBm25Weight + (baseSemanticWeight - semanticWeight);
   const activeHeading = normalizeHeading(filters.activeHeading);
   const scopeHeadings = (filters.activeScope?.headings ?? []).map(normalizeHeading).filter((heading) => heading.length >= 3);
   const scope = filters.activeScope && (scopeHeadings.length > 0 || filters.activeScope.pageStart !== undefined)
