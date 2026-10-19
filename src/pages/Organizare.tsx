@@ -127,10 +127,11 @@ export default function Organizare() {
 
   const tab: TabId = focus && baseTab === 'panou' ? 'topicuri' : baseTab;
 
-  const goTo = useCallback((next: string, nextPass?: number) => {
+  const goTo = useCallback((next: string, nextPass?: number, topic?: number) => {
     const out: Record<string, string> = {};
     if (next !== 'panou') out.t = next;
     if (nextPass) out.f = String(nextPass);
+    if (topic !== undefined) out.topic = String(topic);
     // The old tab stays on screen until the new one is ready, then exit and enter run back to back.
     startTransition(() => setParams(out));
   }, [setParams]);
@@ -211,8 +212,9 @@ export default function Organizare() {
     }
   })();
 
+  // pb-28: the last row can scroll up past the floating „Revino sus” button and the assistant.
   return (
-    <FxPage ref={scroller} className="px-4 pb-6 pt-5 sm:px-8 sm:pt-8">
+    <FxPage ref={scroller} className="px-4 pb-28 pt-5 sm:px-8 sm:pt-8">
       <div className="mx-auto max-w-4xl">
         <PageHeader
           back={{ to: '/rezidentiat', label: 'Rezidențiat' }}

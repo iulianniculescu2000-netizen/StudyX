@@ -8,6 +8,7 @@ import {
   activePhase, addDays, countStatus, daysBetween, donePages, focusNow, isOverdueStart, parseDay, statusOf, totalPages, upNext, weekProgress,
 } from '../../lib/organizare/engine';
 import { dayRange, longDay, shortDay, weekdayDay, withoutNumber } from '../../lib/organizare/format';
+import { onFillText } from '../../theme/contrastText';
 import ProgressRing from '../fx/ProgressRing';
 import TopicActions from './TopicActions';
 import { useOrganizare } from './context';
@@ -68,7 +69,8 @@ function FocusCard() {
           className="relative space-y-4"
         >
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
+            {/* At least 18rem (or the whole row): on a narrow screen the buttons wrap below instead of squeezing the title. */}
+            <div className="min-w-[min(100%,18rem)] flex-1">
               <div className="text-[12px] font-medium uppercase tracking-wide" style={{ color: colors[ph - 1] }}>{eyebrow}</div>
               <div className="display mt-1 text-[clamp(1.35rem,3.4vw,1.85rem)] font-bold leading-tight tracking-tight" style={{ color: theme.text }}>{topic.name}</div>
               <p className="mt-1.5 text-[13px]" style={{ color: theme.text2 }}>{meta}</p>
@@ -205,13 +207,14 @@ function Timeline() {
             return (
               <motion.div
                 key={label}
-                className="absolute inset-y-0 flex items-center justify-center whitespace-nowrap text-[11px] font-semibold text-white"
-                style={{ left: `${left}%`, width: `${width}%`, background: colors[i], originX: 0 }}
+                className="absolute inset-y-0 flex items-center justify-center overflow-hidden whitespace-nowrap text-[11px] font-semibold"
+                style={{ left: `${left}%`, width: `${width}%`, background: colors[i], color: onFillText(colors[i]), originX: 0 }}
                 initial={calmMotion ? false : { scaleX: 0 }}
                 animate={{ scaleX: 1 }}
                 transition={{ delay: 0.15 + i * 0.09, duration: dur.slow, ease: ease.emphasized }}
               >
-                {width > 7 ? label : ''}
+                {/* On a phone a pass is only a few dozen pixels wide: its number alone fits. */}
+                {width > 7 && (label.startsWith('Faza ') ? <><span className="max-sm:hidden">Faza </span>{label.slice(5)}</> : <span className="max-sm:hidden">{label}</span>)}
               </motion.div>
             );
           })}
@@ -253,7 +256,7 @@ function UpNextCard() {
             <button
               key={i}
               type="button"
-              onClick={() => goTo('topicuri', ph)}
+              onClick={() => goTo('topicuri', ph, i)}
               className="fine-row flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left sm:px-5"
               style={{ borderRadius: 0, borderTop: '1px solid var(--hairline)' }}
             >
