@@ -1,3 +1,4 @@
+import { useCallback, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTheme } from '../../theme/ThemeContext';
 import { useAdaptiveMotion } from '../../hooks/useAdaptiveMotion';
@@ -6,7 +7,23 @@ import { parseDay, type AccuracyPoint, type HeatCell, type HourBar, type Progres
 import { shortDay } from '../../lib/organizare/format';
 import { number } from './helpers';
 
-const W = 640;
+/**
+ * The width the chart is drawn at: the box it sits in, measured. Drawing at the real width (instead of a fixed
+ * viewBox scaled to fit) keeps the 10px labels 10px in a half-width card and on a phone.
+ */
+function useChartWidth(): [(el: HTMLDivElement | null) => (() => void) | undefined, number] {
+  const [width, setWidth] = useState(640);
+  const box = useCallback((el: HTMLDivElement | null) => {
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(([entry]) => {
+      const w = Math.round(entry.contentRect.width);
+      if (w > 0) setWidth(Math.max(240, w));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return [box, width];
+}
 
 function useChartInk() {
   const theme = useTheme();
@@ -17,6 +34,7 @@ function useChartInk() {
 /** Hours studied per day over the last weeks, against each day's target. */
 export function HoursChart({ data }: { data: HourBar[] }) {
   const { theme, calm, grid, faint } = useChartInk();
+  const [box, W] = useChartWidth();
   const H = 190;
   const l = 30; const r = 6; const t = 10; const b = 24;
   const n = data.length;
@@ -25,6 +43,7 @@ export function HoursChart({ data }: { data: HourBar[] }) {
   const y = (v: number) => t + (H - t - b) * (1 - v / max);
 
   return (
+    <div ref={box}>
     <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Ore studiate pe zi, ultimele 28 de zile" className="h-auto w-full">
       {Array.from({ length: max / 2 + 1 }, (_, k) => k * 2).map((v) => (
         <g key={v}>
@@ -59,12 +78,14 @@ export function HoursChart({ data }: { data: HourBar[] }) {
         );
       })}
     </svg>
+    </div>
   );
 }
 
 /** Pages finished in the running pass against what the plan expected by now. */
 export function ProgressChart({ data, today }: { data: ProgressSeries; today: string }) {
   const { theme, calm, grid, faint } = useChartInk();
+  const [box, W] = useChartWidth();
   const H = 200;
   const l = 34; const r = 10; const t = 12; const b = 24;
   const t0 = parseDay(data.from).getTime();
@@ -79,7 +100,7 @@ export function ProgressChart({ data, today }: { data: ProgressSeries; today: st
   const lastActual = data.actual[data.actual.length - 1];
 
   return (
-    <>
+    <div ref={box}>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Progresul față de plan" className="h-auto w-full">
         {[0, 0.25, 0.5, 0.75, 1].map((v) => (
           <g key={v}>
@@ -120,13 +141,14 @@ export function ProgressChart({ data, today }: { data: ProgressSeries; today: st
         <span className="inline-flex items-center gap-1.5"><i className="inline-block h-0.5 w-4 rounded" style={{ background: theme.accent }} />Ce ai terminat tu</span>
       </div>
       {!hasActual && <p className="mt-2 text-[12.5px]" style={{ color: faint }}>Linia ta apare după ce marchezi primul topic „Gata”.</p>}
-    </>
+    </div>
   );
 }
 
 /** Share of quizzes answered correctly, week by week. */
 export function AccuracyChart({ data }: { data: AccuracyPoint[] }) {
   const { theme, calm, grid, faint } = useChartInk();
+  const [box, W] = useChartWidth();
   const H = 190;
   const l = 34; const r = 10; const t = 14; const b = 24;
   const x = (k: number) => l + (W - l - r) * ((k + 0.5) / data.length);
@@ -135,7 +157,7 @@ export function AccuracyChart({ data }: { data: AccuracyPoint[] }) {
   const path = points.map(([k, p], i) => `${i ? 'L' : 'M'}${x(k).toFixed(1)} ${y(p.p as number).toFixed(1)}`).join(' ');
 
   return (
-    <>
+    <div ref={box}>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Acuratețea grilelor pe săptămână" className="h-auto w-full">
         {[0, 0.25, 0.5, 0.75, 1].map((v) => (
           <g key={v}>
@@ -162,17 +184,20 @@ export function AccuracyChart({ data }: { data: AccuracyPoint[] }) {
         ))}
       </svg>
       {points.length === 0 && <p className="mt-2 text-[12.5px]" style={{ color: faint }}>Apare după ce înregistrezi grile rezolvate și corecte.</p>}
-    </>
+    </div>
   );
 }
 
 /** A calendar of the last weeks: the darker a day, the closer it came to its target. */
 export function Heatmap({ grid: cells }: { grid: Array<Array<HeatCell | null>> }) {
   const { theme, calm, faint } = useChartInk();
+  const [box, W] = useChartWidth();
   const weeks = cells.length;
-  const cs = (W - 30) / weeks;
-  const H = 7 * cs + 22;
+  // Cells grow with the card up to a calm size; past that the calendar keeps its size instead of turning into tiles.
+  const cs = Math.min(30, (W - 30) / weeks);
+  const H = 7 * cs + 4;
   return (
+    <div ref={box}>
     <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Calendar de studiu, ultimele 14 săptămâni" className="h-auto w-full">
       {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, k) => (
         <text key={k} x={10} y={k * cs + cs * 0.62} textAnchor="middle" fontSize={10} fill={faint}>{d}</text>
@@ -196,5 +221,6 @@ export function Heatmap({ grid: cells }: { grid: Array<Array<HeatCell | null>> }
         </motion.rect>
       )))}
     </svg>
+    </div>
   );
 }
