@@ -19,7 +19,7 @@ vi.mock('../ai/embeddings', () => ({
 import { useAIStore } from '../store/aiStore';
 import { bumpProfileEpoch } from '../store/profileEpoch';
 import { extractPageMap, pageMarker, rememberPageMap } from '../ai/pageMarkers';
-import { getVaultChunksBySource, setVectorStoreProfile } from '../ai/vectorStore';
+import { addChunksToVault, getIndexedChunkCounts, getVaultChunksBySource, setVectorStoreProfile } from '../ai/vectorStore';
 import { ensureBundledBooks, resetBundledPrepForTests, useBundledPrepStore, MAX_ATTEMPTS_PER_BOOK } from './bundledBookPrep';
 import { REZIDENTIAT_LIBRARY_BOOKS, type RezidentiatLibraryBook } from './rezidentiatLibrary';
 import { bundledBookStatuses } from './bundledBooks';
@@ -137,6 +137,44 @@ describe('pregătirea automată a cărților de bază', () => {
     await run();
     expect((await getVaultChunksBySource(id)).length).toBeGreaterThan(0);
     expect(sourcesOf(kumar.name)).toHaveLength(1);
+  });
+
+  it('nu lasă în index o copie orfană când lista surselor salvată nu a prins o adăugare', async () => {
+    // Pornire normală: lista surselor se salvează (ca în fișierul profilului).
+    await run();
+    const kumar = REZIDENTIAT_LIBRARY_BOOKS[0];
+    const saved = useAIStore.getState().knowledgeSources;
+    const keeperId = sourcesOf(kumar.name)[0].id;
+    // Store-ul pierde Kumar (HMR în dezvoltare / oprire bruscă înainte de salvare) și cartea se adaugă din nou:
+    // fragmentele noii copii ajung în index, dar lista ei nu se mai salvează.
+    useAIStore.setState({ knowledgeSources: saved.filter((s) => s.id !== keeperId) });
+    await run();
+    const orphanId = sourcesOf(kumar.name)[0].id;
+    expect(orphanId).not.toBe(keeperId);
+    // Repornire: se încarcă lista salvată, care are doar copia veche.
+    useAIStore.setState({ knowledgeSources: saved });
+    await setVectorStoreProfile('p1');
+    expect(Object.keys(await getIndexedChunkCounts())).toContain(orphanId);
+    await run();
+    const counts = await getIndexedChunkCounts();
+    expect(Object.keys(counts)).not.toContain(orphanId);
+    expect(counts[keeperId]).toBeGreaterThan(0);
+    expect(Object.keys(counts).sort()).toEqual(saved.map((s) => s.id).sort());
+  });
+
+  it('nu atinge fragmentele fără sursă ale materialelor proprii și nici singura copie a unei cărți', async () => {
+    await run();
+    const kumar = REZIDENTIAT_LIBRARY_BOOKS[0];
+    const keeperId = sourcesOf(kumar.name)[0].id;
+    await addChunksToVault([{ id: 'm1', text: 'Notițele mele despre insuficiența cardiacă.' }], 'Notițe.pdf', 'mine', { localEmbeddings: true });
+    // Lista nu mai are nicio carte (și nu se pot reîncărca): fragmentele cărții sunt singura copie, deci rămân.
+    useAIStore.setState({ knowledgeSources: [] });
+    loads = Object.fromEntries(REZIDENTIAT_LIBRARY_BOOKS.map((book) => [book.id, async () => { throw new Error('fără text'); }]));
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await run();
+    const counts = await getIndexedChunkCounts();
+    expect(counts.mine).toBe(1);
+    expect(counts[keeperId]).toBeGreaterThan(0);
   });
 
   it('reîncearcă limitat la eroare și apoi trece mai departe', async () => {

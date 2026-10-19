@@ -16,6 +16,16 @@ import { useToastStore } from './toastStore';
 import { bumpProfileEpoch } from './profileEpoch';
 import { retireSplitSourceStats } from '../lib/retireSplitStats';
 
+// Doar în dezvoltare: când HMR reevaluează store-urile (de ex. după o editare în retriever.ts, importat de aiStore),
+// noile copii pornesc goale și nehidratate, dar indexul vectorial rămâne cel vechi, cu profilul setat. Lucrul pe store-ul
+// gol a lăsat o copie orfană a cărții Kumar în index (19 oct 2026). O a doua evaluare a acestui modul (care importă toate
+// store-urile) în aceeași pagină înseamnă exact asta, deci reîncărcăm pagina; datele vechi se salvează la `pagehide`.
+const hotData = import.meta.hot?.data as { evaluated?: boolean } | undefined; // vitest are `hot`, dar fără `data`
+if (hotData) {
+  if (hotData.evaluated) window.location.reload();
+  hotData.evaluated = true;
+}
+
 const LS_KEY = (profileId: string, ns: string) => `studyx-p-${profileId}-${ns}`;
 type ProfileNamespace = 'quizzes' | 'folders' | 'stats' | 'notes' | 'ai';
 const CORRUPT_TOAST_ID = 'profile-storage-corrupt';

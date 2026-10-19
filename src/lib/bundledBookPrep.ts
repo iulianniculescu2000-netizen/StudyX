@@ -18,7 +18,7 @@
 import { create } from 'zustand';
 import { useAIStore, isSourceReady } from '../store/aiStore';
 import { currentProfileEpoch, ProfileChangedError } from '../store/profileEpoch';
-import { getIndexedChunkCounts } from '../ai/vectorStore';
+import { getIndexedChunkCounts, getIndexedSources, removeChunksBySource } from '../ai/vectorStore';
 import { scheduleIdleTask } from './idleTaskScheduler';
 import { REZIDENTIAT_LIBRARY_BOOKS, type RezidentiatLibraryBook } from './rezidentiatLibrary';
 import { findOrCreateRezidentiatLibraryRoot } from './rezidentiatRoot';
@@ -96,6 +96,28 @@ async function prepareOneBook(book: RezidentiatLibraryBook, guard: () => void, r
   return 'failed';
 }
 
+/**
+ * Șterge din indexul vectorial copiile unei cărți de bază care nu mai au sursă în bibliotecă.
+ * Apar când fragmentele s-au scris, dar lista surselor nu s-a mai salvat (aplicația oprită brusc în cele câteva
+ * secunde dintre cele două scrieri, sau un store golit de HMR în dezvoltare) și cartea s-a adăugat apoi din nou.
+ * Prudent: doar numele cărților de bază și doar când biblioteca are deja o copie gata, cu fragmente, a aceleiași cărți,
+ * deci nu se atinge niciodată singura copie și nici materialele utilizatorului (acestea nu se pot regenera).
+ */
+async function removeOrphanedBookCopies(books: ReadonlyArray<RezidentiatLibraryBook>, guard: () => void): Promise<void> {
+  const indexed = await getIndexedSources();
+  guard();
+  const { knowledgeSources } = useAIStore.getState();
+  const known = new Set(knowledgeSources.map((source) => source.id));
+  const countById = new Map(indexed.map((entry) => [entry.sourceId, entry.count]));
+  for (const entry of indexed) {
+    if (known.has(entry.sourceId) || !books.some((book) => book.name === entry.source)) continue;
+    const keeper = knowledgeSources.find((source) => source.name === entry.source && source.indexStatus === 'ready' && (countById.get(source.id) ?? 0) > 0);
+    if (!keeper) continue;
+    guard();
+    await removeChunksBySource(entry.sourceId);
+  }
+}
+
 let inFlight: Promise<void> | null = null;
 let rerunRequested = false;
 
@@ -127,6 +149,8 @@ export function ensureBundledBooks(options: PrepareOptions = {}): Promise<void> 
           if (outcome === 'failed') failedIds.push(book.id);
           useBundledPrepStore.setState({ failedBookIds: [...failedIds] });
         }
+        guard();
+        await removeOrphanedBookCopies(books, guard);
       } catch (error) {
         // Profil schimbat: noul profil își programează singur o rulare.
         if (!(error instanceof ProfileChangedError)) console.warn('Pregătirea cărților de bază a eșuat.', error);

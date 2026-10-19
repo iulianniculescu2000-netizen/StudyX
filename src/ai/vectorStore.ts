@@ -250,6 +250,12 @@ export async function getIndexedChunkCounts(): Promise<Record<string, number>> {
   return Object.fromEntries(index.map((entry) => [entry.sourceId, entry.count]));
 }
 
+/** Sursele din index cu numele și numărul de fragmente (tot din indexul mic). */
+export async function getIndexedSources(): Promise<Array<{ sourceId: string; source: string; count: number }>> {
+  const index = await getVectorIndex(activeProfileId);
+  return index.map(({ sourceId, source, count }) => ({ sourceId, source, count }));
+}
+
 /** Primitivă internă: cosinus pur pe vectorii stocați. Calea de producție este `retrieveRelevantChunks` (retriever.ts, hibrid BM25 + semantic). */
 export async function searchVault(query: string, k = 5): Promise<ChunkRecord[]> {
   const all = await getVaultChunks();
