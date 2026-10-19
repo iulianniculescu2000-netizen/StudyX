@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Plus, Search, Sparkles, X } from 'lucide-react';
+import { Check, Plus, Search, Sparkles, X } from 'lucide-react';
 import { useTheme } from '../../theme/ThemeContext';
 import {
   addDays, addPicks, picksOf, removePick, statusOf, suggestFor, toggleGroup, togglePick, weekIndex, weekPhase,
@@ -133,7 +133,11 @@ function WeekBody({ weekIx }: { weekIx: number }) {
           <div className="flex items-center gap-1.5 text-[12px] font-medium" style={{ color: theme.text3 }}><Sparkles size={13} /> Sugestia planului (poți s-o ignori)</div>
           <p className="mt-1 text-[13px]" style={{ color: theme.text }}>{groupsLabel(suggestion, plan)}</p>
           <div className="mt-2.5">
-            <GhostButton tone="accent" onClick={() => update((s) => addPicks(s, week.d, suggestion))}>Preia sugestia ({suggestion.length})</GhostButton>
+            {suggestion.every((k) => picks.includes(k)) ? (
+              <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold" style={{ color: theme.success }}><Check size={14} /> Sugestia e în alegerea ta</span>
+            ) : (
+              <GhostButton tone="accent" onClick={() => update((s) => addPicks(s, week.d, suggestion))}>Preia sugestia ({suggestion.length})</GhostButton>
+            )}
           </div>
         </div>
       ) : (
@@ -244,7 +248,7 @@ export default function Weeks() {
                   const ph = weekPhase(plan, w, today);
                   const tag = KIND_TAG[w.k];
                   return (
-                    <div key={w.d} className={isNow ? 'fx-lift' : undefined} style={{ borderTop: n === 0 ? undefined : '1px solid var(--hairline)', background: isNow ? 'var(--accent-soft)' : undefined }}>
+                    <div key={w.d} style={{ borderTop: n === 0 ? undefined : '1px solid var(--hairline)', background: isNow ? 'var(--accent-soft)' : undefined }}>
                       <button
                         type="button"
                         aria-expanded={wOpen}
