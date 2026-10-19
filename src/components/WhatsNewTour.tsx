@@ -32,13 +32,22 @@ import { useTutorialStore } from '../store/tutorialStore';
 import { RELEASE_DISPLAY_NAME, type TourId } from '../tutorial/tourMeta';
 import { useUserStore } from '../store/userStore';
 import FocusCardDemo from './micro/FocusCardDemo';
+import WhatsNewStage from './whats-new/WhatsNewStage';
+import { RELEASE_11_SLIDES, whatsNewEditionFor, type WhatsNewEdition } from './whats-new/release11';
+import type { WhatsNewScene } from './whats-new/stage3d';
 import { useOverlayFlag } from '../hooks/useOverlayFlag';
 import { useAdaptiveMotion } from '../hooks/useAdaptiveMotion';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useScrollLock } from '../hooks/useScrollLock';
 
-/** Force-open event (Settings → "Vezi noutățile" or dev preview). */
+/**
+ * Force-open event (Settings → "Vezi noutățile" or dev preview). `detail.edition` opens another edition than the current
+ * release's, for the development preview of the 1.1 slides.
+ */
 export const WHATS_NEW_OPEN_EVENT = 'studyx:whats-new:open';
+
+/** Ediția lansării curente: 1.1 abia după ce `RELEASE_DISPLAY_NAME` devine „1.1”. */
+const RELEASE_EDITION = whatsNewEditionFor(RELEASE_DISPLAY_NAME);
 
 type Theme = ReturnType<typeof useTheme>;
 
@@ -236,7 +245,9 @@ type Slide = {
   badge: string;
   title: string;
   description: string;
-  Demo: (props: { theme: Theme }) => ReactElement;
+  Demo?: (props: { theme: Theme }) => ReactElement;
+  /** Scena 3D din ceasul filmului (ediția 1.1), în locul lui `Demo`. */
+  scene?: WhatsNewScene;
   tip?: string;
   /** "Arată-mi": closes the slides, opens the page and, when there is one, starts its short tour. */
   cta?: { label: string; to: string; tour?: TourId };
@@ -337,6 +348,11 @@ const SLIDES: Slide[] = [
   },
 ];
 
+/** Slide-urile 1.1, cu scene 3D; apar doar în ediția 1.1. */
+const SLIDES_11: Slide[] = RELEASE_11_SLIDES;
+
+const SLIDES_BY_EDITION: Record<WhatsNewEdition, Slide[]> = { '1.0': SLIDES, '1.1': SLIDES_11 };
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Main component
 // ─────────────────────────────────────────────────────────────────────────────
@@ -352,14 +368,17 @@ export default function WhatsNewTour() {
   const seenTours = useTutorialStore((state) => state.seen);
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(0);
+  const [edition, setEdition] = useState<WhatsNewEdition>(RELEASE_EDITION);
+  const slides = SLIDES_BY_EDITION[edition];
+  const depth = edition === '1.1' && !calmMotion;
   useOverlayFlag(open);
   useScrollLock(open);
   const [direction, setDirection] = useState(1);
   // Set while the slides are paused for a page tour (see showMe).
   const resumeRef = useRef<{ index: number; tour: TourId } | null>(null);
 
-  const slide = SLIDES[index];
-  const isLast = index === SLIDES.length - 1;
+  const slide = slides[index] ?? slides[0];
+  const isLast = index === slides.length - 1;
   const isFirst = index === 0;
 
   // Opens once per version, for people who already finished the onboarding (a new user is not told what
@@ -374,7 +393,10 @@ export default function WhatsNewTour() {
 
   // Manual re-open (Settings / dev).
   useEffect(() => {
-    const handler = () => { setIndex(0); setDirection(1); setOpen(true); };
+    const handler = (event: Event) => {
+      setEdition((event as CustomEvent<{ edition?: WhatsNewEdition } | undefined>).detail?.edition ?? RELEASE_EDITION);
+      setIndex(0); setDirection(1); setOpen(true);
+    };
     window.addEventListener(WHATS_NEW_OPEN_EVENT, handler);
     return () => window.removeEventListener(WHATS_NEW_OPEN_EVENT, handler);
   }, []);
@@ -394,7 +416,7 @@ export default function WhatsNewTour() {
       return;
     }
     const tour = cta.tour as TourId;
-    resumeRef.current = { index: Math.min(index + 1, SLIDES.length - 1), tour };
+    resumeRef.current = { index: Math.min(index + 1, slides.length - 1), tour };
     setOpen(false);
     navigate(cta.to);
     window.setTimeout(() => useTutorialStore.getState().startTour(tour), 400);
@@ -408,7 +430,7 @@ export default function WhatsNewTour() {
         setOpen(true);
       }
     }, 3000);
-  }, [close, index, navigate]);
+  }, [close, index, navigate, slides.length]);
 
   useEffect(() => {
     return useTutorialStore.subscribe((state, previous) => {
@@ -425,8 +447,8 @@ export default function WhatsNewTour() {
 
   const go = useCallback((delta: number) => {
     setDirection(delta);
-    setIndex((current) => Math.min(SLIDES.length - 1, Math.max(0, current + delta)));
-  }, []);
+    setIndex((current) => Math.min(slides.length - 1, Math.max(0, current + delta)));
+  }, [slides.length]);
 
   useEffect(() => {
     if (!open) return;
@@ -438,11 +460,18 @@ export default function WhatsNewTour() {
     return () => window.removeEventListener('keydown', handler);
   }, [open, go]);
 
-  const slideVariants = useMemo(() => ({
-    enter: (dir: number) => ({ opacity: 0, x: dir * 56, scale: 0.985 }),
-    center: { opacity: 1, x: 0, scale: 1 },
-    exit: (dir: number) => ({ opacity: 0, x: dir * -56, scale: 0.985 }),
-  }), []);
+  // Ediția 1.1 schimbă slide-urile ca pe niște carduri în spațiu: cel vechi se rotește spre fundal, cel nou vine din adâncime.
+  const slideVariants = useMemo(() => (depth
+    ? {
+      enter: (dir: number) => ({ opacity: 0, x: dir * 70, z: -160, rotateY: dir * -22 }),
+      center: { opacity: 1, x: 0, z: 0, rotateY: 0 },
+      exit: (dir: number) => ({ opacity: 0, x: dir * -70, z: -160, rotateY: dir * 22 }),
+    }
+    : {
+      enter: (dir: number) => ({ opacity: 0, x: dir * 56, scale: 0.985 }),
+      center: { opacity: 1, x: 0, scale: 1 },
+      exit: (dir: number) => ({ opacity: 0, x: dir * -56, scale: 0.985 }),
+    }), [depth]);
   const dialogRef = useFocusTrap(open, close);
 
   return (
@@ -489,10 +518,10 @@ export default function WhatsNewTour() {
                 </motion.div>
                 <div>
                   <div className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: theme.text2 }}>
-                    Prezentare
+                    {edition === '1.1' ? 'Ce e nou' : 'Prezentare'}
                   </div>
                   <div id={titleId} className="text-[13px] font-black tracking-tight" style={{ color: theme.text }}>
-                    StudyX {RELEASE_DISPLAY_NAME}
+                    StudyX {edition}
                   </div>
                 </div>
               </div>
@@ -507,7 +536,7 @@ export default function WhatsNewTour() {
             </div>
 
             {/* slide body */}
-            <div className="relative z-10 px-7 pb-2 pt-5">
+            <div className="relative z-10 px-7 pb-2 pt-5" style={depth ? { perspective: 1400 } : undefined}>
               <AnimatePresence mode="wait" custom={direction} initial={false}>
                 <motion.div
                   key={slide.id}
@@ -516,9 +545,10 @@ export default function WhatsNewTour() {
                   initial="enter"
                   animate="center"
                   exit="exit"
-                  transition={t.modal}
+                  transition={depth ? t.panel : t.modal}
+                  style={depth ? { transformStyle: 'preserve-3d' } : undefined}
                 >
-                  <slide.Demo theme={theme} />
+                  {slide.scene ? <WhatsNewStage scene={slide.scene} /> : slide.Demo && <slide.Demo theme={theme} />}
 
                   <div className="mt-5 text-center">
                     <span
@@ -575,7 +605,7 @@ export default function WhatsNewTour() {
               </button>
 
               <div className="flex items-center gap-2">
-                {SLIDES.map((entry, i) => (
+                {slides.map((entry, i) => (
                   <button
                     key={entry.id}
                     onClick={() => { setDirection(i > index ? 1 : -1); setIndex(i); }}

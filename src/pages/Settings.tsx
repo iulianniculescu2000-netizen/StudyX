@@ -706,6 +706,18 @@ export default function Settings() {
             buttonLabel="Vezi"
             onClick={() => window.dispatchEvent(new CustomEvent(WHATS_NEW_OPEN_EVENT))}
           />
+          {import.meta.env.DEV && (
+            <>
+              <Divider />
+              <ActionRow
+                icon={<Sparkles size={16} />}
+                label="Ce e nou în 1.1 (previzualizare)"
+                description="Doar în dezvoltare: slide-urile 1.1 cu scene 3D, pregătite pentru lansarea viitoare."
+                buttonLabel="Vezi"
+                onClick={() => window.dispatchEvent(new CustomEvent(WHATS_NEW_OPEN_EVENT, { detail: { edition: '1.1' } }))}
+              />
+            </>
+          )}
           <Divider />
           <ActionRow
             icon={<ListChecks size={16} />}
