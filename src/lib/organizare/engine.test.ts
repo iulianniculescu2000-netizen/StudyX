@@ -3,7 +3,7 @@ import raw from '../../data/organizare/plan.json';
 import {
   accuracySeries, activePhase, addPicks, buildSummary, computeWindows, countStatus, currentIndex, daysBetween,
   emptyState, focusNow, heatGrid, insights, mondayOf, nextStatus, normalizePlan, readState, removePick, statusOf,
-  isOverdueStart, overdueTopics, studyStats, suggestFor, toggleGroup, togglePick, upNext, weekIndex, weekProgress, withDay, withStatus,
+  isOverdueStart, overdueTopics, passesCutByExam, studyStats, suggestFor, toggleGroup, togglePick, upNext, weekIndex, weekProgress, withDay, withStatus,
 } from './engine';
 import type { RawPlan } from './types';
 
@@ -116,6 +116,13 @@ describe('what to do now', () => {
     expect(next.indexOf(9)).toBeLessThan(next.indexOf(2));
     expect(isOverdueStart('2026-10-10', '2026-10-11')).toBe(true);
     expect(isOverdueStart('2026-10-12', '2026-10-11')).toBe(false);
+  });
+
+  it('names the passes an earlier exam date would cut', () => {
+    expect(passesCutByExam(plan, plan.exam)).toEqual([]);
+    expect(passesCutByExam(plan, plan.ends[3])).toEqual([4]);
+    expect(passesCutByExam(plan, plan.ends[2])).toEqual([3, 4]);
+    expect(passesCutByExam(plan, plan.start)).toEqual([1, 2, 3, 4]);
   });
 
   it('counts as „restanțe” only unfinished topics whose window has ended', () => {

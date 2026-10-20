@@ -257,6 +257,14 @@ export function focusNow(plan: Plan, s: PlanState, win: Windows, today: string):
 export const isOverdueStart = (plannedStart: string, today: string) => plannedStart < today;
 
 /**
+ * The passes (1–4) that no longer fit before the exam: the plan has fixed dates, so an exam set before a pass
+ * ends cuts that pass (and every later one, and the simulations). Empty when the exam is after the last pass.
+ */
+export function passesCutByExam(plan: Plan, exam: string): number[] {
+  return [1, 2, 3, 4].filter((p) => plan.ends[p - 1] >= exam);
+}
+
+/**
  * „Restanțe”: topics of a pass whose planned window has already ended while they are not done.
  * The ones still inside their window (started late but not yet over) are not counted: „Urmează” shows them.
  */

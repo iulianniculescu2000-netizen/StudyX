@@ -5,7 +5,7 @@ import { useAdaptiveMotion } from '../../hooks/useAdaptiveMotion';
 import { dur, ease } from '../../theme/motion';
 import { useCountUp } from '../../hooks/useCountUp';
 import {
-  activePhase, addDays, countStatus, daysBetween, donePages, focusNow, isOverdueStart, overdueTopics, parseDay, statusOf, totalPages, upNext, weekProgress,
+  activePhase, addDays, countStatus, daysBetween, donePages, focusNow, isOverdueStart, overdueTopics, parseDay, passesCutByExam, statusOf, totalPages, upNext, weekProgress,
 } from '../../lib/organizare/engine';
 import { dayRange, longDay, shortDay, weekdayDay, withoutNumber } from '../../lib/organizare/format';
 import { onFillText } from '../../theme/contrastText';
@@ -236,7 +236,29 @@ function Timeline() {
           <span key={m.left} className="absolute -translate-x-1/2 text-[10.5px] max-sm:[&:nth-child(even)]:hidden" style={{ left: `${m.left}%`, color: theme.text3 }}>{m.label}</span>
         ))}
       </div>
+      <ExamCutNote />
     </Card>
+  );
+}
+
+const listRo = (items: string[]) => (items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} și ${items[items.length - 1]}`);
+
+/** A quiet line under the timeline when the exam date set by the student comes before the plan's passes are over. */
+function ExamCutNote() {
+  const theme = useTheme();
+  const { plan, state } = useOrganizare();
+  const cut = passesCutByExam(plan, state.exam);
+  if (cut.length === 0) return null;
+  const passes = listRo(cut.map((p) => `Faza ${p}`));
+  return (
+    <p role="note" className="mt-4 flex items-start gap-2 text-[12px] leading-relaxed" style={{ color: theme.text2 }}>
+      <AlertCircle size={14} className="mt-[3px] flex-shrink-0" style={{ color: theme.warning }} />
+      <span>
+        Examenul e pus pe {longDay(state.exam)}, înainte de finalul fazelor ({longDay(plan.ends[3])}). Planul are date fixe:
+        {' '}{cut.length === 1 ? `${passes} nu mai încape întreagă` : `${passes} nu mai încap întregi`}, iar simulările nu mai au loc.
+        Verifică data sau grăbește ritmul.
+      </span>
+    </p>
   );
 }
 
