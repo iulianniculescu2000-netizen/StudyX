@@ -37,29 +37,29 @@ describe('"Arată-mi" in the what\'s-new slides', () => {
   });
   afterEach(() => { cleanup(); vi.useRealTimers(); });
 
-  it('starts the page tour, brings the slides back one slide further, and keeps to seven slides', async () => {
+  it('starts the page tour, brings the slides back one slide further, and keeps to eight slides', async () => {
     mount();
     await openSlides();
-    // Slide 2 (study) is the first with an "Arată-mi" button.
+    // Slide 2 of 1.1 (the base books) is the first with an "Arată-mi" button.
     fireEvent.click(screen.getByRole('button', { name: /Slide următor/i }));
     await act(async () => { await vi.advanceTimersByTimeAsync(600); });
-    fireEvent.click(screen.getByRole('button', { name: /Arată-mi Flashcardurile/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Arată-mi Rezidențiat/i }));
 
     // The slides step aside without being marked as seen…
     await act(async () => { await vi.advanceTimersByTimeAsync(450); });
-    expect(useTutorialStore.getState().activeTour).toBe('flashcards');
+    expect(useTutorialStore.getState().activeTour).toBe('residency');
     expect(useTutorialStore.getState().seen[PROFILE]?.whatsNew).toBeUndefined();
-    expect(screen.queryByText(/Arată-mi Flashcardurile/i)).toBeNull();
+    expect(screen.queryByText(/Arată-mi Rezidențiat/i)).toBeNull();
 
     // …and return, one slide further (the next slide), as soon as the page tour is done.
     await act(async () => { useTutorialStore.getState().finishTour(PROFILE); });
     await act(async () => { await vi.advanceTimersByTimeAsync(500); });
-    expect(screen.getByRole('button', { name: /Arată-mi Biblioteca AI/i })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /Arată-mi Flashcardurile/i })).toBeNull();
+    expect(screen.getByRole('heading', { name: 'De la grilă la pagina din carte' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Arată-mi Rezidențiat/i })).toBeNull();
 
-    // Seven slides at most, and every "Arată-mi" belongs to a registered tour.
+    // Eight slides at most, and every "Arată-mi" belongs to a registered tour.
     const dots = screen.getAllByRole('button', { name: /^Slide \d+$/ });
-    expect(dots.length).toBeLessThanOrEqual(7);
+    expect(dots.length).toBeLessThanOrEqual(8);
     const seen: string[] = [];
     for (let i = 0; i < dots.length; i += 1) {
       fireEvent.click(screen.getAllByRole('button', { name: /^Slide \d+$/ })[i]);
@@ -69,6 +69,6 @@ describe('"Arată-mi" in the what\'s-new slides', () => {
     }
     expect(seen.length).toBeGreaterThanOrEqual(4);
     const { TOURS } = await import('../tutorial/registry');
-    for (const tour of ['flashcards', 'vault', 'residency', 'simulation', 'settings'] as const) expect(TOURS[tour]).toBeTruthy();
+    for (const tour of ['residency', 'dashboard', 'chat', 'organizare', 'stats', 'settings'] as const) expect(TOURS[tour]).toBeTruthy();
   }, 15000);
 });

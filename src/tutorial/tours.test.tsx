@@ -52,9 +52,9 @@ describe('tour registry', () => {
     }
   });
 
-  it('describes release 1.0: every tour carries the current version, the onboarding and the film never repeat', () => {
-    expect(CURRENT_TOUR_VERSION).toBe('1.0.0');
-    expect(RELEASE_DISPLAY_NAME).toBe('1.0');
+  it('describes release 1.1: every tour carries the current version, the onboarding and the film never repeat', () => {
+    expect(CURRENT_TOUR_VERSION).toBe('1.1.0');
+    expect(RELEASE_DISPLAY_NAME).toBe('1.1');
     for (const id of TOUR_IDS) expect(TOUR_META[id].version, id).toBe(CURRENT_TOUR_VERSION);
     for (const id of ['onboarding', 'welcomeFilm'] as const) expect(TOUR_META[id].repeatOnNewVersion, id).toBe(false);
     for (const id of ['residency', 'residencyFlashcards', 'chat', 'simulation', 'errors', 'organizare', 'flashcards', 'vault'] as const) {

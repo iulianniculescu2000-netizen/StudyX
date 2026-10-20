@@ -33,10 +33,10 @@ export type TourId =
  * The release whose content the tours currently describe. The one place the number lives: the "what's new"
  * slides and the tour versions read it, so a release under another number only needs this line changed.
  */
-export const CURRENT_TOUR_VERSION = '1.0.0';
+export const CURRENT_TOUR_VERSION = '1.1.0';
 
 /** Numele sub care apare lansarea în „Ce e nou” și în notele de lansare. */
-export const RELEASE_DISPLAY_NAME = '1.0';
+export const RELEASE_DISPLAY_NAME = '1.1';
 
 interface TourMeta {
   /** Content version; bump it to show the tour once more to everyone who saw an older one. */
