@@ -11,6 +11,9 @@ export const dayYear = (day: string) => fmt(day, { day: 'numeric', month: 'short
 export const longDay = (day: string) => fmt(day, { day: 'numeric', month: 'long', year: 'numeric' });
 /** "mar., 6 oct." */
 export const weekdayDay = (day: string) => fmt(day, { weekday: 'short', day: 'numeric', month: 'short' });
+/** "15 mar. – 10 iul. 2027", or "6 oct. 2026 – 13 mar. 2027" when the range crosses a year. */
+export const dayRangeYear = (from: string, to: string) =>
+  (from.slice(0, 4) === to.slice(0, 4) ? `${shortDay(from)} – ${dayYear(to)}` : `${dayYear(from)} – ${dayYear(to)}`);
 /** "6 oct. – 12 oct." (or one date when both ends are the same day) */
 export const dayRange = (from: string, to: string) => (from === to ? shortDay(from) : `${shortDay(from)} – ${shortDay(to)}`);
 export const monthName = (day: string) => {

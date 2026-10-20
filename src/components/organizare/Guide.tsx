@@ -2,7 +2,8 @@ import { useState, type ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { useTheme } from '../../theme/ThemeContext';
 import { PASS_NAMES, totalPages } from '../../lib/organizare/engine';
-import { dayRange, dayYear, longDay, pageRange } from '../../lib/organizare/format';
+import { dayRangeYear, dayYear, longDay, pageRange } from '../../lib/organizare/format';
+import { onFillText } from '../../theme/contrastText';
 import { useOrganizare } from './context';
 import { number, pages, useBookColor, usePassColors } from './helpers';
 import { Card, Chevron, Collapse, Label } from './ui';
@@ -142,8 +143,8 @@ function Strategy() {
         return (
           <Card key={p} padded={false} spot={false} index={p - 1} className="overflow-hidden">
             <Fold
-              head={<><span className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white" style={{ background: colors[p - 1] }}>Faza {p}</span>{PASS_NAMES[p - 1]}</>}
-              sub={`${dayRange(plan.starts[p - 1], plan.ends[p - 1])} · ~${number(hours)} ore`}
+              head={<><span className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold" style={{ background: colors[p - 1], color: onFillText(colors[p - 1]) }}>Faza {p}</span>{PASS_NAMES[p - 1]}</>}
+              sub={`${dayRangeYear(plan.starts[p - 1], plan.ends[p - 1])} · ~${number(hours)} ore`}
             >
               <dl className="grid gap-x-4 gap-y-2 px-4 pb-4 text-[13px] sm:grid-cols-[6rem_1fr] sm:px-5">
                 {rows.map(([k, v]) => (<div key={k} className="contents"><dt style={{ color: theme.text3 }}>{k}</dt><dd style={{ color: theme.text }}>{v}</dd></div>))}
@@ -155,8 +156,8 @@ function Strategy() {
 
       <Card padded={false} spot={false} index={4} className="overflow-hidden">
         <Fold
-          head={<><span className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white" style={{ background: colors[4] }}>Simulări</span>Ultimele săptămâni</>}
-          sub={`${dayYear(plan.sim0)} – ${dayYear(plan.sim1)} · apoi menținere până la examen`}
+          head={<><span className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold" style={{ background: colors[4], color: onFillText(colors[4]) }}>Simulări</span>Ultimele săptămâni</>}
+          sub={`${dayRangeYear(plan.sim0, plan.sim1)} · apoi menținere până la examen`}
         >
           <dl className="grid gap-x-4 gap-y-2 px-4 pb-4 text-[13px] sm:grid-cols-[6rem_1fr] sm:px-5">
             <div className="contents"><dt style={{ color: theme.text3 }}>Ce faci</dt><dd style={{ color: theme.text }}>O simulare pe săptămână: 200 de grile în 4 ore, circa 72 de secunde pe grilă. Analizezi fiecare greșeală.</dd></div>

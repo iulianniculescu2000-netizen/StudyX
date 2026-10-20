@@ -254,7 +254,7 @@ export default function Rhythm() {
       <Card index={3}>
         <h2 className="text-[15px] font-semibold" style={{ color: theme.text }}>Ore pe zi</h2>
         <p className="mb-3 mt-0.5 text-[12.5px]" style={{ color: theme.text3 }}>Ultimele 28 de zile, față de ținta fiecărei zile (2,5 h în zilele lucrătoare, 5,5 h sâmbăta).</p>
-        <HoursChart data={hoursSeries(state, today)} />
+        <HoursChart data={hoursSeries(state, today, 28, plan.start)} />
       </Card>
 
       <Card index={4}>

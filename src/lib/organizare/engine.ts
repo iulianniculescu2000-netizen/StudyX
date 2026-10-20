@@ -434,8 +434,9 @@ export function insights(plan: Plan, s: PlanState, today: string): Segment[][] {
 // ── Series for the charts ──────────────────────────────────────────────────────────────────────────
 
 export interface HourBar { day: string; hours: number; target: number }
-export const hoursSeries = (s: PlanState, today: string, n = 28): HourBar[] =>
-  lastDays(today, n).map((day) => ({ day, hours: hoursOn(s, day), target: targetFor(day) }));
+/** The last `n` days; days before the plan's `start` have no target (the plan had not begun). */
+export const hoursSeries = (s: PlanState, today: string, n = 28, start = ''): HourBar[] =>
+  lastDays(today, n).map((day) => ({ day, hours: hoursOn(s, day), target: day < start ? 0 : targetFor(day) }));
 
 export interface ProgressSeries {
   from: string;

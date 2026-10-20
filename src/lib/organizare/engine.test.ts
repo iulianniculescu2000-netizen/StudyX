@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import raw from '../../data/organizare/plan.json';
 import {
   accuracySeries, activePhase, addPicks, buildSummary, computeWindows, countStatus, currentIndex, daysBetween,
-  emptyState, focusNow, heatGrid, insights, mondayOf, nextStatus, normalizePlan, readState, removePick, statusOf,
+  emptyState, focusNow, heatGrid, hoursSeries, insights, mondayOf, nextStatus, normalizePlan, readState, removePick, statusOf,
   isOverdueStart, overdueTopics, passesCutByExam, studyStats, suggestFor, toggleGroup, togglePick, upNext, weekIndex, weekProgress, withDay, withStatus,
 } from './engine';
 import type { RawPlan } from './types';
@@ -116,6 +116,13 @@ describe('what to do now', () => {
     expect(next.indexOf(9)).toBeLessThan(next.indexOf(2));
     expect(isOverdueStart('2026-10-10', '2026-10-11')).toBe(true);
     expect(isOverdueStart('2026-10-12', '2026-10-11')).toBe(false);
+  });
+
+  it('puts no daily target on the days before the plan starts', () => {
+    const bars = hoursSeries(S(), '2026-10-08', 7, '2026-10-06');
+    expect(bars.map((b) => b.day)).toEqual(['2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08']);
+    expect(bars.slice(0, 4).every((b) => b.target === 0)).toBe(true);
+    expect(bars.slice(4).every((b) => b.target > 0)).toBe(true);
   });
 
   it('names the passes an earlier exam date would cut', () => {
