@@ -16,6 +16,7 @@ export default function ScrollToTopButton() {
   const visibleRef = useRef(false);
   const frameRef = useRef<number | null>(null);
   const scrollerRef = useRef<HTMLElement | null>(null);
+  const lastTopRef = useRef(0);
   const { pathname } = useLocation();
   const { calmMotion, t } = useAdaptiveMotion();
 
@@ -26,14 +27,20 @@ export default function ScrollToTopButton() {
     pathRef.current = pathname;
     scrollerRef.current = null;
     visibleRef.current = false;
+    lastTopRef.current = 0;
   }, [pathname]);
 
   useEffect(() => {
     const update = () => {
       frameRef.current = null;
       const scroller = scrollerRef.current;
-      if (scroller && !scroller.isConnected) scrollerRef.current = null;
-      const nextVisible = (scrollerRef.current?.scrollTop ?? 0) > 400;
+      if (scroller && !scroller.isConnected) { scrollerRef.current = null; lastTopRef.current = 0; }
+      const top = scrollerRef.current?.scrollTop ?? 0;
+      const delta = top - lastTopRef.current;
+      // Small jitters (momentum, layout) keep the current state; a real move down hides it, a move up shows it.
+      if (Math.abs(delta) < 6 && top > 400) return;
+      lastTopRef.current = top;
+      const nextVisible = top > 400 && delta < 0;
       if (visibleRef.current !== nextVisible) {
         visibleRef.current = nextVisible;
         setVisibleOn(nextVisible ? pathRef.current : null);
@@ -45,6 +52,7 @@ export default function ScrollToTopButton() {
       if (!(target instanceof HTMLElement)) return;
       // Only the page's own scroll counts: not a modal, a dropdown list or the chat drawer.
       if (!target.closest('.route-scroll-host') || target.closest('[role="dialog"], [role="listbox"], [role="menu"]')) return;
+      if (scrollerRef.current !== target) lastTopRef.current = target.scrollTop;
       scrollerRef.current = target;
       if (frameRef.current === null) frameRef.current = window.requestAnimationFrame(update);
     };
