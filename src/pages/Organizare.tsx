@@ -127,11 +127,12 @@ export default function Organizare() {
 
   const tab: TabId = focus && baseTab === 'panou' ? 'topicuri' : baseTab;
 
-  const goTo = useCallback((next: string, nextPass?: number, topic?: number) => {
+  const goTo = useCallback<OrganizareApi['goTo']>((next, nextPass, extra) => {
     const out: Record<string, string> = {};
     if (next !== 'panou') out.t = next;
     if (nextPass) out.f = String(nextPass);
-    if (topic !== undefined) out.topic = String(topic);
+    if (extra?.topic !== undefined) out.topic = String(extra.topic);
+    if (extra?.late) out.v = 'restante';
     // The old tab stays on screen until the new one is ready, then exit and enter run back to back.
     startTransition(() => setParams(out));
   }, [setParams]);
@@ -204,7 +205,7 @@ export default function Organizare() {
   const exam = state?.exam ?? '';
   const content = (() => {
     switch (tab) {
-      case 'topicuri': return <Passes pass={pass} onPass={(p) => goTo('topicuri', p)} focus={focus} onFocusDone={clearFocus} />;
+      case 'topicuri': return <Passes key={params.get('v') ?? ''} pass={pass} onPass={(p) => goTo('topicuri', p)} focus={focus} onFocusDone={clearFocus} lateOnly={params.get('v') === 'restante'} />;
       case 'saptamani': return <Weeks />;
       case 'ritm': return <Rhythm />;
       case 'ghid': return <Guide />;
@@ -247,7 +248,7 @@ export default function Organizare() {
           className="pointer-events-none sticky top-2 z-20 mb-5"
           aria-label="Secțiunile planului"
         >
-          <div ref={tabRef} role="tablist" className={`${stuck ? '' : 'glass-panel '}pointer-events-auto flex items-center gap-1 overflow-x-auto rounded-2xl p-1.5`} style={{ scrollbarWidth: 'none', transition: 'box-shadow 0.2s', ...tabFade, ...(stuck ? { background: 'color-mix(in srgb, var(--bg) 94%, transparent)', backdropFilter: 'blur(22px) saturate(1.2)', WebkitBackdropFilter: 'blur(22px) saturate(1.2)', boxShadow: 'var(--hairline-ring), var(--elev-3)' } : {}) }}>
+          <div ref={tabRef} className={`${stuck ? '' : 'glass-panel '}pointer-events-auto flex items-center gap-1 overflow-x-auto rounded-2xl p-1.5`} style={{ scrollbarWidth: 'none', transition: 'box-shadow 0.2s', ...tabFade, ...(stuck ? { background: 'color-mix(in srgb, var(--bg) 94%, transparent)', backdropFilter: 'blur(22px) saturate(1.2)', WebkitBackdropFilter: 'blur(22px) saturate(1.2)', boxShadow: 'var(--hairline-ring), var(--elev-3)' } : {}) }}>
             <AnimatePresence initial={false}>
               {stuck && (
                 <motion.span
@@ -271,6 +272,8 @@ export default function Organizare() {
                 </motion.span>
               )}
             </AnimatePresence>
+            {/* Only the tabs are in the tablist: the back button that appears when the bar sticks is not a tab. */}
+            <div role="tablist" aria-label="Secțiunile planului" className="flex flex-shrink-0 items-center gap-1">
             {TABS.map((t) => {
               const active = t.id === tab;
               return (
@@ -297,6 +300,7 @@ export default function Organizare() {
                 </button>
               );
             })}
+            </div>
           </div>
         </nav>
 

@@ -1,11 +1,11 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronRight, Moon, Target } from 'lucide-react';
+import { AlertCircle, ChevronRight, Moon, Target } from 'lucide-react';
 import { useTheme } from '../../theme/ThemeContext';
 import { useAdaptiveMotion } from '../../hooks/useAdaptiveMotion';
 import { dur, ease } from '../../theme/motion';
 import { useCountUp } from '../../hooks/useCountUp';
 import {
-  activePhase, addDays, countStatus, daysBetween, donePages, focusNow, isOverdueStart, parseDay, statusOf, totalPages, upNext, weekProgress,
+  activePhase, addDays, countStatus, daysBetween, donePages, focusNow, isOverdueStart, overdueTopics, parseDay, statusOf, totalPages, upNext, weekProgress,
 } from '../../lib/organizare/engine';
 import { dayRange, longDay, shortDay, weekdayDay, withoutNumber } from '../../lib/organizare/format';
 import { onFillText } from '../../theme/contrastText';
@@ -214,7 +214,7 @@ function Timeline() {
                 transition={{ delay: 0.15 + i * 0.09, duration: dur.slow, ease: ease.emphasized }}
               >
                 {/* On a phone a pass is only a few dozen pixels wide: its number alone fits. */}
-                {width > 7 && (label.startsWith('Faza ') ? <><span className="max-sm:hidden">Faza </span>{label.slice(5)}</> : <span className="max-sm:hidden">{label}</span>)}
+                {width > 7 && (label.startsWith('Faza ') ? <><span className="max-sm:hidden">{'Faza\u00a0'}</span>{label.slice(5)}</> : <span className="max-sm:hidden">{label}</span>)}
               </motion.div>
             );
           })}
@@ -245,10 +245,28 @@ function UpNextCard() {
   const { plan, state, win, today, goTo } = useOrganizare();
   const ph = Math.min(activePhase(plan, today), 4);
   const items = upNext(plan, state, win, today);
+  const late = overdueTopics(plan, state, win, ph, today).length;
   return (
     <Card index={6} className="!p-0 overflow-hidden">
       <div className="px-4 pt-4 sm:px-5"><h2 className="text-[15px] font-semibold" style={{ color: theme.text }}>Urmează</h2></div>
       <div className="mt-2">
+        {/* Topics whose window has ended unfinished drop out of the list below: this row keeps them one tap away. */}
+        {late > 0 && (
+          <button
+            type="button"
+            onClick={() => goTo('topicuri', ph, { late: true })}
+            className="fine-row flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left sm:px-5"
+            style={{ borderRadius: 0, borderTop: '1px solid var(--hairline)', background: `color-mix(in srgb, ${theme.warning} 9%, transparent)` }}
+          >
+            <span className="flex min-w-0 items-center gap-2 text-[13.5px] font-medium" style={{ color: theme.text }}>
+              <AlertCircle size={15} className="flex-shrink-0" style={{ color: theme.warning }} />
+              <span className="truncate">{late === 1 ? '1 restanță' : `${late} restanțe`}</span>
+            </span>
+            <span className="flex flex-shrink-0 items-center gap-1 text-[12px]" style={{ color: theme.warning }}>
+              termen trecut <ChevronRight size={14} />
+            </span>
+          </button>
+        )}
         {items.length === 0 && <p className="px-4 pb-4 text-[13px] sm:px-5" style={{ color: theme.text3 }}>Nu mai sunt topicuri în această trecere.</p>}
         {items.map((i) => {
           const topic = plan.topics[i];
@@ -256,13 +274,15 @@ function UpNextCard() {
             <button
               key={i}
               type="button"
-              onClick={() => goTo('topicuri', ph, i)}
+              onClick={() => goTo('topicuri', ph, { topic: i })}
               className="fine-row flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left sm:px-5"
               style={{ borderRadius: 0, borderTop: '1px solid var(--hairline)' }}
             >
               <span className="min-w-0 truncate text-[13.5px]" style={{ color: theme.text }}>{topic.name}</span>
               <span className="flex flex-shrink-0 items-center gap-1 text-[12px] tabular-nums" style={{ color: theme.text3 }}>
-                {isOverdueStart(win.a[ph - 1][i], today) ? <span style={{ color: theme.warning }}>restant · {shortDay(win.a[ph - 1][i])}</span> : shortDay(win.a[ph - 1][i])} <ChevronRight size={14} />
+                {isOverdueStart(win.a[ph - 1][i], today)
+                  ? <span style={{ color: theme.warning }} title={`Trebuia început pe ${shortDay(win.a[ph - 1][i])}`}>întârziat · {shortDay(win.a[ph - 1][i])}</span>
+                  : shortDay(win.a[ph - 1][i])} <ChevronRight size={14} />
               </span>
             </button>
           );

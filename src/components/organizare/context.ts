@@ -14,8 +14,11 @@ export interface OrganizareApi {
   update: (change: (s: PlanState) => PlanState) => void;
   /** Sets a topic's status; `origin` (screen position of the tap) is where the celebration starts. */
   setStatus: (ph: number, i: number, v: Status, origin?: { x: number; y: number }) => void;
-  /** Moves the page to another tab; with `topic` (Topic.index) the Topicuri tab opens that topic and scrolls to it. */
-  goTo: (tab: string, pass?: number, topic?: number) => void;
+  /**
+   * Moves the page to another tab. In Topicuri, `topic` (Topic.index) opens that topic and scrolls to it,
+   * and `late` shows only the „restanțe” of the pass.
+   */
+  goTo: (tab: string, pass?: number, extra?: { topic?: number; late?: boolean }) => void;
   /** The Rezidențiat page with the quizzes of a topic's specialty, or null when that bank is not in the app. */
   grileHref: (topic: Topic) => string | null;
 }

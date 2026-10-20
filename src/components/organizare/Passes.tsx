@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Search, X } from 'lucide-react';
 import { useTheme } from '../../theme/ThemeContext';
-import { PASS_HINTS, PASS_NAMES, activePhase, currentIndex, statusOf } from '../../lib/organizare/engine';
+import { PASS_HINTS, PASS_NAMES, activePhase, currentIndex, overdueTopics, statusOf } from '../../lib/organizare/engine';
 import { dayRange, dayYear, fold, pageRange } from '../../lib/organizare/format';
 import { BOOK_NAME } from '../../lib/organizare/actions';
 import type { Status, Topic } from '../../lib/organizare/types';
@@ -11,7 +11,9 @@ import { useOrganizare } from './context';
 import { number, pages, useBookColor, usePassColors } from './helpers';
 import { Bar, Card, Chevron, Collapse, Label, StatusCheck } from './ui';
 
-const FILTERS: Array<{ id: '' | Status; label: string }> = [
+type Filter = '' | Status | 'late';
+
+const FILTERS: Array<{ id: Filter; label: string }> = [
   { id: '', label: 'Toate' },
   { id: 0, label: 'De făcut' },
   { id: 1, label: 'În curs' },
@@ -21,7 +23,7 @@ const FILTERS: Array<{ id: '' | Status; label: string }> = [
 /** The topics the plan could not fully match with the PDFs; flagged so the student knows to check. */
 const needsCheck = (t: Topic) => /^(LIPSE|PAR|În afara|Parțial)/.test(t.note);
 
-function TopicRow({ topic, ph, now, expanded, onToggle, flash }: { topic: Topic; ph: number; now: boolean; expanded: boolean; onToggle: () => void; flash?: boolean }) {
+function TopicRow({ topic, ph, now, late, expanded, onToggle, flash }: { topic: Topic; ph: number; now: boolean; late: boolean; expanded: boolean; onToggle: () => void; flash?: boolean }) {
   const theme = useTheme();
   const { state, win, setStatus } = useOrganizare();
   const bookColor = useBookColor();
@@ -45,6 +47,9 @@ function TopicRow({ topic, ph, now, expanded, onToggle, flash }: { topic: Topic;
             <span className="truncate text-[14px] font-medium" style={{ color: status === 2 ? theme.text3 : theme.text, textDecoration: status === 2 ? 'line-through' : 'none', textDecorationColor: 'var(--hairline)' }}>
               {topic.name}
             </span>
+            {late && (
+              <span className="flex-shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-semibold" style={{ background: `color-mix(in srgb, ${theme.warning} 16%, transparent)`, color: theme.warning }}>restant</span>
+            )}
             {needsCheck(topic) && (
               <span className="flex-shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-semibold" style={{ background: `color-mix(in srgb, ${theme.warning} 16%, transparent)`, color: theme.warning }}>verifică</span>
             )}
@@ -53,7 +58,7 @@ function TopicRow({ topic, ph, now, expanded, onToggle, flash }: { topic: Topic;
             {BOOK_NAME[topic.book]} p.{pageRange(topic.src)} · {pages(topic.pages)} · {number(topic.h[ph - 1], 1)} h
           </div>
         </button>
-        <span className="hidden text-[12px] tabular-nums sm:block" style={{ color: theme.text3 }}>{dayRange(from, to)}</span>
+        <span className="hidden text-[12px] tabular-nums sm:block" style={{ color: late ? theme.warning : theme.text3 }}>{dayRange(from, to)}</span>
       </div>
       <Collapse open={expanded}>
         <div className="space-y-3 px-4 pb-4 pl-[3.6rem] text-[12.5px] sm:px-5 sm:pl-[3.9rem]" style={{ color: theme.text2 }}>
@@ -79,18 +84,20 @@ function TopicRow({ topic, ph, now, expanded, onToggle, flash }: { topic: Topic;
 }
 
 /** One pass over the syllabus: chapters as folding groups, each topic with its status. */
-export default function Passes({ pass, onPass, focus = null, onFocusDone }: {
+export default function Passes({ pass, onPass, focus = null, onFocusDone, lateOnly = false }: {
   pass: number;
   onPass: (pass: number) => void;
   /** Deep link target (already validated against the plan): chapter = group index, topic = Topic.index. */
   focus?: { chapter: number; topic: number | null } | null;
   onFocusDone?: () => void;
+  /** Opens with only the „restanțe” shown (the link from Panou). */
+  lateOnly?: boolean;
 }) {
   const theme = useTheme();
   const { plan, state, win, today } = useOrganizare();
   const colors = usePassColors();
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<'' | Status>('');
+  const [filter, setFilter] = useState<Filter>(lateOnly ? 'late' : '');
   const [opened, setOpened] = useState<Record<string, boolean>>({});
   const [seen, setSeen] = useState<Record<string, boolean>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -121,16 +128,19 @@ export default function Passes({ pass, onPass, focus = null, onFocusDone }: {
   const needle = fold(query.trim());
   const filtering = needle !== '' || filter !== '';
 
+  const late = useMemo(() => new Set(overdueTopics(plan, state, win, pass, today)), [plan, state, win, pass, today]);
+  const filters: typeof FILTERS = late.size > 0 || filter === 'late' ? [...FILTERS, { id: 'late', label: `Restanțe · ${late.size}` }] : FILTERS;
+
   const groups = useMemo(() => plan.groups.map((name, g) => {
     const all = plan.topics.filter((t) => t.group === g);
     const done = all.filter((t) => statusOf(state, pass, t.index) === 2).length;
     const shown = all.filter((t) => {
       const status = statusOf(state, pass, t.index);
-      if (filter !== '' && status !== filter) return false;
+      if (filter === 'late' ? !late.has(t.index) : filter !== '' && status !== filter) return false;
       return !needle || fold(`${t.name} ${t.src} ${t.chapter} ${name} ${t.file}`).includes(needle);
     });
     return { g, name, all, done, shown };
-  }), [plan, state, pass, filter, needle]);
+  }), [plan, state, pass, filter, needle, late]);
 
   const totals = useMemo(() => {
     let p = 0; let q = 0; let h = 0;
@@ -178,7 +188,7 @@ export default function Passes({ pass, onPass, focus = null, onFocusDone }: {
           )}
         </label>
         <div className="flex flex-wrap gap-1.5">
-          {FILTERS.map((f) => (
+          {filters.map((f) => (
             <button
               key={f.label}
               type="button"
@@ -227,6 +237,7 @@ export default function Passes({ pass, onPass, focus = null, onFocusDone }: {
                         ph={pass}
                         flash={flash === t.index}
                         now={live && t.index === current && win.b[pass - 1][t.index] >= today}
+                        late={late.has(t.index)}
                         expanded={!!expanded[`${pass}:${t.index}`]}
                         onToggle={() => setExpanded((e) => ({ ...e, [`${pass}:${t.index}`]: !e[`${pass}:${t.index}`] }))}
                       />

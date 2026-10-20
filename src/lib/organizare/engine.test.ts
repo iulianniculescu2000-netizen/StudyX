@@ -3,7 +3,7 @@ import raw from '../../data/organizare/plan.json';
 import {
   accuracySeries, activePhase, addPicks, buildSummary, computeWindows, countStatus, currentIndex, daysBetween,
   emptyState, focusNow, heatGrid, insights, mondayOf, nextStatus, normalizePlan, readState, removePick, statusOf,
-  isOverdueStart, studyStats, suggestFor, toggleGroup, togglePick, upNext, weekIndex, weekProgress, withDay, withStatus,
+  isOverdueStart, overdueTopics, studyStats, suggestFor, toggleGroup, togglePick, upNext, weekIndex, weekProgress, withDay, withStatus,
 } from './engine';
 import type { RawPlan } from './types';
 
@@ -116,6 +116,20 @@ describe('what to do now', () => {
     expect(next.indexOf(9)).toBeLessThan(next.indexOf(2));
     expect(isOverdueStart('2026-10-10', '2026-10-11')).toBe(true);
     expect(isOverdueStart('2026-10-12', '2026-10-11')).toBe(false);
+  });
+
+  it('counts as „restanțe” only unfinished topics whose window has ended', () => {
+    const s = S();
+    const base = computeWindows(plan, s, '2026-10-20');
+    const a = base.a.map((row) => row.slice());
+    const b = base.b.map((row) => row.slice());
+    b[0].fill('2026-10-25');
+    a[0][3] = '2026-10-10'; b[0][3] = '2026-10-12'; // ended, not done: restant
+    a[0][4] = '2026-10-10'; b[0][4] = '2026-10-12'; // ended but done: not restant
+    a[0][5] = '2026-10-15'; b[0][5] = '2026-10-22'; // started late, still in its window: not restant
+    const win = { ...base, a, b };
+    const done = withStatus(s, 1, 4, 2, '2026-10-20');
+    expect(overdueTopics(plan, done, win, 1, '2026-10-20')).toEqual([3]);
   });
 });
 

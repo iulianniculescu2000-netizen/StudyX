@@ -257,6 +257,15 @@ export function focusNow(plan: Plan, s: PlanState, win: Windows, today: string):
 export const isOverdueStart = (plannedStart: string, today: string) => plannedStart < today;
 
 /**
+ * „Restanțe”: topics of a pass whose planned window has already ended while they are not done.
+ * The ones still inside their window (started late but not yet over) are not counted: „Urmează” shows them.
+ */
+export function overdueTopics(plan: Plan, s: PlanState, win: Windows, ph: number, today: string): number[] {
+  const B = win.b[ph - 1];
+  return plan.topics.filter((c) => c.pages > 0 && statusOf(s, ph, c.index) < 2 && B[c.index] < today).map((c) => c.index);
+}
+
+/**
  * The next few topics to come, not counting the one already shown as the focus.
  * Ordered by planned date, with the overdue ones (planned start already past) first.
  */
