@@ -4,6 +4,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { useAdaptiveMotion } from '../../hooks/useAdaptiveMotion';
 import { dur, ease } from '../../theme/motion';
 import { useCountUp } from '../../hooks/useCountUp';
+import { useToastStore } from '../../store/toastStore';
 import {
   activePhase, addDays, countStatus, daysBetween, donePages, focusNow, isOverdueStart, overdueTopics, parseDay, passesCutByExam, statusOf, totalPages, upNext, weekProgress,
 } from '../../lib/organizare/engine';
@@ -20,6 +21,7 @@ function FocusCard() {
   const theme = useTheme();
   const { calmMotion, t } = useAdaptiveMotion();
   const { plan, state, win, today, setStatus } = useOrganizare();
+  const addToast = useToastStore((s) => s.addToast);
   const colors = usePassColors();
   const focus = focusNow(plan, state, win, today);
 
@@ -84,6 +86,11 @@ function FocusCard() {
                     onClick={(e) => {
                       const r = e.currentTarget.getBoundingClientRect();
                       setStatus(ph, topic.index, 2, { x: r.left + r.width / 2, y: r.top + r.height / 2 });
+                      // The card moves on to the next topic, so the way back is in the toast.
+                      addToast(`Gata: ${withoutNumber(topic.name)}`, 'success', 5000, {
+                        label: 'Anulează',
+                        onClick: () => setStatus(ph, topic.index, status),
+                      });
                     }}
                     className="press-feedback fx-lift rounded-full px-4 py-2 text-[13px] font-semibold text-white"
                     style={{ background: theme.accent, boxShadow: 'var(--glow-1)' }}
@@ -214,7 +221,7 @@ function Timeline() {
                 transition={{ delay: 0.15 + i * 0.09, duration: dur.slow, ease: ease.emphasized }}
               >
                 {/* On a phone a pass is only a few dozen pixels wide: its number alone fits. */}
-                {width > 7 && (label.startsWith('Faza ') ? <><span className="max-sm:hidden">{'Faza\u00a0'}</span>{label.slice(5)}</> : <span className="max-sm:hidden">{label}</span>)}
+                {width > 5 && (label.startsWith('Faza ') ? <><span className="max-sm:hidden">{'Faza\u00a0'}</span>{label.slice(5)}</> : <span className="max-sm:hidden">{label}</span>)}
               </motion.div>
             );
           })}

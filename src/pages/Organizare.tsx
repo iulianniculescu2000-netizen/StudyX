@@ -245,9 +245,23 @@ export default function Organizare() {
         <div ref={sentinel} className="h-px" aria-hidden="true" />
         <nav
           data-tutorial="organizare-tabs"
-          className="pointer-events-none sticky top-2 z-20 mb-5"
+          className="pointer-events-none sticky top-0 z-20 -mt-2 mb-5 pt-2"
           aria-label="Secțiunile planului"
         >
+          {/* Once stuck, the strip above the bar (the page's top padding) fades the content scrolling under it instead of showing it sharp. */}
+          {stuck && (
+            <div
+              aria-hidden="true"
+              className="absolute inset-x-0 -top-5 h-9 sm:-top-8 sm:h-12"
+              style={{
+                background: 'color-mix(in srgb, var(--bg) 82%, transparent)',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
+                maskImage: 'linear-gradient(to bottom, black 55%, transparent)',
+                WebkitMaskImage: 'linear-gradient(to bottom, black 55%, transparent)',
+              }}
+            />
+          )}
           <div ref={tabRef} className={`${stuck ? '' : 'glass-panel '}pointer-events-auto flex items-center gap-1 overflow-x-auto rounded-2xl p-1.5`} style={{ scrollbarWidth: 'none', transition: 'box-shadow 0.2s', ...tabFade, ...(stuck ? { background: 'color-mix(in srgb, var(--bg) 94%, transparent)', backdropFilter: 'blur(22px) saturate(1.2)', WebkitBackdropFilter: 'blur(22px) saturate(1.2)', boxShadow: 'var(--hairline-ring), var(--elev-3)' } : {}) }}>
             <AnimatePresence initial={false}>
               {stuck && (
