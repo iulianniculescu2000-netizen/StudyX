@@ -1,6 +1,7 @@
 import { Fragment, type CSSProperties } from 'react';
-import { Activity, BarChart3, BookMarked, BookOpen, Check, MessageCircle, Target } from 'lucide-react';
+import { Activity, AlertCircle, BarChart3, BookMarked, BookOpen, CalendarDays, Check, MessageCircle, Target } from 'lucide-react';
 import { useTheme } from '../../theme/ThemeContext';
+import { onFillText } from '../../theme/contrastText';
 import { fraction as fr, useSceneTime } from '../film/useTimeline';
 import { easeInOut, easeOut, sceneCard, sceneChip } from './stage3d';
 
@@ -14,7 +15,7 @@ const chipClass = 'inline-flex items-center gap-1.5 whitespace-nowrap rounded-fu
 const shade = (color: string, amount: number) => `color-mix(in srgb, ${color} ${100 - amount}%, #000)`;
 const tint = (color: string, amount: number) => `color-mix(in srgb, ${color} ${100 - amount}%, #fff)`;
 
-const ORBIT = [BookOpen, BookMarked, Target, MessageCircle, BarChart3, Activity];
+const ORBIT = [BookOpen, BookMarked, Target, MessageCircle, CalendarDays, BarChart3, Activity];
 
 /** 1.1 pe trei plăci de sticlă în adâncime, cu noutățile pe o orbită. */
 export function HeroScene() {
@@ -91,6 +92,96 @@ export function HeroScene() {
           </div>
         );
       })}
+    </>
+  );
+}
+
+const PLAN_PASSES = [
+  { label: 'Faza 1', from: 0, share: 38 },
+  { label: 'Faza 2', from: 38, share: 28 },
+  { label: 'Faza 3', from: 66, share: 17 },
+  { label: 'Faza 4', from: 83, share: 9 },
+  { label: 'Simulări', from: 92, share: 8 },
+];
+
+/** Bara celor patru treceri pe o placă de sticlă, ziua de azi pe ea, apoi rândul „restanțe” care vine în față și duce la topicuri. */
+export function PlanScene() {
+  const theme = useTheme();
+  const { elapsedMs: t } = useSceneTime();
+  const tones = [theme.accent, theme.success, theme.warning, theme.danger, theme.accent2];
+  const plate = easeOut(fr(t, 0, 1100));
+  const today = easeOut(fr(t, 1400, 700));
+  const late = easeOut(fr(t, 2800, 900));
+  const press = Math.sin(fr(t, 4600, 400) * Math.PI);
+  const open = easeInOut(fr(t, 5000, 1000));
+  const rows = ['Artrita reumatoidă', 'Hiponatremia', 'Diureticele'];
+  return (
+    <>
+      <div style={{ ...layer, left: '50%', top: '50%' }}>
+        {/* the timeline, lying back on its plate */}
+        <div
+          className="px-4 pb-4 pt-3"
+          style={{
+            ...layer, ...sceneCard(theme, 2), left: -170, top: -128, width: 340,
+            transform: `translate3d(0, ${(1 - plate) * 30}px, ${-80 - (1 - plate) * 120 - open * 60}px) rotateX(${14 - plate * 6}deg)`,
+            opacity: plate * (1 - open * 0.35),
+          }}
+        >
+          <div className="text-[11px] font-semibold" style={{ color: theme.text }}>Cele patru treceri</div>
+          <div className="relative mt-5 flex h-[18px] overflow-hidden rounded-[var(--r-sm)]">
+            {PLAN_PASSES.map((p, i) => {
+              const grow = easeOut(fr(t, 300 + i * 140, 700));
+              return (
+                <div
+                  key={p.label}
+                  className="absolute inset-y-0 flex items-center justify-center overflow-hidden whitespace-nowrap text-[8.5px] font-bold"
+                  style={{ left: `${p.from}%`, width: `${p.share}%`, background: tones[i], color: onFillText(tones[i]), transform: `scaleX(${grow})`, transformOrigin: 'left' }}
+                >
+                  {p.share > 8 ? p.label : ''}
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ position: 'absolute', left: 'calc(16px + 4%)', top: 34, opacity: today, transform: `translateY(${(1 - today) * -10}px)` }}>
+            <span className="rounded-full px-1.5 py-px text-[8.5px] font-bold" style={{ background: theme.text, color: theme.bg }}>Azi</span>
+            <div className="mx-auto mt-0.5 h-[24px] w-[2px] rounded-full" style={{ background: theme.text }} />
+          </div>
+        </div>
+        {/* „N restanțe”: comes forward from the plate and is pressed */}
+        <div
+          className="flex items-center justify-between gap-3 px-3.5"
+          style={{
+            ...layer, ...sceneCard(theme, 3), left: -150, top: -40, width: 300, height: 36,
+            background: `color-mix(in srgb, ${theme.warning} 10%, ${theme.surface})`,
+            transform: `translate3d(0, ${(1 - late) * -36}px, ${-60 + late * 90 + open * 20}px) scale(${1 - press * 0.04})`,
+            opacity: late,
+          }}
+        >
+          <span className="flex items-center gap-2 text-[12px] font-semibold" style={{ color: theme.text }}>
+            <AlertCircle size={14} style={{ color: theme.warning }} /> 3 restanțe
+          </span>
+          <span className="text-[10.5px] font-semibold" style={{ color: theme.warning }}>termen trecut ›</span>
+        </div>
+        {/* the topics it opens, each marked „restant” */}
+        {rows.map((name, i) => {
+          const k = easeOut(fr(t, 5400 + i * 180, 700));
+          return (
+            <div
+              key={name}
+              className="flex items-center gap-2.5 px-3.5"
+              style={{
+                ...layer, ...sceneCard(theme, 1), left: -150, top: 6 + i * 34, width: 300, height: 28,
+                transform: `translate3d(0, ${(1 - k) * 16}px, ${-20 + k * 40}px)`,
+                opacity: k,
+              }}
+            >
+              <span className="h-3.5 w-3.5 flex-none rounded-full" style={{ border: `2px solid ${theme.accent}` }} />
+              <span className="min-w-0 flex-1 truncate text-[11.5px] font-medium" style={{ color: theme.text }}>{name}</span>
+              <span className="rounded-full px-1.5 py-px text-[9px] font-semibold" style={{ background: `color-mix(in srgb, ${theme.warning} 16%, transparent)`, color: theme.warning }}>restant</span>
+            </div>
+          );
+        })}
+      </div>
     </>
   );
 }

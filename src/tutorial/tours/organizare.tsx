@@ -1,5 +1,5 @@
 import { plural } from '../../lib/plural';
-import { CalendarClock, CalendarDays, Compass, LayoutGrid } from 'lucide-react';
+import { CalendarClock, CalendarDays, Compass, LayoutGrid, ListChecks } from 'lucide-react';
 import type { TourDefinition } from '../types';
 
 export const organizareTour: TourDefinition = {
@@ -19,7 +19,7 @@ export const organizareTour: TourDefinition = {
     {
       id: 'organizare-exam',
       title: 'Spune-i când e examenul',
-      body: 'Data e o estimare, dar planul se aliniază după ea. O poți schimba oricând.',
+      body: 'Data e o estimare și o poți schimba oricând. Dacă vine înainte de finalul fazelor, Panoul te anunță ce nu mai încape.',
       icon: <CalendarDays size={22} />,
       target: '[data-tutorial="organizare-exam"]',
       targetPadding: 6,
@@ -37,6 +37,18 @@ export const organizareTour: TourDefinition = {
       placement: 'bottom',
       route: '/rezidentiat/organizare',
       accent: '#30D158',
+    },
+    {
+      id: 'organizare-next',
+      title: 'Ce urmează și ce ai lăsat în urmă',
+      body: 'Următoarele topicuri, în ordinea planului. Când ai restanțe, primul rând le strânge și te duce direct la ele.',
+      icon: <ListChecks size={22} />,
+      target: '[data-tutorial="organizare-next"]',
+      targetPadding: 6,
+      placement: 'top',
+      route: '/rezidentiat/organizare',
+      accent: '#FF9F0A',
+      optional: true,
     },
     {
       id: 'organizare-tabs',

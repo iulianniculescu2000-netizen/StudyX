@@ -1,5 +1,5 @@
 import type { TourId } from '../../tutorial/tourMeta';
-import { BooksScene, ChatScene, FocusScene, GapsScene, HeroScene, ProvidersScene, SourceScene } from './scenes';
+import { BooksScene, ChatScene, FocusScene, GapsScene, HeroScene, PlanScene, ProvidersScene, SourceScene } from './scenes';
 import type { WhatsNewScene } from './stage3d';
 
 /** Edițiile prezentării: 1.0 prezintă aplicația întreagă, 1.1 doar ce s-a schimbat de la 1.0.0. */
@@ -23,7 +23,7 @@ export interface WhatsNew3DSlide {
   cta?: { label: string; to: string; tour?: TourId };
 }
 
-/** Noutățile din 1.1 (commit-urile de după „StudyX 1.0.0”), în cel mult șapte slide-uri. */
+/** Noutățile din 1.1 (commit-urile de după „StudyX 1.0.0”), în cel mult opt slide-uri. */
 export const RELEASE_11_SLIDES: WhatsNew3DSlide[] = [
   {
     id: 'hero-11',
@@ -34,7 +34,7 @@ export const RELEASE_11_SLIDES: WhatsNew3DSlide[] = [
       Scene: HeroScene, durationMs: 8000, marks: [0, 2600, 5200],
       label: 'Animație: versiunea 1.1',
       captions: ['Versiunea 1.1, pe straturi de sticlă.', 'Noutățile se așază pe orbită.', 'Gata de explorat.'],
-      transcript: 'Numărul 1.1 apare pe trei plăci de sticlă suprapuse în adâncime. În jurul lui, pe o orbită, se rotesc șase noutăți: cărțile de bază, Vezi în carte, Pentru tine, chatul din cărți, Ce nu știu? și Stare furnizori.',
+      transcript: 'Numărul 1.1 apare pe trei plăci de sticlă suprapuse în adâncime. În jurul lui, pe o orbită, se rotesc șapte noutăți: cărțile de bază, Vezi în carte, Pentru tine, chatul din cărți, Organizare, Ce nu știu? și Stare furnizori.',
     },
   },
   {
@@ -87,6 +87,19 @@ export const RELEASE_11_SLIDES: WhatsNew3DSlide[] = [
       transcript: 'În chat, răspunsul se scrie: cardioversia sincronizată este prima conduită la pacientul instabil, cu citarea 1, iar amiodarona rămâne pentru cel stabil, cu citarea 2. Citarea 1 vine din Carte, Lawrence pagina 412; citarea 2 din Material, cursul tău de cardiologie, pagina 7. Dedesubt apare sugestia: fă 5 grile pe Aritmii.',
     },
     cta: { label: 'Arată-mi Chatul', to: '/', tour: 'chat' },
+  },
+  {
+    id: 'plan-11',
+    badge: 'Organizare',
+    title: 'Planul de rezidențiat nu mai pierde restanțele',
+    description: 'Topicurile rămase în urmă se strâng într-un rând „restanțe” care te duce direct la ele. Graficele se citesc pe orice ecran, iar planul te anunță când data examenului îi taie fazele.',
+    scene: {
+      Scene: PlanScene, durationMs: 9000, marks: [0, 2800, 5000],
+      label: 'Animație: restanțele din Organizare',
+      captions: ['Cele patru treceri, cu ziua de azi.', 'Restanțele ies în față.', 'Un clic și ești la ele.'],
+      transcript: 'Bara celor patru treceri stă pe o placă de sticlă: Faza 1, Faza 2, Faza 3, Faza 4 și Simulări, cu marcajul Azi la începutul primei faze. Din spatele ei vine în față rândul 3 restanțe, cu eticheta termen trecut. Rândul e apăsat și dedesubt apar topicurile lui, fiecare marcat restant: Artrita reumatoidă, Hiponatremia și Diureticele.',
+    },
+    cta: { label: 'Arată-mi Organizarea', to: '/rezidentiat/organizare', tour: 'organizare' },
   },
   {
     id: 'gaps',

@@ -276,7 +276,8 @@ function UpNextCard() {
   const items = upNext(plan, state, win, today);
   const late = overdueTopics(plan, state, win, ph, today).length;
   return (
-    <Card index={6} className="!p-0 overflow-hidden">
+    <div data-tutorial="organizare-next">
+    <Card index={6} className="h-full !p-0 overflow-hidden">
       <div className="px-4 pt-4 sm:px-5"><h2 className="text-[15px] font-semibold" style={{ color: theme.text }}>Urmează</h2></div>
       <div className="mt-2">
         {/* Topics whose window has ended unfinished drop out of the list below: this row keeps them one tap away. */}
@@ -318,6 +319,7 @@ function UpNextCard() {
         })}
       </div>
     </Card>
+    </div>
   );
 }
 

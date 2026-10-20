@@ -68,12 +68,12 @@ describe('„Ce e nou” 1.1', () => {
     if (whatsNewEditionFor(RELEASE_DISPLAY_NAME) === '1.0') expect(within(dialog).queryByText(/Kumar, Lawrence și Sinopsis/)).toBeNull();
   });
 
-  it('previzualizarea 1.1: șapte slide-uri, fiecare cu scenă inertă, cadrul final și povestea în text', async () => {
+  it('previzualizarea 1.1: opt slide-uri, fiecare cu scenă inertă, cadrul final și povestea în text', async () => {
     mountSlides();
     await open('1.1');
     const dots = screen.getAllByRole('button', { name: /^Slide \d+$/ });
     expect(dots).toHaveLength(RELEASE_11_SLIDES.length);
-    expect(RELEASE_11_SLIDES.length).toBeLessThanOrEqual(7);
+    expect(RELEASE_11_SLIDES.length).toBeLessThanOrEqual(8);
     expect(within(screen.getByRole('dialog')).getByText('Ce e nou')).toBeTruthy();
 
     for (const [i, slide] of RELEASE_11_SLIDES.entries()) {

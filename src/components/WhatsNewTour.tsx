@@ -359,6 +359,8 @@ const SLIDES_BY_EDITION: Record<WhatsNewEdition, Slide[]> = { '1.0': SLIDES, '1.
 
 export default function WhatsNewTour() {
   const theme = useTheme();
+  // In the dark theme the accent text (#0A84FF) reaches only ~4.3:1 on the slide's tinted badge and button: lighten it there.
+  const ctaInk = theme.isDark ? `color-mix(in srgb, ${theme.accentText} 72%, #fff)` : theme.accentText;
   const navigate = useNavigate();
   const { calmMotion, t } = useAdaptiveMotion();
   const titleId = useId();
@@ -553,7 +555,7 @@ export default function WhatsNewTour() {
                   <div className="mt-5 text-center">
                     <span
                       className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em]"
-                      style={{ background: `${theme.accent}12`, borderColor: `${theme.accent}30`, color: theme.accentText }}
+                      style={{ background: `${theme.accent}12`, borderColor: `${theme.accent}30`, color: ctaInk }}
                     >
                       <Sparkles size={10} />
                       {slide.badge}
@@ -569,7 +571,7 @@ export default function WhatsNewTour() {
                         type="button"
                         onClick={() => showMe(slide.cta as NonNullable<Slide['cta']>)}
                         className="press-feedback mt-3 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[12.5px] font-semibold"
-                        style={{ background: `${theme.accent}16`, color: theme.accentText }}
+                        style={{ background: `${theme.accent}16`, color: ctaInk }}
                       >
                         {slide.cta.label} <ArrowRight size={13} />
                       </button>
