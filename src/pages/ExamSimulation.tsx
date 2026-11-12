@@ -9,7 +9,7 @@ import TourHelpButton from '../tutorial/TourHelpButton';
 import HelpTip from '../components/ui/HelpTip';
 import ThemedSelect from '../components/ThemedSelect';
 import { useQuizStore } from '../store/quizStore';
-import { buildExamSimulation, examDisciplines, examLengthOptions, examMinutesFor } from '../lib/examSimulation';
+import { EXAM_MAX, buildExamSimulation, examDisciplines, examLengthOptions, examMinutesFor } from '../lib/examSimulation';
 
 const formatDuration = (minutes: number) => (minutes >= 60 ? `${Math.floor(minutes / 60)} h${minutes % 60 ? ` ${minutes % 60} min` : ''}` : `${minutes} min`);
 
@@ -25,6 +25,11 @@ export default function ExamSimulation() {
     () => (discipline ? disciplines.find((d) => d.name === discipline)?.count ?? 0 : disciplines.reduce((sum, d) => sum + d.count, 0)),
     [disciplines, discipline],
   );
+
+  const [customCount, setCustomCount] = useState('');
+  const maxCustom = Math.min(EXAM_MAX, available);
+  const customNumber = Number(customCount);
+  const customValid = Number.isInteger(customNumber) && customNumber >= 1 && customNumber <= maxCustom;
 
   const lengthOptions = useMemo(() => examLengthOptions(available), [available]);
 
@@ -42,7 +47,7 @@ export default function ExamSimulation() {
           back={{ to: '/review', label: 'Recapitulare' }}
           title="Simulare de examen"
           actions={<TourHelpButton tour="simulation" label="Vezi turul Simulării de examen" />}
-          subtitle="Grile alese la întâmplare din băncile tale, cu timp total și punctaj cu penalizare (−0,25 pe opțiune greșită). La final vezi rezultatul pe discipline."
+          subtitle="Grile alese la întâmplare din băncile tale, cu timp total și punctaj cu penalizare (−0,25 pe opțiune greșită). La final vezi rezultatul pe discipline și capitole, comparația cu simulările anterioare și o estimare din ritm."
         />
 
         {available === 0 ? (
@@ -88,6 +93,35 @@ export default function ExamSimulation() {
                 </li>
               ))}
             </ul>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-[13px]" style={{ color: theme.text2 }}>
+                Alt număr de grile
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={maxCustom}
+                  value={customCount}
+                  placeholder={String(maxCustom)}
+                  onChange={(event) => setCustomCount(event.target.value)}
+                  className="focus-ring w-24 rounded-[var(--r-md)] border px-3 py-2 text-[13px] tabular-nums"
+                  style={{ background: theme.surface2, borderColor: theme.border, color: theme.text }}
+                />
+              </label>
+              <button
+                type="button"
+                disabled={!customValid}
+                onClick={() => start(customNumber)}
+                className="press-feedback focus-ring rounded-[var(--r-md)] px-4 py-2 text-[13px] font-semibold disabled:opacity-40"
+                style={{ background: theme.accent, color: '#fff' }}
+              >
+                Începe{customValid ? ` · ${formatDuration(examMinutesFor(customNumber))}` : ''}
+              </button>
+            </div>
+            <p className="mt-2 text-[12px] leading-relaxed" style={{ color: theme.text3 }}>
+              {discipline ? 'Dintr-o singură disciplină' : 'Din toate disciplinele'}, între 1 și {maxCustom} grile.
+              Dacă banca permite, amestecul ține raportul examenului: ~1 din 4 grile cu un singur răspuns (CS), restul cu mai multe (CM).
+            </p>
             {lengthOptions.length === 1 && lengthOptions[0].partial && (
               <p className="mt-3 text-[12px] leading-relaxed" style={{ color: theme.text3 }}>
                 {discipline ? 'Această disciplină are' : 'Băncile tale au'} doar {lengthOptions[0].count} {lengthOptions[0].count === 1 ? 'grilă' : 'grile'}, deci simularea le folosește pe toate. Adaugă mai multe pentru simulări de 50, 100 sau 200 de grile.
