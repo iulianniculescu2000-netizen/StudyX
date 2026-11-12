@@ -26,7 +26,7 @@ import {
   type PeriodDays,
 } from '../../lib/analyticsStats';
 import { buildScoreForecast } from '../../lib/analyticsForecast';
-import { buildDueItems } from '../../lib/dueItems';
+import { buildDailyQueue } from '../../lib/dailyQueue';
 import { useExamDate } from '../../lib/examDateHook';
 import { useFolderStore } from '../../store/folderStore';
 import { EMPTY_PLAN, useOrganizareStore } from '../../store/organizareStore';
@@ -69,7 +69,7 @@ export default function AIPredictiveAnalytics({ userId, currentLevel }: AIPredic
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, questionStats]);
   // Aceeași listă ca în /daily-review: fără flashcarduri, seturi șterse sau întrebări dispărute.
-  const dueCount = useMemo(() => buildDueItems(questionStats, quizzes).length, [questionStats, quizzes]);
+  const dueCount = useMemo(() => buildDailyQueue({ quizzes, stats: questionStats }).total, [questionStats, quizzes]);
 
   const knownIds = useMemo(() => distinctQuestionIds(quizzes), [quizzes]);
   const ready = useMemo(() => readiness(questionStats, knownIds), [questionStats, knownIds]);
