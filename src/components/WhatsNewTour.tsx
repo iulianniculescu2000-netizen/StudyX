@@ -34,6 +34,7 @@ import { useUserStore } from '../store/userStore';
 import FocusCardDemo from './micro/FocusCardDemo';
 import WhatsNewStage from './whats-new/WhatsNewStage';
 import { RELEASE_11_SLIDES, whatsNewEditionFor, type WhatsNewEdition } from './whats-new/release11';
+import { RELEASE_12_SLIDES } from './whats-new/release12';
 import type { WhatsNewScene } from './whats-new/stage3d';
 import { useOverlayFlag } from '../hooks/useOverlayFlag';
 import { useAdaptiveMotion } from '../hooks/useAdaptiveMotion';
@@ -351,7 +352,10 @@ const SLIDES: Slide[] = [
 /** Slide-urile 1.1, cu scene 3D; apar doar în ediția 1.1. */
 const SLIDES_11: Slide[] = RELEASE_11_SLIDES;
 
-const SLIDES_BY_EDITION: Record<WhatsNewEdition, Slide[]> = { '1.0': SLIDES, '1.1': SLIDES_11 };
+/** Slide-urile 1.2, cu scene 3D; apar doar în ediția 1.2. */
+const SLIDES_12: Slide[] = RELEASE_12_SLIDES;
+
+const SLIDES_BY_EDITION: Record<WhatsNewEdition, Slide[]> = { '1.0': SLIDES, '1.1': SLIDES_11, '1.2': SLIDES_12 };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main component
@@ -372,7 +376,7 @@ export default function WhatsNewTour() {
   const [index, setIndex] = useState(0);
   const [edition, setEdition] = useState<WhatsNewEdition>(RELEASE_EDITION);
   const slides = SLIDES_BY_EDITION[edition];
-  const depth = edition === '1.1' && !calmMotion;
+  const depth = edition !== '1.0' && !calmMotion;
   useOverlayFlag(open);
   useScrollLock(open);
   const [direction, setDirection] = useState(1);
@@ -520,7 +524,7 @@ export default function WhatsNewTour() {
                 </motion.div>
                 <div>
                   <div className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: theme.text2 }}>
-                    {edition === '1.1' ? 'Ce e nou' : 'Prezentare'}
+                    {edition !== '1.0' ? 'Ce e nou' : 'Prezentare'}
                   </div>
                   <div id={titleId} className="text-[13px] font-black tracking-tight" style={{ color: theme.text }}>
                     StudyX {edition}

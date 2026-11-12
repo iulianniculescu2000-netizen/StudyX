@@ -716,6 +716,14 @@ export default function Settings() {
                 buttonLabel="Vezi"
                 onClick={() => window.dispatchEvent(new CustomEvent(WHATS_NEW_OPEN_EVENT, { detail: { edition: '1.1' } }))}
               />
+              <Divider />
+              <ActionRow
+                icon={<Sparkles size={16} />}
+                label="Ce e nou în 1.2 (previzualizare)"
+                description="Doar în dezvoltare: slide-urile 1.2 cu scene 3D."
+                buttonLabel="Vezi"
+                onClick={() => window.dispatchEvent(new CustomEvent(WHATS_NEW_OPEN_EVENT, { detail: { edition: '1.2' } }))}
+              />
             </>
           )}
           <Divider />
