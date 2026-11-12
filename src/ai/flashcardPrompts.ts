@@ -109,6 +109,8 @@ export interface FlashcardRequestPrompt {
   /** Aspectul pe care să-l acopere mai ales acest lot (la subiecte fără text). */
   facet?: string;
   avoidFronts?: readonly string[];
+  /** Înlocuiește formatul de ieșire implicit (ex. cardurile cu citare la pagină din `bookStudyPrompts`). */
+  outputSpec?: string;
 }
 
 export const FLASHCARD_OUTPUT_SPEC =
@@ -138,6 +140,6 @@ export function buildFlashcardUserPrompt(input: FlashcardRequestPrompt): string 
   if (avoid.length > 0) {
     lines.push(`Nu repeta ce există deja:\n${avoid.map((front) => `- ${front.length > FRONT_PREVIEW ? `${front.slice(0, FRONT_PREVIEW)}…` : front}`).join('\n')}`);
   }
-  lines.push(FLASHCARD_OUTPUT_SPEC);
+  lines.push(input.outputSpec ?? FLASHCARD_OUTPUT_SPEC);
   return lines.join('\n\n');
 }

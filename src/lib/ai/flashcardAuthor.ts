@@ -211,10 +211,10 @@ export function isSelfContainedFront(front: string): boolean {
 }
 
 /** Taie cardurile prea lungi (de obicei text copiat) și pe cele care repetă un front deja avut. */
-export function cleanAndDedupe(cards: readonly DraftCard[], existingFronts: readonly string[]): DraftCard[] {
+export function cleanAndDedupe<T extends DraftCard>(cards: readonly T[], existingFronts: readonly string[]): T[] {
   const fronts = [...existingFronts];
   const backs = new Set<string>();
-  const out: DraftCard[] = [];
+  const out: T[] = [];
   for (const card of cards) {
     if (card.front.length > FRONT_MAX || card.back.length > BACK_MAX) continue;
     // O față fără context („AVRT?”, „[Cardiologie] Un semn?”) nu se poate repeta singură: o aruncăm.
@@ -347,7 +347,7 @@ async function resolveGrounding(scope: FlashcardScopeRequest, space: SourceScope
 
 /* ── Generarea ──────────────────────────────────────────────────────────────────────────────── */
 
-async function runPool<T>(items: readonly T[], limit: number, worker: (item: T, index: number) => Promise<void>): Promise<void> {
+export async function runPool<T>(items: readonly T[], limit: number, worker: (item: T, index: number) => Promise<void>): Promise<void> {
   let next = 0;
   const lanes = Array.from({ length: Math.min(limit, items.length) }, async () => {
     while (next < items.length) {
