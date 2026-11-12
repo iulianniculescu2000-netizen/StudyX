@@ -157,7 +157,8 @@ Legendă status: ✅ Complet · ⚠️ Parțial / cosmetic · 🛠️ De aliniat
 | Funcție | Detalii | Locație |
 |---|---|---|
 | Caiet de erori (`/erori`) | Greșelile rămân într-un caiet de recapitulat | `src/pages/ErrorNotebook.tsx`, `src/lib/errorNotebook.ts` |
-| Simulare de examen (`/simulare`) | 1,2 min/grilă, închidere automată la expirare, rezultat pe discipline | `src/pages/ExamSimulation.tsx`, `src/lib/examSimulation.ts` |
+| Simulare de examen (`/simulare`) | 1,2 min/grilă, număr configurabil (1–200), amestec ~25% CS / ~75% CM când banca permite, fără explicații până la final, închidere automată la expirare; greșelile se înregistrează pe întrebarea sursă (coada de repetiție și caietul de erori) | `src/pages/ExamSimulation.tsx`, `src/lib/examSimulation.ts` |
+| Raportul simulării | Rezultat pe discipline și pe capitole, CS față de CM, comparație cu simulările anterioare, estimare orientativă din ritm (interval ~80%, nu predicție) | `src/pages/results/ExamReport.tsx`, `src/lib/examReport.ts` |
 | Cititor PDF cu pagini randate | Pagina cărții randată din PDF; IPC `organizare:read-pdf` (`electron/organizare.cjs`, `preload.cjs`); deschidere prin evenimentul `studyx:open-book` ascultat de `BookViewerHost` | `src/components/pdf/` |
 | Citări AI cu pagini | Citările `[n]` poartă pagina tipărită (`printedPage`) | `src/components/ai-chat/citations.ts` |
 | Reordonare pe coloane | Textul PDF din două coloane e citit în ordinea corectă | `electron/pdfReadingOrder.mjs` |
