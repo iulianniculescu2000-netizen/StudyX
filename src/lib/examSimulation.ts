@@ -5,7 +5,34 @@ import { findDuplicatesCached, memberKey, redundantMembers } from './bankDedup';
 
 export const EXAM_SIM_TAG = 'exam-simulation';
 export const DISCIPLINE_TAG_PREFIX = 'disc:';
+export const CHAPTER_TAG_PREFIX = 'chap:';
+export const SOURCE_TAG_PREFIX = 'src:';
 export const EXAM_SIZES = [50, 100, 200] as const;
+/** Numărul maxim de grile pentru o simulare (examenul real are 200). */
+export const EXAM_MAX = 200;
+/** Ponderea grilelor cu un singur răspuns (CS) în examenul real: ~50 din 200. */
+export const EXAM_CS_SHARE = 0.25;
+
+/** CM = mai multe răspunsuri corecte; CS = unul singur. */
+export const isMultipleChoiceQuestion = (question: Pick<Question, 'options' | 'multipleCorrect'>) =>
+  !!question.multipleCorrect || question.options.filter((option) => option.isCorrect).length > 1;
+
+/** Împarte `count` între CS și CM după raportul examenului (~25% / 75%); dacă banca nu ajunge la un tip, completează cu celălalt. */
+export function splitCsCm(count: number, csAvailable: number, cmAvailable: number, csShare = EXAM_CS_SHARE): { cs: number; cm: number } {
+  const total = Math.min(count, csAvailable + cmAvailable);
+  let cs = Math.min(Math.round(total * csShare), csAvailable);
+  const cm = Math.min(total - cs, cmAvailable);
+  cs = Math.min(total - cm, csAvailable);
+  return { cs, cm };
+}
+
+/** Cheia întrebării sursă, păstrată pe copia din simulare ca greșelile să ajungă la întrebarea originală. */
+export function examSourceKey(question: Pick<Question, 'tags'>): { quizId: string; questionId: string } | null {
+  const tag = (question.tags ?? []).find((t) => t.startsWith(SOURCE_TAG_PREFIX));
+  if (!tag) return null;
+  const [quizId, questionId] = tag.slice(SOURCE_TAG_PREFIX.length).split('|');
+  return quizId && questionId ? { quizId, questionId } : null;
+}
 
 /** Minute alocate: 1,2 minute pe întrebare (200 de grile → 4 ore). */
 export const examMinutesFor = (count: number) => Math.round(count * 1.2);
@@ -78,10 +105,10 @@ export interface ExamSimulation {
 export function buildExamSimulation(
   quizzes: Quiz[],
   count: number,
-  options: { discipline?: string | null; random?: () => number } = {},
+  options: { discipline?: string | null; random?: () => number; /** Raport CS/CM ca la examen (implicit activ). */ mix?: boolean } = {},
 ): ExamSimulation | null {
   const random = options.random ?? Math.random;
-  const pool: { question: Question; discipline: string }[] = [];
+  const pool: { question: Question; discipline: string; chapter: string; source: string }[] = [];
   const seen = new Set<string>();
   const sources = examSourceQuizzes(quizzes);
   for (const quiz of sources) {
@@ -91,7 +118,7 @@ export function buildExamSimulation(
       const fingerprint = plain(question.text);
       if (!fingerprint || seen.has(fingerprint)) continue;
       seen.add(fingerprint);
-      pool.push({ question, discipline });
+      pool.push({ question, discipline, chapter: quiz.title.trim() || discipline, source: `${quiz.id}|${question.id}` });
     }
   }
   if (pool.length === 0) return null;
@@ -100,7 +127,17 @@ export function buildExamSimulation(
     const j = Math.floor(random() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
-  const picked = pool.slice(0, count);
+  let picked = pool.slice(0, count);
+  if (options.mix !== false && count < pool.length) {
+    const cs = pool.filter((item) => !isMultipleChoiceQuestion(item.question));
+    const cm = pool.filter((item) => isMultipleChoiceQuestion(item.question));
+    const split = splitCsCm(count, cs.length, cm.length);
+    picked = [...cs.slice(0, split.cs), ...cm.slice(0, split.cm)];
+    for (let i = picked.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(random() * (i + 1));
+      [picked[i], picked[j]] = [picked[j], picked[i]];
+    }
+  }
 
   const quiz: Quiz = {
     id: uid(),
@@ -115,11 +152,11 @@ export function buildExamSimulation(
     shuffleAnswers: true,
     penaltyMode: true,
     tags: [EXAM_SIM_TAG, 'simulation'],
-    questions: picked.map(({ question, discipline }) => ({
+    questions: picked.map(({ question, discipline, chapter, source }) => ({
       ...question,
       id: uid(),
       options: question.options.map((option) => ({ ...option, id: uid() })),
-      tags: [...(question.tags ?? []), `${DISCIPLINE_TAG_PREFIX}${discipline}`],
+      tags: [...(question.tags ?? []), `${DISCIPLINE_TAG_PREFIX}${discipline}`, `${CHAPTER_TAG_PREFIX}${chapter}`, `${SOURCE_TAG_PREFIX}${source}`],
     })),
     createdAt: Date.now(),
   };
