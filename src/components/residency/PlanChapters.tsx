@@ -1,7 +1,7 @@
 import { organizareChapterHref } from '../../lib/organizare/appLinks';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { BookOpen, CalendarRange, ChevronDown, CreditCard, FileText, Layers, ListChecks, MessageCircle, Sparkles } from 'lucide-react';
+import { BookOpen, CalendarRange, ChevronDown, CreditCard, FileText, Layers, ListChecks, MessageCircle, Sparkles, Workflow } from 'lucide-react';
 import { useTheme } from '../../theme/ThemeContext';
 import ProgressBar from '../fx/ProgressBar';
 import BookChapterReaderModal from '../BookChapterReaderModal';
@@ -24,6 +24,7 @@ import { bankForChapter, chapterCounts, chapterProgress, countsOf, matchIndexedC
 import { useChapterActions } from './useChapterActions';
 import type { PlanProgress } from './useResidencyData';
 import { plural } from '../../lib/plural';
+import BookProposalsDialog from './BookProposalsDialog';
 
 interface ReaderState {
   title: string;
@@ -63,6 +64,7 @@ export default function PlanChapters({ code, source, overview, plan, focusIndex 
   const actions = useChapterActions(source);
   const [openIndex, setOpenIndex] = useState<number | null>(focusIndex);
   const [reader, setReader] = useState<ReaderState | null>(null);
+  const [proposalsFor, setProposalsFor] = useState<CurriculumChapter | null>(null);
   const focusRef = useRef<HTMLDivElement>(null);
   const chapters = useMemo(() => chaptersOfBook(code), [code]);
   const canOpenFile = typeof window !== 'undefined' && !!window.electronAPI?.organizareOpen;
@@ -213,6 +215,12 @@ export default function PlanChapters({ code, source, overview, plan, focusIndex 
                     busy={!!heading && actions.generatingHeading === heading.heading}
                     onClick={() => (heading ? void actions.generateCards(heading.heading, chapter.label, tags) : askAboutTopic('cards', firstOpen))}
                   />
+                  <ChapterAction
+                    icon={<Workflow size={12} />}
+                    label="Schemă și carduri din carte"
+                    title="AI propune o schemă și carduri cu pagina din carte; salvezi doar ce accepți"
+                    onClick={() => setProposalsFor(chapter)}
+                  />
                   {count.cards > 0 && (
                     <ChapterLink icon={<Layers size={12} />} label={`Flashcarduri · ${count.cards.toLocaleString('ro-RO')}`} to={`/rezidentiat/flashcarduri?chapter=${chapter.index}`} />
                   )}
@@ -247,6 +255,7 @@ export default function PlanChapters({ code, source, overview, plan, focusIndex 
           />
         )}
       </AnimatePresence>
+      {proposalsFor && <BookProposalsDialog open chapter={proposalsFor} onClose={() => setProposalsFor(null)} />}
       <BookViewerHost />
     </div>
   );
