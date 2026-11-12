@@ -43,6 +43,7 @@ Legendă status: ✅ Complet · ⚠️ Parțial / cosmetic · 🛠️ De aliniat
 | Sesiune de studiu flashcard | ✅ | `src/pages/FlashcardSession.tsx` |
 | Imagini în flashcarduri (smart extraction, IndexedDB) | ✅ (v1.0.4/1.0.5) | `src/lib/flashcardImageStore.ts` |
 | Generare flashcarduri din notițe (AI) | ✅ | `src/lib/ai/agent.ts` |
+| Schemă și 10–20 de carduri din pagini/capitol de carte (Rezidențiat › capitol › „Schemă și carduri din carte”): fiecare propunere are pagina și un citat verificat în textul paginii (pagină în interval, citat găsit, răspuns legat de pagină); cele fără citare se aruncă, tăiere la numărul cerut; se acceptă/resping individual și se salvează doar ce e acceptat; fără cheie AI: mesaj clar, nimic apelat; în ecran apare doar citatul (max. 200 caractere), nu textul cărții | ✅ (verificat în teste; neverificat cu model real) | `src/lib/ai/bookStudyProposals.ts`, `src/ai/bookStudyPrompts.ts`, `src/components/residency/BookProposalsDialog.tsx` |
 
 ## 4. 📝 Notițe
 
