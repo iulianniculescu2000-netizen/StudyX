@@ -26,6 +26,7 @@ import { effectiveStreak } from '../lib/gamificationProgress';
 import { useAchievementWatcher, useStudyLevel } from '../store/achievementsStore';
 import { localDateStr } from '../lib/studyPlan';
 import { dur, ease } from '../theme/motion';
+import { lastLocalDays, localDayKey, tooltipMeta } from '../lib/statsDays';
 
 const ActivityBarChart = lazy(() => import('../components/stats/ActivityBarChart'));
 const AccuracyTrendChart = lazy(() => import('../components/stats/AccuracyTrendChart'));
@@ -49,11 +50,14 @@ const CustomTooltip = ({ active, payload, label, theme }: CustomTooltipProps) =>
     <div className="glass-panel rounded-[var(--r-sm)] p-3 text-sm"
       style={{ boxShadow: 'var(--elev-3)' }}>
       <p className="font-semibold mb-1" style={{ color: theme.text }}>{label}</p>
-      {payload.map((p) => (
-        <p key={p.name} style={{ color: p.color }}>
-          {p.name}: <strong>{p.value}{p.name === 'acuratete' ? '%' : ''}</strong>
-        </p>
-      ))}
+      {payload.map((p) => {
+        const meta = tooltipMeta(p.name);
+        return (
+          <p key={p.name} style={{ color: p.color }}>
+            {meta.label}: <strong>{p.value}{meta.unit}</strong>
+          </p>
+        );
+      })}
     </div>
   );
 };
@@ -148,7 +152,7 @@ export default function Stats() {
   const sessionsByDay = useMemo(() => {
     const grouped = new Map<string, typeof sessions>();
     for (const session of sessions) {
-      const key = new Date(session.startedAt).toISOString().split('T')[0];
+      const key = localDayKey(session.startedAt);
       const daySessions = grouped.get(key);
       if (daySessions) daySessions.push(session);
       else grouped.set(key, [session]);
@@ -166,12 +170,8 @@ export default function Stats() {
 
   // Heatmap: last 90 days
   const heatmapWeeks = useMemo(() => {
-    const today = new Date();
     const cells: { date: string; count: number }[] = [];
-    for (let i = 89; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().split('T')[0];
+    for (const { key } of lastLocalDays(new Date(), 90)) {
       const count = sessionsByDay.get(key)?.length ?? 0;
       cells.push({ date: key, count });
     }
@@ -183,10 +183,7 @@ export default function Stats() {
   }, [sessionsByDay]);
 
   // Sessions per day (last 14 days)
-  const last14Days = useMemo(() => Array.from({ length: 14 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (13 - i));
-    const key = d.toISOString().split('T')[0];
+  const last14Days = useMemo(() => lastLocalDays(new Date(), 14).map(({ key, date: d }) => {
     const dayStr = d.toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' });
     const daySessions = sessionsByDay.get(key) ?? [];
     const count = daySessions.length;
@@ -218,7 +215,7 @@ export default function Stats() {
       const catQuizzes = quizzes.filter(q => q.category === cat);
       if (catQuizzes.length === 0) return null;
       const acc = catQuizzes.reduce((sum, q) => sum + (quizAccuracy.get(q.id) ?? 0), 0) / catQuizzes.length;
-      return { subject: cat.slice(0, 8), acuratete: Math.round(acc), fullMark: 100 };
+      return { subject: cat, acuratete: Math.round(acc), fullMark: 100 };
     }).filter(Boolean) as { subject: string; acuratete: number; fullMark: number }[];
   }, [quizzes, quizAccuracy]);
 

@@ -6,6 +6,7 @@ import { ease } from '../../theme/motion';
 import { parseDay, type AccuracyPoint, type HeatCell, type HourBar, type ProgressSeries } from '../../lib/organizare/engine';
 import { shortDay } from '../../lib/organizare/format';
 import { number } from './helpers';
+import { clamp, finite, labelIndexes, niceScale } from '../stats/chartMath';
 
 /**
  * The width the chart is drawn at: the box it sits in, measured. Drawing at the real width (instead of a fixed
@@ -38,17 +39,25 @@ export function HoursChart({ data }: { data: HourBar[] }) {
   const H = 190;
   const l = 30; const r = 6; const t = 10; const b = 24;
   const n = data.length;
-  const bw = (W - l - r) / n;
-  const max = Math.max(6, Math.ceil(Math.max(...data.map((d) => d.hours)) / 2) * 2);
+  const bw = (W - l - r) / Math.max(1, n);
+  const hoursOf = (d: HourBar) => Math.max(0, finite(d.hours));
+  const targetOf = (d: HourBar) => Math.max(0, finite(d.target));
+  const { max, step } = niceScale(Math.max(6, ...data.map((d) => Math.max(hoursOf(d), targetOf(d)))), 6, 5);
   const y = (v: number) => t + (H - t - b) * (1 - v / max);
+  const total = data.reduce((sum, d) => sum + hoursOf(d), 0);
+  const studied = data.filter((d) => hoursOf(d) > 0).length;
+  const summary = n === 0
+    ? 'Ore studiate pe zi: nu există date.'
+    : `Ore studiate pe zi, ultimele ${n} zile: ${number(total, 1)} h în total, în ${studied} ${studied === 1 ? 'zi' : 'zile'} de studiu, ${number(total / n, 1)} h în medie pe zi.`;
+  const labelled = new Set(labelIndexes(n, 7));
 
   return (
     <div ref={box}>
-    <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Ore studiate pe zi, ultimele 28 de zile" className="h-auto w-full">
-      {Array.from({ length: max / 2 + 1 }, (_, k) => k * 2).map((v) => (
+    <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={summary} className="h-auto w-full">
+      {Array.from({ length: Math.round(max / step) + 1 }, (_, k) => k * step).map((v) => (
         <g key={v}>
           <line x1={l} x2={W - r} y1={y(v)} y2={y(v)} stroke={grid} strokeWidth={1} />
-          <text x={l - 6} y={y(v) + 3} textAnchor="end" fontSize={10} fill={faint}>{v}</text>
+          <text x={l - 6} y={y(v) + 3} textAnchor="end" fontSize={10} fill={faint}>{number(v)}</text>
         </g>
       ))}
       {data.map((d, k) => {
@@ -56,13 +65,13 @@ export function HoursChart({ data }: { data: HourBar[] }) {
         const w = bw * 0.64;
         return (
           <g key={d.day}>
-            {d.target > 0 && <rect x={x} y={y(d.target)} width={w} height={y(0) - y(d.target)} rx={3} fill="var(--fill-subtle)" />}
-            {d.hours > 0 && (
+            {targetOf(d) > 0 && <rect x={x} y={y(targetOf(d))} width={w} height={y(0) - y(targetOf(d))} rx={3} fill="var(--fill-subtle)" />}
+            {hoursOf(d) > 0 && (
               <motion.rect
                 x={x}
-                y={y(d.hours)}
+                y={y(hoursOf(d))}
                 width={w}
-                height={Math.max(2, y(0) - y(d.hours))}
+                height={Math.max(2, y(0) - y(hoursOf(d)))}
                 rx={3}
                 fill={theme.accent}
                 style={{ transformBox: 'fill-box', transformOrigin: 'bottom' }}
@@ -70,10 +79,10 @@ export function HoursChart({ data }: { data: HourBar[] }) {
                 animate={{ scaleY: 1 }}
                 transition={{ delay: 0.15 + k * 0.012, duration: 0.55, ease: ease.emphasized }}
               >
-                <title>{shortDay(d.day)}: {number(d.hours, 1)} h</title>
+                <title>{shortDay(d.day)}: {number(hoursOf(d), 1)} h</title>
               </motion.rect>
             )}
-            {(k % 7 === 0 || k === n - 1) && <text x={x + w / 2} y={H - 6} textAnchor="middle" fontSize={10} fill={faint}>{shortDay(d.day)}</text>}
+            {labelled.has(k) && <text x={x + w / 2} y={H - 6} textAnchor="middle" fontSize={10} fill={faint}>{shortDay(d.day)}</text>}
           </g>
         );
       })}
@@ -91,17 +100,23 @@ export function ProgressChart({ data, today }: { data: ProgressSeries; today: st
   const t0 = parseDay(data.from).getTime();
   const t1 = parseDay(data.to).getTime();
   const x = (day: string) => l + (W - l - r) * Math.max(0, Math.min(1, (parseDay(day).getTime() - t0) / (t1 - t0 || 1)));
-  const y = (v: number) => t + (H - t - b) * (1 - v);
+  const y = (v: number) => t + (H - t - b) * (1 - clamp(finite(v), 0, 1));
   const line = (pts: Array<[string, number]>) => pts.map(([d, v], k) => `${k ? 'L' : 'M'}${x(d).toFixed(1)} ${y(v).toFixed(1)}`).join(' ');
   const steps = (pts: Array<[string, number]>) => pts.reduce((acc, [d, v], k) => (
     k === 0 ? `M${x(d).toFixed(1)} ${y(v).toFixed(1)}` : `${acc} L${x(d).toFixed(1)} ${y(pts[k - 1][1]).toFixed(1)} L${x(d).toFixed(1)} ${y(v).toFixed(1)}`
   ), '');
   const hasActual = data.actual.length > 1;
   const lastActual = data.actual[data.actual.length - 1];
+  const doneShare = clamp(finite(lastActual?.[1]), 0, 1);
+  const planned = data.plan.filter(([d]) => d <= today);
+  const plannedShare = clamp(finite(planned[planned.length - 1]?.[1]), 0, 1);
+  const summary = `Progresul față de plan, ${shortDay(data.from)} – ${shortDay(data.to)}: `
+    + (hasActual ? `ai terminat ${Math.round(doneShare * 100)}% din pagini` : 'încă nu ai marcat niciun topic ca terminat')
+    + (planned.length ? `, planul aștepta ${Math.round(plannedShare * 100)}% până azi.` : '.');
 
   return (
     <div ref={box}>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Progresul față de plan" className="h-auto w-full">
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={summary} className="h-auto w-full">
         {[0, 0.25, 0.5, 0.75, 1].map((v) => (
           <g key={v}>
             <line x1={l} x2={W - r} y1={y(v)} y2={y(v)} stroke={grid} strokeWidth={1} />
@@ -151,14 +166,23 @@ export function AccuracyChart({ data }: { data: AccuracyPoint[] }) {
   const [box, W] = useChartWidth();
   const H = 190;
   const l = 34; const r = 10; const t = 14; const b = 24;
-  const x = (k: number) => l + (W - l - r) * ((k + 0.5) / data.length);
-  const y = (v: number) => t + (H - t - b) * (1 - v);
-  const points = data.map((p, k) => [k, p] as const).filter(([, p]) => p.p !== null);
+  const x = (k: number) => l + (W - l - r) * ((k + 0.5) / Math.max(1, data.length));
+  const y = (v: number) => t + (H - t - b) * (1 - clamp(v, 0, 1));
+  const points = data.map((p, k) => [k, p] as const).filter(([, p]) => p.p !== null && Number.isFinite(p.p));
+  const step = (W - l - r) / Math.max(1, data.length);
+  const valueEvery = Math.max(1, Math.ceil(32 / step));
+  const weekLabels = new Set(labelIndexes(data.length, Math.max(3, Math.ceil(44 / step))));
+  const last = points[points.length - 1];
+  const summary = points.length === 0
+    ? 'Acuratețea grilelor pe săptămână: nu există date.'
+    : `Acuratețea grilelor pe săptămână, ${points.length} ${points.length === 1 ? 'săptămână cu date' : 'săptămâni cu date'}: `
+      + points.map(([, p]) => `${shortDay(p.week)} ${Math.round((p.p as number) * 100)}% din ${p.g} grile`).join('; ')
+      + `. Ultima: ${Math.round((last[1].p as number) * 100)}%.`;
   const path = points.map(([k, p], i) => `${i ? 'L' : 'M'}${x(k).toFixed(1)} ${y(p.p as number).toFixed(1)}`).join(' ');
 
   return (
     <div ref={box}>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Acuratețea grilelor pe săptămână" className="h-auto w-full">
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={summary} className="h-auto w-full">
         {[0, 0.25, 0.5, 0.75, 1].map((v) => (
           <g key={v}>
             <line x1={l} x2={W - r} y1={y(v)} y2={y(v)} stroke={grid} strokeWidth={1} />
@@ -176,10 +200,12 @@ export function AccuracyChart({ data }: { data: AccuracyPoint[] }) {
               transition={{ delay: 0.3 + i * 0.07, type: 'spring', stiffness: 420, damping: 18 }}>
               <title>{shortDay(p.week)}: {Math.round((p.p as number) * 100)}% din {p.g} grile</title>
             </motion.circle>
-            <text x={x(k)} y={y(p.p as number) - 10} textAnchor="middle" fontSize={10.5} fontWeight={600} fill={theme.text2}>{Math.round((p.p as number) * 100)}%</text>
+            {(i % valueEvery === 0 || i === points.length - 1) && (
+              <text x={x(k)} y={y(p.p as number) - 10} textAnchor="middle" fontSize={10.5} fontWeight={600} fill={theme.text2}>{Math.round((p.p as number) * 100)}%</text>
+            )}
           </g>
         ))}
-        {data.map((p, k) => (k % 3 === 0 || k === data.length - 1) && (
+        {data.map((p, k) => weekLabels.has(k) && (
           <text key={p.week} x={x(k)} y={H - 6} textAnchor="middle" fontSize={10} fill={faint}>{shortDay(p.week)}</text>
         ))}
       </svg>
@@ -193,12 +219,18 @@ export function Heatmap({ grid: cells }: { grid: Array<Array<HeatCell | null>> }
   const { theme, calm, faint } = useChartInk();
   const [box, W] = useChartWidth();
   const weeks = cells.length;
+  const shown = cells.flat().filter((c): c is HeatCell => c !== null);
+  const totalHours = shown.reduce((sum, c) => sum + Math.max(0, finite(c.hours)), 0);
+  const studiedDays = shown.filter((c) => c.hours > 0).length;
+  const summary = weeks === 0
+    ? 'Calendar de studiu: nu există date.'
+    : `Calendar de studiu, ultimele ${weeks} săptămâni: ${studiedDays} ${studiedDays === 1 ? 'zi' : 'zile'} de studiu din ${shown.length}, ${number(totalHours, 1)} h în total. Cu cât o zi e mai închisă, cu atât a fost mai aproape de țintă.`;
   // Cells grow with the card up to a calm size; past that the calendar keeps its size instead of turning into tiles.
-  const cs = Math.min(30, (W - 30) / weeks);
+  const cs = Math.min(30, (W - 30) / Math.max(1, weeks));
   const H = 7 * cs + 4;
   return (
     <div ref={box}>
-    <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Calendar de studiu, ultimele 14 săptămâni" className="h-auto w-full">
+    <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={summary} className="h-auto w-full">
       {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, k) => (
         <text key={k} x={10} y={k * cs + cs * 0.62} textAnchor="middle" fontSize={10} fill={faint}>{d}</text>
       ))}
