@@ -79,7 +79,7 @@ export function CardBack({ theme, current, hasKey, backPanelPaddingClass, answer
               <p className="mb-2 text-[10px] font-black uppercase tracking-[0.22em]" style={{ color: theme.text3 }}>
                 Explicația din grilă
               </p>
-              <p className="text-sm leading-relaxed" style={{ color: theme.text2 }}>{cleanFlashcardText(cleanQuestionExplanation(current.question.explanation))}</p>
+              <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: theme.text2 }}>{cleanFlashcardText(cleanQuestionExplanation(current.question.explanation))}</p>
             </div>
           )}
 

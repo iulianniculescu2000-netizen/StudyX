@@ -132,7 +132,7 @@ export default function QuizList() {
         <PageHeader
           eyebrow="Biblioteca"
           title="Grilele tale"
-          subtitle={`${plural(filtered.length, 'grilă', 'grile')} ${filtered.length !== activeQuizzes.length ? `filtrate din ${activeQuizzes.length}` : 'disponibile'}`}
+          subtitle={`${plural(filtered.length, 'grilă', 'grile')} ${filtered.length !== activeQuizzes.length ? (filtered.length === 1 ? `filtrată din ${activeQuizzes.length}` : `filtrate din ${activeQuizzes.length}`) : (filtered.length === 1 ? 'disponibilă' : 'disponibile')}`}
           tour={{ id: 'quizzes', label: 'Vezi turul listei de grile' }}
           actions={(
             <div data-tutorial="quizzes-actions" className="flex flex-wrap items-center gap-2">

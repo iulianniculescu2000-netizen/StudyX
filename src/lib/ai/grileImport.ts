@@ -154,6 +154,7 @@ export function toQuizImportData(
       imageUrl: q.imageUrl,
       multipleCorrect: q.multipleCorrect,
       options: q.options.map((o) => ({ text: o.text, isCorrect: o.isCorrect })),
+      ...(q.explanation ? { explanation: q.explanation } : {}),
     })),
   };
 }

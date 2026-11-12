@@ -54,6 +54,8 @@ export interface ParsedQuestion {
   /** Attached image (data URL), filled in by the caller (grileImport.ts) when
    *  this question's page contains an embedded image. */
   imageUrl?: string;
+  /** Explicația tipărită sub întrebare (șablonul „Răspuns corect → Explicație → Sursa”), dacă există. */
+  explanation?: string;
   /** Nearest preceding ALL-CAPS section header (e.g. "CARDIOLOGIE"), if the bank
    *  organizes itself by specialty — best-effort, used to split import into
    *  multiple quizzes instead of one flat dump. */
@@ -119,6 +121,13 @@ const YES_PREFIX_RE = /^\s*(?:DA|YES|CORECT|TRUE|ADEV[AĂ]RAT)\s*[-:–—]\s*(.
 // continuation lines, so it's handled as a skip-until-next-question state in
 // segmentBlocks rather than a regex here.
 const EXPLANATION_START_RE = /^\s*(?:din\s+curs|nota)\s*:/i;
+// Șablonul „set de antrenament”: după cheia „Răspuns corect: A, B” urmează un titlu „Explicație”
+// singur pe linie, apoi câte o linie pe variantă („A – adevărat. …”), apoi „Sursa: …”.
+// Fără ele, liniile „A – …” erau citite ca 5 variante în plus, iar „Explicație” se lipea de varianta E.
+const EXPLANATION_HEADING_RE = /^\s*explica[țtţ]i[ae]\s*:?\s*$/i;
+const SOURCE_LINE_RE = /^\s*sursa\s*:\s*(.+\S)\s*$/i;
+// Antetul care se repetă pe fiecare pagină: „Hematologie – set de antrenament (…) · pagina 2”.
+const RUNNING_TITLE_RE = /^.{0,140}[·|]\s*(?:pagina|page|pag\.?)\s*\d+\s*$/i;
 // "Raspuns corect: a" / "Răspuns: a, c, d" / "R: b" / "Answer: c" / "Cheie: a"
 // / "Soluție: b" / "Varianta corectă: a" / "Key: c" — AND, since real grile banks
 // (e.g. the residency question banks) print this with a space instead of a colon
@@ -190,6 +199,8 @@ interface Block {
   answerInferred?: boolean; // the key itself says the answer was deduced ("A* (dedus…)")
   unsupportedKey?: boolean; // matching-type key (A-2, B-4) — can't be mapped to options
   explicitAnswerText?: string; // answer named by text: "The correct answer is: X"
+  explanationLines?: string[]; // blocul „Explicație” al șablonului de antrenament
+  sourceNote?: string; // „Sursa: Kumar, p. 350”
   typeIsMultiple?: boolean; // from a "Complement multiplu" marker
   specialty?: string; // nearest preceding section header, if any
 }
@@ -244,6 +255,8 @@ function segmentBlocks(lines: SourceLine[]): Block[] {
   // across several unmarked lines — everything is skipped until the next
   // question starts (isQuestionStart resets this below).
   let inExplanation = false;
+  // Între „Explicație” și „Sursa:” (șablonul de antrenament): liniile sunt explicația, nu variante.
+  let explainingBlock = false;
   // Nearest preceding specialty/section header ("CARDIOLOGIE"), carried into
   // every block created until the next header line updates it.
   let currentSpecialty: string | undefined;
@@ -268,6 +281,7 @@ function segmentBlocks(lines: SourceLine[]): Block[] {
       blocks.push(current);
       optionsOpen = ENDS_STEM_RE.test(stem);
       inExplanation = false;
+      explainingBlock = false;
       continue;
     }
     if (APPENDIX_RE.test(line.text)) {
@@ -275,7 +289,7 @@ function segmentBlocks(lines: SourceLine[]): Block[] {
       continue;
     }
     if (!current) continue; // preamble/junk before the first question
-    if (PAGE_NUMBER_RE.test(line.text)) continue;
+    if (PAGE_NUMBER_RE.test(line.text) || RUNNING_TITLE_RE.test(line.text)) continue;
     if (MATCHING_KEY_RE.test(line.text)) {
       current.unsupportedKey = true;
       inExplanation = false;
@@ -290,6 +304,23 @@ function segmentBlocks(lines: SourceLine[]): Block[] {
       current.explicitAnswer = parseAnswerLetters(ans[1]);
       if (ans[2] || (ans[3] && /dedus|de verificat|incert|probabil/i.test(ans[3]))) current.answerInferred = true;
       inExplanation = false;
+      continue;
+    }
+
+    // Șablonul cu „Explicație” pe linie proprie: se păstrează textul, nu se amestecă cu variantele.
+    if (EXPLANATION_HEADING_RE.test(line.text) && (current.explicitAnswer || current.optionLines.length >= 2)) {
+      current.explanationLines = current.explanationLines ?? [];
+      explainingBlock = true;
+      continue;
+    }
+    const sourceLine = line.text.match(SOURCE_LINE_RE);
+    if (sourceLine && (explainingBlock || current.explicitAnswer)) {
+      current.sourceNote = sourceLine[1];
+      explainingBlock = false;
+      continue;
+    }
+    if (explainingBlock) {
+      current.explanationLines!.push(line.text);
       continue;
     }
 
@@ -396,6 +427,9 @@ function buildQuestion(block: Block): ParsedQuestion | null {
     .trim();
 
   const rawOptions = extractOptions(block);
+  const explanation = [...(block.explanationLines ?? []), ...(block.sourceNote ? [`Sursa: ${block.sourceNote}`] : [])]
+    .join('\n')
+    .trim();
   const warnings: string[] = [];
   const pages = [...new Set(
     [...block.questionLines, ...block.optionLines]
@@ -512,6 +546,7 @@ function buildQuestion(block: Block): ParsedQuestion | null {
     confidence,
     warnings,
     pages: pages.length ? pages : undefined,
+    ...(explanation ? { explanation } : {}),
     specialty: block.specialty,
   };
 }

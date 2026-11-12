@@ -17,3 +17,16 @@ describe('explicații fără „;”', () => {
       .toBe('Varianta A e corectă. Varianta B nu tratează cauza. C e nepotrivită aici.');
   });
 });
+
+describe('explicații pe mai multe rânduri (șablonul „set de antrenament”)', () => {
+  it('păstrează rândurile și aplică regula fără „;” pe fiecare rând', () => {
+    const text = 'A – adevărat. «O reducere»\nB – fals. în sarcină volumul crește puțin; anemia falsă vine din creșterea volumului plasmatic\n\nSursa: Kumar, p. 350';
+    expect(cleanQuestionExplanation(text)).toBe(
+      'A – adevărat. «O reducere»\nB – fals. în sarcină volumul crește puțin. Anemia falsă vine din creșterea volumului plasmatic\nSursa: Kumar, p. 350',
+    );
+  });
+
+  it('o explicație pe un singur rând rămâne neschimbată ca înainte', () => {
+    expect(cleanQuestionExplanation('Un singur   rând.')).toBe('Un singur rând.');
+  });
+});

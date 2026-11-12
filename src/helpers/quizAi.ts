@@ -37,7 +37,16 @@ function isMetaExplanation(text?: string | null) {
  * leaked into older AI-generated sets, so the UI shows nothing instead of junk.
  */
 export function cleanQuestionExplanation(text?: string | null): string {
-  return isMetaExplanation(text) ? '' : withoutSemicolons(normalizeInlineText(text));
+  if (isMetaExplanation(text)) return '';
+  // Explicațiile pe rânduri („A – adevărat…”, „B – fals…”, „Sursa: …”) își păstrează rândurile; restul rămâne un paragraf.
+  if (text && /\r?\n/.test(text)) {
+    return text
+      .split(/\r?\n/)
+      .map((line) => withoutSemicolons(normalizeInlineText(line)))
+      .filter(Boolean)
+      .join('\n');
+  }
+  return withoutSemicolons(normalizeInlineText(text));
 }
 
 /**

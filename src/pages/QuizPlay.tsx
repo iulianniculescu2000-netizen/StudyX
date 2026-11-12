@@ -604,7 +604,7 @@ function QuizPlaySession({ quiz, orderedQuestions, examMode, timedMode, examMinu
                         className="mb-4 p-4 rounded-2xl overflow-hidden"
                         style={{ background: `${theme.accent}0C`, border: `1px solid ${theme.accent}25` }}
                       >
-                        <p className="explanation-body text-sm" style={{ color: theme.text2 }}>
+                        <p className="explanation-body text-sm whitespace-pre-line" style={{ color: theme.text2 }}>
                           <span className="font-semibold" style={{ color: theme.accentText }}>Explicație: </span>
                           {cleanQuestionExplanation(question.explanation)}
                         </p>

@@ -358,7 +358,7 @@ export default function DailyReview() {
                   animate={{ opacity: 1, height: 'auto' }}
                   data-active="true"
                   className="fine-chip mb-4 p-5 rounded-[var(--r-lg)] overflow-hidden">
-                  <p className="text-sm" style={{ color: theme.text2, lineHeight: '1.7', fontSize: '15px' }}>
+                  <p className="text-sm whitespace-pre-line" style={{ color: theme.text2, lineHeight: '1.7', fontSize: '15px' }}>
                     <span className="font-black uppercase tracking-widest text-[10px] flex items-center gap-1.5 mb-2" style={{ color: theme.accentText }}><Lightbulb size={12} /> Explicație</span>
                     {cleanQuestionExplanation(current.question.explanation)}
                   </p>
