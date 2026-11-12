@@ -259,8 +259,9 @@ describe('Perspective AI', () => {
     analytics.unmount();
 
     render(<MemoryRouter><DailyReview /></MemoryRouter>);
-    const review = screen.getByText(/de recapitulat azi/).textContent ?? '';
-    expect(analyticsDue).toBe('2');
-    expect(review).toContain(`${analyticsDue} întrebări de recapitulat azi`);
+    const review = screen.getByText(/de revăzut azi/).textContent ?? '';
+    // Coada unificată: grilele scadente și cardurile scadente (a1, a2, c1), fără intrările orfane.
+    expect(analyticsDue).toBe('3');
+    expect(review).toContain(`${analyticsDue} elemente de revăzut azi`);
   });
 });

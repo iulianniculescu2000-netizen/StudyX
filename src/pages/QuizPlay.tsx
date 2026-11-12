@@ -27,6 +27,7 @@ import {
   getCorrectAnswerText,
 } from '../helpers/quizAi';
 import { evaluateSelection, getCorrectOptionIds, shuffleArray } from './quiz-play/helpers';
+import { EXAM_SIM_TAG, examSourceKey } from '../lib/examSimulation';
 import { AIExplanationPanel, HintPanel, MnemonicPanel } from './quiz-play/ai-panels';
 import { getFocusTokens, getQuizPlayLayout } from './quiz-play/layout';
 import { penalizedScore, scoreAnswers } from './quiz-play/scoring';
@@ -221,7 +222,9 @@ function QuizPlaySession({ quiz, orderedQuestions, examMode, timedMode, examMinu
       if (answer === undefined) return;
       const result = evaluateSelection(answer, getCorrectOptionIds(q.options));
       // Partial counts as wrong for spaced-repetition tracking
-      recordAnswer(quiz.id, q.id, result === 'correct', confidenceRef.current[q.id]);
+      // Simularea lucrează pe copii: greșelile se înregistrează pe întrebarea sursă, ca să intre în coada de repetiție și în caietul de erori.
+      const source = quiz.tags?.includes(EXAM_SIM_TAG) ? examSourceKey(q) : null;
+      recordAnswer(source?.quizId ?? quiz.id, source?.questionId ?? q.id, result === 'correct', confidenceRef.current[q.id]);
     });
     const duration = Math.floor((Date.now() - startedAt) / 1000);
     recordStudySession(duration);
@@ -238,7 +241,7 @@ function QuizPlaySession({ quiz, orderedQuestions, examMode, timedMode, examMinu
         const userAnswers = finalAnswers[q.id] ?? [];
         const correctIds = getCorrectOptionIds(q.options);
         return {
-          questionId: q.id,
+          questionId: (quiz.tags?.includes(EXAM_SIM_TAG) ? examSourceKey(q)?.questionId : undefined) ?? q.id,
           correct: evaluateSelection(userAnswers, correctIds) === 'correct',
           confidence: confidenceRef.current[q.id],
           userAnswer: getAnswerTextForOptionIds(q.options, userAnswers),

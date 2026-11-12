@@ -83,6 +83,9 @@ export interface QuizSession {
  */
 export type Confidence = 'blackout' | 'guess' | 'confident';
 
+/** Unde s-a rupt raționamentul la o grilă greșită (Tutor socratic din Caietul de erori). */
+export type ErrorTypeId = 'definitie' | 'mecanism' | 'exceptie' | 'vecin' | 'inversare';
+
 // Spaced repetition per question
 export interface QuestionStat {
   questionId: string;
@@ -95,6 +98,9 @@ export interface QuestionStat {
   eFactor?: number; // SM-2 ease factor (default 2.5)
   consecutiveCorrect?: number; // SM-2: resetat la 0 la greșeală, folosit pentru faza de repetare
   lastConfidence?: Confidence; // ultima auto-evaluare (Task 2 → quality SM-2)
+  /** Tipul erorii, ales în Tutorul socratic; lipsește la profilurile mai vechi (se citește ca „necategorisită”). */
+  errorType?: ErrorTypeId;
+  errorTypeAt?: number;
   retired?: boolean; // istoric copiat pe pachetele de capitol: rămâne la sursă pentru „Anulează”, dar nu se mai numără
 }
 

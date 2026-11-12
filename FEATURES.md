@@ -43,6 +43,7 @@ Legendă status: ✅ Complet · ⚠️ Parțial / cosmetic · 🛠️ De aliniat
 | Sesiune de studiu flashcard | ✅ | `src/pages/FlashcardSession.tsx` |
 | Imagini în flashcarduri (smart extraction, IndexedDB) | ✅ (v1.0.4/1.0.5) | `src/lib/flashcardImageStore.ts` |
 | Generare flashcarduri din notițe (AI) | ✅ | `src/lib/ai/agent.ts` |
+| Schemă și 10–20 de carduri din pagini/capitol de carte (Rezidențiat › capitol › „Schemă și carduri din carte”): fiecare propunere are pagina și un citat verificat în textul paginii (pagină în interval, citat găsit, răspuns legat de pagină); cele fără citare se aruncă, tăiere la numărul cerut; se acceptă/resping individual și se salvează doar ce e acceptat; fără cheie AI: mesaj clar, nimic apelat; în ecran apare doar citatul (max. 200 caractere), nu textul cărții | ✅ (verificat în teste; neverificat cu model real) | `src/lib/ai/bookStudyProposals.ts`, `src/ai/bookStudyPrompts.ts`, `src/components/residency/BookProposalsDialog.tsx` |
 
 ## 4. 📝 Notițe
 
@@ -54,7 +55,7 @@ Legendă status: ✅ Complet · ⚠️ Parțial / cosmetic · 🛠️ De aliniat
 
 | Funcție | Status | Locație |
 |---|---|---|
-| Daily Review (întrebări scadente) | ✅ | `src/pages/DailyReview.tsx` |
+| Azi de revăzut: coadă unică (carduri scadente, grile scadente, greșeli din caiet), prioritate după întârziere și acuratețe, plafon 60/zi, „Începe, 15 min” | ✅ | `src/pages/DailyReview.tsx`, `src/lib/dailyQueue.ts`; pe Panou în `DashboardTodayCard` |
 | Review Mode (întrebări slabe) | ✅ | `src/pages/ReviewMode.tsx` |
 | Algoritm scadențe (`getDueQuestions`, `getWeakQuestions`) | ✅ | `src/store/statsStore.ts` |
 | Studiu adaptiv | ✅ | `src/lib/adaptiveStudy.ts` |
@@ -157,6 +158,9 @@ Legendă status: ✅ Complet · ⚠️ Parțial / cosmetic · 🛠️ De aliniat
 | Funcție | Detalii | Locație |
 |---|---|---|
 | Caiet de erori (`/erori`) | Greșelile rămân într-un caiet de recapitulat | `src/pages/ErrorNotebook.tsx`, `src/lib/errorNotebook.ts` |
+| Simulare de examen (`/simulare`) | 1,2 min/grilă, număr configurabil (1–200), amestec ~25% CS / ~75% CM când banca permite, fără explicații până la final, închidere automată la expirare; greșelile se înregistrează pe întrebarea sursă (coada de repetiție și caietul de erori) | `src/pages/ExamSimulation.tsx`, `src/lib/examSimulation.ts` |
+| Raportul simulării | Rezultat pe discipline și pe capitole, CS față de CM, comparație cu simulările anterioare, estimare orientativă din ritm (interval ~80%, nu predicție) | `src/pages/results/ExamReport.tsx`, `src/lib/examReport.ts` |
+| Tutor socratic pe grilele greșite | Buton pe fiecare greșeală: AI-ul nu dă răspunsul, ci pune 2–3 întrebări de ghidare (folosește tag-urile `distractori:...` și motivele distractorilor din explicație ca indiciu) și propune tipul erorii: definiție, mecanism, excepție, vecin adevărat, inversare. Tipul se salvează pe statistica întrebării (`errorType`, câmp opțional, profilurile vechi rămân neschimbate), apare în caiet și agregat în caiet și în Statistici. Fără cheie AI: întrebări-șablon și alegere manuală | `src/components/errors/SocraticTutorDialog.tsx`, `src/lib/socraticTutor.ts`, `src/lib/errorTypes.ts`, `buildSocraticTutorSystem` în `src/ai/promptKit.ts` |
 | Simulare de examen (`/simulare`) | 1,2 min/grilă, închidere automată la expirare, rezultat pe discipline | `src/pages/ExamSimulation.tsx`, `src/lib/examSimulation.ts` |
 | Cititor PDF cu pagini randate | Pagina cărții randată din PDF; IPC `organizare:read-pdf` (`electron/organizare.cjs`, `preload.cjs`); deschidere prin evenimentul `studyx:open-book` ascultat de `BookViewerHost` | `src/components/pdf/` |
 | Citări AI cu pagini | Citările `[n]` poartă pagina tipărită (`printedPage`) | `src/components/ai-chat/citations.ts` |

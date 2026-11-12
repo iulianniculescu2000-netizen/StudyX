@@ -23,6 +23,7 @@ import PageSkeleton from '../components/ui/PageSkeleton';
 import EmptyState from '../components/ui/EmptyState';
 import TourHelpButton from '../tutorial/TourHelpButton';
 import ResultHero from './results/ResultHero';
+import ExamReport from './results/ExamReport';
 import { countUnanswered, disciplineBreakdownWithUnanswered, isUnanswered } from './results/unanswered';
 import { buildClarificationFallback, cleanQuestionExplanation, getAnswerTextForOptionIds, getCorrectAnswerText } from '../helpers/quizAi';
 import { explainAnswerInline } from '../lib/groq';
@@ -290,7 +291,8 @@ ${missedSummary}${wrongEntries.length > 8 ? `
           pct={pct} grade={grade} duration={duration} formatTime={formatTime}
           wrongCount={wrongEntries.length} unansweredCount={unansweredCount} disciplineResults={disciplineResults} />
         </div>
-        {masteryDelta && <TopicProgressCard delta={masteryDelta} />}
+        {isExamSimulation && <ExamReport questions={questions} session={session} sessions={sessions} quizzes={quizzes} duration={duration} />}
+        {masteryDelta &&<TopicProgressCard delta={masteryDelta} />}
         {singleQuestionResult && (
           <p className="-mt-4 mb-6 rounded-[var(--r-md)] px-4 py-3 text-center text-xs leading-relaxed"
             style={{ background: theme.surface2, color: theme.text2, border: `1px solid ${theme.border}` }}>

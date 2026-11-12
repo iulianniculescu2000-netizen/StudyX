@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Confidence, QuestionStat, StudyStreak } from '../types';
+import type { Confidence, ErrorTypeId, QuestionStat, StudyStreak } from '../types';
 import { localDateStr } from '../lib/studyPlan';
 import { emptyAchievements, normalizeAchievements, type AchievementsState } from '../lib/gamificationAchievements';
 
@@ -18,6 +18,8 @@ interface StatsStore {
   achievements: AchievementsState;
   setAchievements: (next: AchievementsState) => void;
   recordAnswer: (quizId: string, questionId: string, correct: boolean, confidence?: Confidence, opts?: { flashcard?: boolean }) => void;
+  /** Salvează (sau șterge, cu `null`) tipul erorii pe o întrebare deja răspunsă; nu atinge programarea repetărilor. */
+  setErrorType: (key: string, type: ErrorTypeId | null) => void;
   recordStudySession: (durationSeconds: number) => void;
   getDueQuestions: () => QuestionStat[];
   getWeakQuestions: (limit?: number, validKeys?: ReadonlySet<string>) => QuestionStat[];
@@ -187,6 +189,17 @@ export const useStatsStore = create<StatsStore>()(
           ...(confidence ? { lastConfidence: confidence } : {}),
         };
 
+        return { questionStats: { ...s.questionStats, [key]: updated } };
+      });
+    },
+
+    setErrorType: (key, type) => {
+      set((s) => {
+        const existing = s.questionStats[key];
+        if (!existing) return {};
+        const { errorType: _old, errorTypeAt: _oldAt, ...rest } = existing;
+        void _old; void _oldAt;
+        const updated: QuestionStat = type ? { ...rest, errorType: type, errorTypeAt: Date.now() } : rest;
         return { questionStats: { ...s.questionStats, [key]: updated } };
       });
     },

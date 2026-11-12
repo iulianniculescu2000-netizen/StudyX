@@ -2,12 +2,14 @@ import { weakCategoriesFrom, weakTopicsFrom } from '../lib/weakCategories';
 import { computeTopicMastery, folderNamesOf } from '../lib/topicMastery';
 import { useFolderStore } from '../store/folderStore';
 import { plural } from '../lib/plural';
+import { buildErrorEntries } from '../lib/errorNotebook';
+import { summarizeErrorTypes } from '../lib/errorTypes';
 import { formatStudyTime } from '../lib/formatStudyTime';
 import { motion } from 'framer-motion';
 import ProgressBar from '../components/fx/ProgressBar';
 import { lazy, Suspense, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Trophy, Flame, Target, Clock, BookOpen, TrendingUp, Brain, Sparkles, Loader2, RefreshCw, Award, ArrowRight, BarChart3 } from 'lucide-react';
+import { Trophy, Flame, Target, Clock, BookOpen, TrendingUp, Brain, Sparkles, Loader2, RefreshCw, Award, ArrowRight, BarChart3, MessageCircleQuestion } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
 import { useQuizStore } from '../store/quizStore';
 import { useStatsStore, accuracyByQuiz, countWeakStats, existingStatKeys } from '../store/statsStore';
@@ -103,6 +105,10 @@ export default function Stats() {
     [quizzes, sessions, quizAccuracy, questionStats, folders],
   );
   const studyTimeLabel = formatStudyTime(totalStudyTime);
+  const errorTypes = useMemo(
+    () => summarizeErrorTypes(buildErrorEntries(quizzes, questionStats ?? {}, { includeMastered: true })),
+    [quizzes, questionStats],
+  );
 
   // "Ce nu știu?" AI report
   const hasKey = useAIStore((s) => s.hasKey);
@@ -533,6 +539,34 @@ export default function Stats() {
                 <ArrowRight size={16} style={{ color: theme.accentText }} />
               </Link>
             </StatsCard>
+
+            {errorTypes.typed > 0 && (
+              <StatsCard index={8}>
+                <h2 className="font-semibold mb-1 flex items-center gap-2" style={{ color: theme.text }}>
+                  <MessageCircleQuestion size={16} style={{ color: theme.accentText }} />
+                  Unde se rupe raționamentul
+                </h2>
+                <p className="mb-4 text-xs" style={{ color: theme.text3 }}>
+                  Tipurile de eroare alese în Tutorul socratic din Caietul de erori ({plural(errorTypes.typed, 'întrebare', 'întrebări')}).
+                </p>
+                <ul className="space-y-2.5">
+                  {errorTypes.rows.map((row) => (
+                    <li key={row.type}>
+                      <div className="mb-1 flex items-baseline justify-between gap-3 text-sm">
+                        <span className="font-medium" style={{ color: theme.text }}>{row.label}</span>
+                        <span className="text-xs tabular-nums" style={{ color: theme.text3 }}>{row.questions} · {row.share}%</span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full" style={{ background: theme.surface2 }} aria-hidden="true">
+                        <div className="h-full rounded-full" style={{ width: `${row.share}%`, background: theme.accent }} />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                <Link to="/erori" className="press-feedback focus-ring mt-4 inline-flex items-center gap-1.5 text-[13px] font-semibold" style={{ color: theme.accentText }}>
+                  Deschide Caietul de erori <ArrowRight size={14} />
+                </Link>
+              </StatsCard>
+            )}
 
             {strongTopics.length > 0 && (
               <StatsCard index={8}>
