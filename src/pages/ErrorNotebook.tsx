@@ -1,7 +1,7 @@
 import { plural } from '../lib/plural';
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, Search, Sparkles, Repeat2, BookMarked } from 'lucide-react';
+import { ChevronDown, Search, Sparkles, Repeat2, BookMarked, MessageCircleQuestion } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useTheme } from '../theme/ThemeContext';
 import PageHeader from '../components/ui/PageHeader';
@@ -25,6 +25,8 @@ import CrossCheckCard from '../components/ai-chat/CrossCheckCard';
 import FxPage from '../components/fx/FxPage';
 import { askAiAboutError } from '../lib/errorNotebookActions';
 import { withoutSemicolons } from '../helpers/quizAi';
+import SocraticTutorDialog from '../components/errors/SocraticTutorDialog';
+import { errorTypeInfo, normalizeErrorType, summarizeErrorTypes, type ErrorTypeSummary } from '../lib/errorTypes';
 
 const SORTS: ReadonlyArray<{ id: ErrorSort; label: string }> = [
   { id: 'wrong', label: 'Cele mai greșite' },
@@ -46,8 +48,29 @@ type FlatErrorItem =
       isFirstOverall: boolean;
     };
 
-function EntryRow({ entry, open, onToggle, anchor }: { entry: ErrorEntry; open: boolean; onToggle: () => void; anchor?: boolean }) {
+function ErrorTypeSummaryStrip({ summary }: { summary: ErrorTypeSummary }) {
   const theme = useTheme();
+  if (summary.rows.length === 0) return null;
+  return (
+    <section aria-label="Tipuri de erori" className="glass-panel mb-5 rounded-[var(--r-md)] px-4 py-3">
+      <p className="mb-2 text-[12px] font-semibold" style={{ color: theme.text3 }}>
+        Unde se rupe raționamentul · {summary.typed} {summary.typed === 1 ? 'întrebare analizată' : 'întrebări analizate'}
+        {summary.untyped > 0 ? `, ${summary.untyped} încă fără tip` : ''}
+      </p>
+      <ul className="flex flex-wrap gap-2">
+        {summary.rows.map((row) => (
+          <li key={row.type} className="fine-chip rounded-full px-3 py-1 text-[12px] font-semibold" style={{ color: theme.accentText }}>
+            {row.label} · {row.questions} ({row.share}%)
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function EntryRow({ entry, open, onToggle, anchor, onTutor }: { entry: ErrorEntry; open: boolean; onToggle: () => void; anchor?: boolean; onTutor: () => void }) {
+  const theme = useTheme();
+  const errorType = normalizeErrorType(entry.stat.errorType);
   const panelId = `err-${entry.key.replace(/[^a-z0-9]/gi, '')}`;
   return (
     <div {...(anchor ? { 'data-tutorial': 'errors-entry' } : {})} className="glass-panel rounded-[var(--r-md)]">
@@ -62,6 +85,7 @@ function EntryRow({ entry, open, onToggle, anchor }: { entry: ErrorEntry; open: 
           <span className="block text-[14px] font-semibold leading-snug" style={{ color: theme.text }}>{entry.question.text}</span>
           <span className="mt-1 block text-[12px]" style={{ color: theme.text3 }}>
             {entry.quiz.title} · greșită {entry.wrong === 1 ? 'o dată' : `de ${plural(entry.wrong, 'dată', 'ori')}`} din {entry.total} · {entry.accuracy}% corect
+            {errorType && <> · <span className="font-semibold" style={{ color: theme.accentText }}>Eroare de {errorTypeInfo(errorType).label.toLowerCase()}</span></>}
           </span>
         </span>
         <ChevronDown size={16} aria-hidden="true" className="mt-1 shrink-0 transition-transform" style={{ color: theme.text3, transform: open ? 'rotate(180deg)' : undefined }} />
@@ -92,6 +116,9 @@ function EntryRow({ entry, open, onToggle, anchor }: { entry: ErrorEntry; open: 
             <button type="button" onClick={() => askAiAboutError(entry, 'similar')} className="fine-chip press-feedback focus-ring flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold" style={{ color: theme.accentText }}>
               <Repeat2 size={13} aria-hidden="true" />3 grile similare
             </button>
+            <button type="button" onClick={onTutor} className="fine-chip press-feedback focus-ring flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold" style={{ color: theme.accentText }}>
+              <MessageCircleQuestion size={13} aria-hidden="true" />{errorType ? 'Reia tutorul socratic' : 'Tutor socratic'}
+            </button>
           </div>
           <CrossCheckCard
             question={`${entry.question.text}\n${entry.question.options.map((o) => `- ${o.text}`).join('\n')}`}
@@ -112,12 +139,15 @@ export default function ErrorNotebook() {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<ErrorSort>('wrong');
   const [openKey, setOpenKey] = useState<string | null>(null);
+  const [tutorKey, setTutorKey] = useState<string | null>(null);
 
   const parentRef = useRef<HTMLDivElement>(null);
 
   const all = useMemo(() => buildErrorEntries(quizzes, questionStats), [quizzes, questionStats]);
   const visible = useMemo(() => filterErrorEntries(all, search), [all, search]);
   const groups = useMemo(() => groupErrors(visible, sort), [visible, sort]);
+  const typeSummary = useMemo(() => summarizeErrorTypes(all), [all]);
+  const tutorEntry = useMemo(() => (tutorKey ? all.find((entry) => entry.key === tutorKey) ?? null : null), [all, tutorKey]);
 
   // Flatten grouped errors for dynamic height virtualization
   const flatItems = useMemo<FlatErrorItem[]>(() => {
@@ -298,6 +328,8 @@ export default function ErrorNotebook() {
               <SegmentedTabs tabs={SORTS} value={sort} onChange={setSort} layoutId="error-sort" ariaLabel="Sortare greșeli" />
             </div>
 
+            <ErrorTypeSummaryStrip summary={typeSummary} />
+
             {groups.length === 0 ? (
               <p className="py-10 text-center text-[13px]" style={{ color: theme.text3 }}>Nicio greșeală nu se potrivește căutării.</p>
             ) : (
@@ -336,6 +368,7 @@ export default function ErrorNotebook() {
                           entry={item.entry}
                           open={openKey === item.entry.key}
                           onToggle={() => setOpenKey(openKey === item.entry.key ? null : item.entry.key)}
+                          onTutor={() => setTutorKey(item.entry.key)}
                         />
                       )}
                     </div>
@@ -346,6 +379,7 @@ export default function ErrorNotebook() {
           </>
         )}
       </div>
+      {tutorEntry && <SocraticTutorDialog key={tutorEntry.key} entry={tutorEntry} onClose={() => setTutorKey(null)} />}
     </FxPage>
   );
 }

@@ -46,6 +46,26 @@ describe('ErrorNotebook', () => {
     expect(screen.queryByText('Anticoagulare.')).toBeNull();
   });
 
+  it('Tutor socratic fără cheie AI: întrebări-șablon, alegere manuală, tipul se salvează și apare în caiet', () => {
+    useQuizStore.setState({ quizzes: [quiz] });
+    useStatsStore.setState({ questionStats: { 'z:q1': { quizId: 'z', questionId: 'q1', timesCorrect: 0, timesWrong: 2, lastSeen: 1, nextReview: 0, interval: 1 } } });
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: /Tratament în FiA/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Tutor socratic/ }));
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(screen.getByText(/Întrebarea 1 din 3/)).toBeTruthy();
+    // răspunsul corect nu apare în dialog (DOAC e doar în lista din caiet, în afara dialogului)
+    expect(screen.getByRole('dialog').textContent).not.toContain('DOAC');
+    fireEvent.click(screen.getByRole('button', { name: 'Mai departe' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Mai departe' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Alege tipul' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Mecanism' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Salvează tipul erorii' }));
+    expect(useStatsStore.getState().questionStats['z:q1'].errorType).toBe('mecanism');
+    expect(screen.getByText(/Eroare de mecanism/)).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Tipuri de erori' }).textContent).toContain('Mecanism · 1 (100%)');
+  });
+
   it('filtrează greșelile prin căutare și resetează lista', () => {
     useQuizStore.setState({ quizzes: [quiz] });
     useStatsStore.setState({ questionStats: { 'z:q1': { quizId: 'z', questionId: 'q1', timesCorrect: 0, timesWrong: 2, lastSeen: 1, nextReview: 0, interval: 1 } } });

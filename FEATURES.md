@@ -157,6 +157,7 @@ Legendă status: ✅ Complet · ⚠️ Parțial / cosmetic · 🛠️ De aliniat
 | Funcție | Detalii | Locație |
 |---|---|---|
 | Caiet de erori (`/erori`) | Greșelile rămân într-un caiet de recapitulat | `src/pages/ErrorNotebook.tsx`, `src/lib/errorNotebook.ts` |
+| Tutor socratic pe grilele greșite | Buton pe fiecare greșeală: AI-ul nu dă răspunsul, ci pune 2–3 întrebări de ghidare (folosește tag-urile `distractori:...` și motivele distractorilor din explicație ca indiciu) și propune tipul erorii: definiție, mecanism, excepție, vecin adevărat, inversare. Tipul se salvează pe statistica întrebării (`errorType`, câmp opțional, profilurile vechi rămân neschimbate), apare în caiet și agregat în caiet și în Statistici. Fără cheie AI: întrebări-șablon și alegere manuală | `src/components/errors/SocraticTutorDialog.tsx`, `src/lib/socraticTutor.ts`, `src/lib/errorTypes.ts`, `buildSocraticTutorSystem` în `src/ai/promptKit.ts` |
 | Simulare de examen (`/simulare`) | 1,2 min/grilă, închidere automată la expirare, rezultat pe discipline | `src/pages/ExamSimulation.tsx`, `src/lib/examSimulation.ts` |
 | Cititor PDF cu pagini randate | Pagina cărții randată din PDF; IPC `organizare:read-pdf` (`electron/organizare.cjs`, `preload.cjs`); deschidere prin evenimentul `studyx:open-book` ascultat de `BookViewerHost` | `src/components/pdf/` |
 | Citări AI cu pagini | Citările `[n]` poartă pagina tipărită (`printedPage`) | `src/components/ai-chat/citations.ts` |
