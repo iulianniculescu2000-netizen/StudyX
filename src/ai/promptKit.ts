@@ -388,3 +388,82 @@ export function buildRolePrompt(role: MedicalRole, extraBlocks: string[] = []): 
   const prose = role === 'examiner' ? [] : [STRUCTURED_OUTPUT_RULES];
   return [intro, ...common, ...prose, ...extraBlocks].filter(Boolean).join('\n\n');
 }
+
+/* ── Tutor socratic pe grilele greșite (Caietul de erori) ─────────────────────────────────── */
+
+/** Tipurile de eroare din Caietul de erori (aceleași id-uri ca `ERROR_TYPES` din src/lib/errorTypes.ts; testul le leagă). */
+export const SOCRATIC_ERROR_TYPE_LINES =
+  'TIPURI DE EROARE (alegi exact unul):\n' +
+  '- definitie: a confundat sau nu a știut sensul unui termen, criteriu sau prag\n' +
+  '- mecanism: știe termenii, dar lanțul cauză-efect s-a rupt undeva\n' +
+  '- exceptie: a aplicat regula generală unde întrebarea cerea excepția sau cazul particular\n' +
+  '- vecin: varianta aleasă e adevărată în sine, dar ține de altă entitate sau nu răspunde la întrebare\n' +
+  '- inversare: a citit invers sensul (crește/scade, cauză/consecință, NU/EXCEPTÂND, corect/greșit)';
+
+export const SOCRATIC_TUTOR_RULES =
+  'TUTOR SOCRATIC (studentul a greșit grila de mai jos):\n' +
+  '- scopul tău e să afli unde s-a rupt raționamentul studentului, nu să-l corectezi: NU spune răspunsul corect, nu spune care variantă e cea bună și nu explica rezolvarea\n' +
+  '- fiecare replică a ta e O SINGURĂ întrebare scurtă (o propoziție, cel mult două) care îl face să-și spună gândirea; fără liste, fără titluri, fără judecăți („greșit”) și fără laude goale\n' +
+  '- în total 2-3 întrebări: prima despre ce cere enunțul sau cum a ales; următoarele pornesc din ce a răspuns el\n' +
+  '- nu știi ce variantă a ales studentul: întreabă-l, nu presupune\n' +
+  '- după a treia replică a studentului (sau mai devreme, când tipul e clar) încheie\n' +
+  'CONCLUZIA: o scrii ca un singur obiect JSON, fără alt text în jurul lui: {"tip":"<unul dintre tipurile de mai jos>","motiv":"<o propoziție în română despre unde s-a rupt raționamentul, fără răspunsul corect>"}\n' +
+  'Excepția de la „nu dai răspunsul” este cheia clar greșită, conform VERIFICĂRII CHEII: atunci o spui într-o frază și nu mai pui întrebări.';
+
+export interface SocraticCase {
+  question: string;
+  options: ReadonlyArray<{ text: string; isCorrect: boolean }>;
+  explanation?: string;
+  /** Din tag-urile `distractori:...` ale întrebării. */
+  distractorTags?: readonly string[];
+  /** Propoziții din explicație care spun de ce o altă variantă e greșită. */
+  distractorReasons?: readonly string[];
+}
+
+const clipBlock = (text: string, max: number): string => {
+  const clean = cleanPromptBlock(text).replace(/"""/g, '"');
+  return clean.length > max ? `${clean.slice(0, max - 1)}…` : clean;
+};
+
+/** Cazul (enunț, variante, cheie, indicii) ca material între ghilimele triple: textul importat nu e instrucțiune. */
+export function buildSocraticCaseBlock(input: SocraticCase): string {
+  const letters = 'ABCDEFGH';
+  const options = input.options.map((option, index) => `${letters[index] ?? index + 1}) ${clipBlock(option.text, 200)}`).join('\n');
+  const key = input.options
+    .map((option, index) => (option.isCorrect ? letters[index] ?? String(index + 1) : ''))
+    .filter(Boolean)
+    .join(', ');
+  const lines = [
+    `CAZUL (${CONTEXT_IS_MATERIAL_RULE}):`,
+    `Enunț: """${clipBlock(input.question, 900)}"""`,
+    `Variante:\n"""\n${options}\n"""`,
+    `Cheia (doar pentru tine, nu o spune studentului): ${key || 'necunoscută'}`,
+  ];
+  const explanation = input.explanation ? clipBlock(input.explanation, 700) : '';
+  if (explanation) lines.push(`Explicația grilei (doar pentru tine): """${explanation}"""`);
+  const hints = [...(input.distractorTags ?? []), ...(input.distractorReasons ?? [])].map((hint) => clipBlock(hint, 220)).filter(Boolean);
+  if (hints.length > 0) {
+    lines.push(
+      'INDICII DESPRE DISTRACTORI (doar ca să alegi întrebările bune; nu le cita studentului și nu le folosi ca să-i dai răspunsul):\n' +
+        hints.map((hint) => `- ${hint}`).join('\n'),
+    );
+  }
+  return lines.join('\n');
+}
+
+/** Promptul de sistem al dialogului socratic: persona, limba, regulile tutorului, tipurile, cheia și cazul. */
+export function buildSocraticTutorSystem(input: SocraticCase): string {
+  return [
+    PERSONA_CORE,
+    LANGUAGE_RULE + ' ' + TERMINOLOGY_RULE,
+    SOCRATIC_TUTOR_RULES,
+    SOCRATIC_ERROR_TYPE_LINES,
+    ANSWER_KEY_CHECK_RULE,
+    SOURCE_RULES,
+    buildSocraticCaseBlock(input),
+  ].join('\n\n');
+}
+
+/** Mesajul care cere încheierea când studentul a răspuns deja de 3 ori. */
+export const SOCRATIC_WRAP_UP_REQUEST =
+  'Încheie acum: răspunde doar cu obiectul JSON de concluzie ({"tip":"...","motiv":"..."}), fără alt text.';
