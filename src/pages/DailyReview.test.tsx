@@ -38,7 +38,7 @@ describe('DailyReview', () => {
     useStatsStore.setState({ questionStats: Object.fromEntries(questions.map((q) => [`z:${q.id}`, dueStat(q.id)])) });
 
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: /Începe sesiunea/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Începe, [0-9]+ min/ }));
 
     const seen: string[] = [];
     for (let i = 1; i <= 3; i += 1) {
@@ -65,7 +65,7 @@ describe('DailyReview', () => {
     useStatsStore.setState({ questionStats: { 'z:q1': dueStat('q1') } });
 
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: /Începe sesiunea/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Începe, [0-9]+ min/ }));
     const text = document.body.textContent ?? '';
     expect(text).not.toMatch(/3-1-6976F9|3-2-AB12CD|3-3-62444C/);
     const badges = screen.getAllByRole('button', { name: /prima|a doua|a treia/ }).map((button) => button.querySelector('span')?.textContent);
