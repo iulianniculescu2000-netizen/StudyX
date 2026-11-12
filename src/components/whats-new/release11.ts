@@ -2,14 +2,15 @@ import type { TourId } from '../../tutorial/tourMeta';
 import { BooksScene, ChatScene, FocusScene, GapsScene, HeroScene, PlanScene, ProvidersScene, SourceScene } from './scenes';
 import type { WhatsNewScene } from './stage3d';
 
-/** Edițiile prezentării: 1.0 prezintă aplicația întreagă, 1.1 doar ce s-a schimbat de la 1.0.0. */
-export type WhatsNewEdition = '1.0' | '1.1';
+/** Edițiile prezentării: 1.0 prezintă aplicația întreagă, 1.1 și 1.2 doar ce s-a schimbat față de versiunea dinainte. */
+export type WhatsNewEdition = '1.0' | '1.1' | '1.2';
 
 /**
  * Ediția care se arată pentru numele lansării. Slide-urile 1.1 rămân ascunse până când `RELEASE_DISPLAY_NAME` devine „1.1”
  * (împreună cu `CURRENT_TOUR_VERSION`, la decizia proprietarului); până atunci se văd doar din previzualizarea de dezvoltare.
  */
 export function whatsNewEditionFor(releaseDisplayName: string): WhatsNewEdition {
+  if (releaseDisplayName === '1.2') return '1.2';
   return releaseDisplayName === '1.1' ? '1.1' : '1.0';
 }
 

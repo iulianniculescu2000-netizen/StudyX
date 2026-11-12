@@ -22,7 +22,7 @@ const mount = () => render(
 );
 
 const openSlides = async () => {
-  await act(async () => { window.dispatchEvent(new Event(WHATS_NEW_OPEN_EVENT)); });
+  await act(async () => { window.dispatchEvent(new CustomEvent(WHATS_NEW_OPEN_EVENT, { detail: { edition: '1.1' } })); });
   await act(async () => { await vi.advanceTimersByTimeAsync(900); });
 };
 

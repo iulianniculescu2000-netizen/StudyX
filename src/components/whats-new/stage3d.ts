@@ -3,6 +3,11 @@ import type { useTheme } from '../../theme/ThemeContext';
 
 type Theme = ReturnType<typeof useTheme>;
 
+/** Strat absolut care păstrează adâncimea copiilor (baza tuturor scenelor). */
+export const layer: CSSProperties = { position: 'absolute', transformStyle: 'preserve-3d' };
+/** Clasele unei pastile din scenă. */
+export const chipClass = 'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold';
+
 /** O scenă 3D din „Ce e nou”: se desenează din ceasul filmului (`useSceneTime`), fără cronometre proprii. */
 export interface WhatsNewScene {
   /** Numele scenei, pentru cititoarele de ecran. */

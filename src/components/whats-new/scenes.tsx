@@ -3,22 +3,20 @@ import { Activity, AlertCircle, BarChart3, BookMarked, BookOpen, CalendarDays, C
 import { useTheme } from '../../theme/ThemeContext';
 import { onFillText } from '../../theme/contrastText';
 import { fraction as fr, useSceneTime } from '../film/useTimeline';
-import { easeInOut, easeOut, sceneCard, sceneChip } from './stage3d';
+import { chipClass, easeInOut, easeOut, layer, sceneCard, sceneChip } from './stage3d';
 
 /*
  * Scenele 3D din „Ce e nou” 1.1. Fiecare cadru e o proiecție a ceasului filmului (`useSceneTime`): poziții, rotații și
  * opacități calculate din timp, fără cronometre și fără animații independente. Scena e inertă; textul e în `transcript`.
  */
 
-const layer: CSSProperties = { position: 'absolute', transformStyle: 'preserve-3d' };
-const chipClass = 'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold';
 const shade = (color: string, amount: number) => `color-mix(in srgb, ${color} ${100 - amount}%, #000)`;
 const tint = (color: string, amount: number) => `color-mix(in srgb, ${color} ${100 - amount}%, #fff)`;
 
 const ORBIT = [BookOpen, BookMarked, Target, MessageCircle, CalendarDays, BarChart3, Activity];
 
-/** 1.1 pe trei plăci de sticlă în adâncime, cu noutățile pe o orbită. */
-export function HeroScene() {
+/** Numărul versiunii pe trei plăci de sticlă în adâncime, cu noutățile pe o orbită. */
+export function HeroPlates({ version, orbit }: { version: string; orbit: typeof ORBIT }) {
   const theme = useTheme();
   const { elapsedMs: t } = useSceneTime();
   const sweep = easeInOut(fr(t, 1500, 1100));
@@ -61,7 +59,7 @@ export function HeroScene() {
                     className="absolute inset-0 grid place-items-center text-[62px] font-extrabold"
                     style={{ letterSpacing: '-0.04em', background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent2})`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}
                   >
-                    1.1
+                    {version}
                   </div>
                   <div
                     className="absolute -bottom-6 -top-6 w-[46px]"
@@ -73,8 +71,8 @@ export function HeroScene() {
           );
         })}
       </div>
-      {ORBIT.map((Icon, i) => {
-        const a = (i / ORBIT.length) * Math.PI * 2 + t * 0.00028;
+      {orbit.map((Icon, i) => {
+        const a = (i / orbit.length) * Math.PI * 2 + t * 0.00028;
         const radius = 168 * (0.6 + 0.4 * appear);
         const z = Math.sin(a) * radius * 0.9;
         return (
@@ -94,6 +92,11 @@ export function HeroScene() {
       })}
     </>
   );
+}
+
+/** 1.1 pe trei plăci de sticlă în adâncime, cu noutățile pe o orbită. */
+export function HeroScene() {
+  return <HeroPlates version="1.1" orbit={ORBIT} />;
 }
 
 const PLAN_PASSES = [

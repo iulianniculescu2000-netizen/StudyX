@@ -11,6 +11,7 @@ import { useSceneTime } from '../film/useTimeline';
 import WhatsNewTour, { WHATS_NEW_OPEN_EVENT } from '../WhatsNewTour';
 import WhatsNewStage from './WhatsNewStage';
 import { RELEASE_11_SLIDES, whatsNewEditionFor } from './release11';
+import { RELEASE_12_SLIDES } from './release12';
 import { pointerTilt, sway } from '../depth/useTilt';
 import { expectNoA11yViolations } from '../../test/a11y';
 
@@ -30,7 +31,7 @@ const mountSlides = () => render(
   </MemoryRouter>,
 );
 
-const open = async (edition?: '1.1') => {
+const open = async (edition?: '1.1' | '1.2') => {
   await act(async () => { window.dispatchEvent(new CustomEvent(WHATS_NEW_OPEN_EVENT, edition ? { detail: { edition } } : undefined)); });
   await act(async () => { await vi.advanceTimersByTimeAsync(600); });
 };
@@ -58,6 +59,7 @@ describe('„Ce e nou” 1.1', () => {
   it('ediția vine din numele lansării, deci 1.1 rămâne ascunsă cât lansarea e 1.0', () => {
     expect(whatsNewEditionFor('1.0')).toBe('1.0');
     expect(whatsNewEditionFor('1.1')).toBe('1.1');
+    expect(whatsNewEditionFor('1.2')).toBe('1.2');
     expect(whatsNewEditionFor('1.0.0')).toBe('1.0');
   });
 
@@ -92,6 +94,40 @@ describe('„Ce e nou” 1.1', () => {
     // Cadrul final al cărților de bază: pregătirea e gata.
     await goTo(1);
     expect(screen.getByText('Gata · 3 cărți pregătite, protejate')).toBeTruthy();
+  }, 20000);
+
+  it('ediția 1.2: cel mult șapte slide-uri, hero la început, scene inerte, cadru final și poveste în text', async () => {
+    mountSlides();
+    await open('1.2');
+    const dots = screen.getAllByRole('button', { name: /^Slide \d+$/ });
+    expect(dots).toHaveLength(RELEASE_12_SLIDES.length);
+    expect(RELEASE_12_SLIDES.length).toBeLessThanOrEqual(7);
+    expect(RELEASE_12_SLIDES[0].title).toBe('StudyX 1.2');
+    expect(within(screen.getByRole('dialog')).getByText('Ce e nou')).toBeTruthy();
+    for (const [i, slide] of RELEASE_12_SLIDES.entries()) {
+      if (i > 0) await goTo(i);
+      const dialog = screen.getByRole('dialog');
+      expect(within(dialog).getByRole('heading', { name: slide.title })).toBeTruthy();
+      const figure = within(dialog).getByRole('figure', { name: slide.scene.label });
+      expect(figure.querySelector('[inert]')?.getAttribute('aria-hidden')).toBe('true');
+      expect(figure.querySelector('.sr-only')?.textContent).toBe(slide.scene.transcript);
+      expect(within(figure).getByText(slide.scene.captions[slide.scene.captions.length - 1])).toBeTruthy();
+      expect(within(figure).queryByRole('button')).toBeNull();
+      if (slide.cta?.tour) expect(TOURS[slide.cta.tour as keyof typeof TOURS]).toBeTruthy();
+    }
+    // Estimarea din simulare rămâne orientativă, în text și în cadrul final.
+    await goTo(2);
+    expect(screen.getByText('Estimare orientativă')).toBeTruthy();
+  }, 20000);
+
+  it.each(['light', 'dark'] as const)('ediția 1.2 nu are probleme de accesibilitate (axe) în tema %s', async (mode) => {
+    useThemeStore.setState({ mode });
+    mountSlides();
+    await open('1.2');
+    for (const slide of [0, 2, 5]) {
+      await goTo(slide);
+      await expectNoA11yViolations(screen.getByRole('dialog'));
+    }
   }, 20000);
 
   it.each(['light', 'dark'] as const)('nu are probleme de accesibilitate (axe) în tema %s', async (mode) => {
