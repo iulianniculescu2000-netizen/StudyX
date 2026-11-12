@@ -4,6 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '../theme/ThemeContext';
 import { useFolderStore } from '../store/folderStore';
 import { useQuizStore } from '../store/quizStore';
+vi.mock('../lib/bookText', () => ({
+  loadBookPages: vi.fn(async (book: string) => (book === 'K' ? ['Pagina unu', 'Pneumonia comunitară: tratament cu amoxicilină.'] : [])),
+}));
+
 import GlobalSearch from './GlobalSearch';
 import type { Folder, Quiz } from '../types';
 
@@ -151,5 +155,21 @@ describe('GlobalSearch (Ctrl+K)', () => {
     expect(screen.getByText('Flashcarduri')).toBeTruthy();
     fireEvent.click(screen.getAllByRole('option')[0]);
     expect(screen.getByTestId('where').textContent).toBe('/flashcards/session/deck?mode=all');
+  });
+
+  it('grupul „Cărți” găsește text în cărțile incluse și deschide cititorul prin studyx:open-book', async () => {
+    const seen: unknown[] = [];
+    const listener = (e: Event) => seen.push((e as CustomEvent).detail);
+    window.addEventListener('studyx:open-book', listener);
+    setup();
+    openSearch();
+    type('pneumonia');
+    await act(async () => { await vi.advanceTimersByTimeAsync(500); });
+    expect(screen.getByText('Cărți')).toBeTruthy();
+    const option = screen.getAllByRole('option').find((node) => node.textContent?.includes('Kumar, p. 2'));
+    expect(option?.querySelector('mark')?.textContent?.toLowerCase()).toContain('pneumonia');
+    fireEvent.click(option!);
+    window.removeEventListener('studyx:open-book', listener);
+    expect(seen).toEqual([{ book: 'K', pdfPage: 2 }]);
   });
 });

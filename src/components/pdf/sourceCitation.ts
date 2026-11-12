@@ -7,6 +7,8 @@ export interface SourceCitationTarget {
   sourceId?: string;
   sourceName?: string;
   pdfPage?: number;
+  /** Ultima pagină a fragmentului citat. */
+  pdfPageEnd?: number;
   printedPage?: number;
   excerpt?: string;
   /** Nivelul sursei citate (carte de bază / material), dacă se știe. */

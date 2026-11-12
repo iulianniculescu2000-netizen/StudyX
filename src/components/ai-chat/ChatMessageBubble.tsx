@@ -121,6 +121,17 @@ function ChatMessageBubble({
           </div>
         )}
 
+        {message.role === 'assistant' && message.support && !streaming && !message.isError && !message.agentJobId && message.content.trim() && (
+          <div
+            className="mt-2 text-[11px]"
+            style={{ color: theme.text3 }}
+            data-support={message.support.level}
+            title="Calculat din citările [n] și scorurile căutării în cărți, nu de model"
+          >
+            {message.support.label}
+          </div>
+        )}
+
         {message.optionCard && (
           <OptionCardView
             card={message.optionCard}
@@ -168,7 +179,7 @@ function ChatMessageBubble({
         {message.role === 'assistant' && message.citations && message.citations.length > 0 && (
           <div className="mt-4">
             <div className="mb-2 flex flex-wrap gap-2">
-              <span className="citation-pill">{getContextState(message.citations)}</span>
+              {!message.support && <span className="citation-pill">{getContextState(message.citations)}</span>}
             </div>
             <div className="flex flex-wrap gap-2">
               {message.citations.map((citation, citationIndex) => {

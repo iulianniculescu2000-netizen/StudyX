@@ -121,7 +121,7 @@ export const CHAT_FORMAT_RULES =
  */
 export const DIAGRAM_RULES = [
   DIAGRAM_RULES_COMPACT,
-  'DESIGN: max 3 niveluri, 12 noduri, 2-5 cuvinte/nod; restul în `|` sau text. Peste 12: două scheme, nu tăia informația. Clasificări: `[formă]>` în ```schema. Etape: ```mermaid `timeline`, `sequenceDiagram`, `stateDiagram-v2`; evită `mindmap`. Diferențiale: tabelul Markdown. Păstrează exact relațiile și valorile; fără fapte inventate.',
+  'DESIGN: max 3 niveluri, 12 noduri, 2-5 cuvinte/nod; restul în `|` sau text. Peste 12: două scheme, nu tăia informația. Clasificări: `[formă]>` în ```schema. Etape: ```mermaid `timeline`, `sequenceDiagram`, `stateDiagram-v2`; evită `mindmap`. Diferențiale: tabelul Markdown. Păstrează exact relațiile și valorile.',
 ].join('\n');
 
 export const MATH_RULES = [
@@ -185,7 +185,8 @@ export const BOOK_MODULE = [
   'SURSA E O CARTE (Kumar, Lawrence, Sinopsis):',
   '- contextul are surse numerotate, ex. `[1] Kumar · pag. 151 — Titlu`; citează inline cu EXACT etichetele [n] din context, nu inventa numere sau pagini',
   '- pune [n] doar după fapte prezente în fragmentul n (după fiecare afirmație cu sursă, nu doar la final); fără [n] pe cunoștințe generale',
-  '- ce NU apare în fragmente („în carte nu apare”): începe cu „În fragmentul din carte nu apare X. Din cunoștințe generale: … (neconfirmat de carte)”, apoi răspunsul; nu-l prezenta ca venind din carte',
+  '- cifre, praguri, criterii, doze și nume de scoruri se spun doar dacă sunt scrise în fragmentul citat; nu completa din memorie',
+  '- ce NU apare în fragmente: „Nu am găsit în cărți: X.”; dacă ajuți, separat „Din cunoștințe generale (nu din cărți):” + răspuns prudent, fără [n] la acea parte',
   '- dacă textul capitolului nu e indexat, nu pretinde că citezi cartea',
   '- „[CARTE DE BAZĂ]” are prioritate, „[MATERIAL]” completează; la contradicție urmează cartea și spune asta',
   '- gândește pentru rezidențiat: ce devine grilă (criterii, praguri, clasificări, diferențiale)',
@@ -193,7 +194,7 @@ export const BOOK_MODULE = [
 
 /** Reamintirea de la finalul promptului, după fragmentele din cărți. */
 export const BOOK_CITATION_REMINDER =
-  'ÎNAINTE SĂ RĂSPUNZI: fiecare afirmație luată din fragmentele de mai sus se termină cu [n]-ul fragmentului (ex. „…sulfatul feros [2].”); ce nu e în fragmente marchezi „din cunoștințe generale”.';
+  'ÎNAINTE SĂ RĂSPUNZI: fiecare afirmație luată din fragmentele de mai sus se termină cu [n]-ul fragmentului (ex. „…sulfatul feros [2].”); ce nu e în fragmente spui „Nu am găsit în cărți” sau „Din cunoștințe generale (nu din cărți)”, fără [n] la acea parte.';
 
 /** True când sursa curentă ori contextul arată că discuția e despre o carte din bibliotecă. */
 export function detectBookSource(scopedSourceName?: string, contextSummary = ''): boolean {
@@ -281,7 +282,23 @@ export interface ChatPromptInput {
   tutorContext?: string;
   /** Mesajul e despre cum funcționează aplicația (nu despre medicină): fără „capcană de examen”, răspuns direct. */
   appQuestion?: boolean;
+  /** Biblioteca a fost căutată (are surse gata) și retrieverul n-a întors nimic peste prag: modelul trebuie să spună explicit asta. */
+  searchedLibrary?: boolean;
+  /** „Doar din cărți”: răspuns exclusiv din fragmentele primite, fără cunoștințe generale. */
+  booksOnly?: boolean;
 }
+
+/** Context gol după o căutare reală în bibliotecă: regulă deterministă, nu lăsată la latitudinea modelului. */
+export const NOTHING_FOUND_NOTICE =
+  'AM CĂUTAT în biblioteca utilizatorului și NU S-A GĂSIT niciun fragment relevant. Dacă întrebarea cere informații din cărți sau documente, începe cu „Nu am găsit în cărți.”; apoi, doar dacă poți ajuta, adaugă „Din cunoștințe generale (nu din cărți):” și un răspuns prudent, fără [n] și fără pagini inventate. Pentru salut sau întrebări despre aplicație răspunde natural.';
+
+/** „Doar din cărți”, cu fragmente în context: bloc condiționat (nu intră în baza stabilă, deci nu atinge plafoanele). */
+export const BOOKS_ONLY_RULE =
+  'MOD „DOAR DIN CĂRȚI” (ales de student, are prioritate peste regulile de mai sus): răspunde EXCLUSIV din fragmentele [n] primite (și din „CE DISCUTĂ STUDENTUL ACUM”, dacă există). NU adăuga cunoștințe generale și nu folosi secțiunea „Din cunoștințe generale”. Ce nu apare în fragmente: „Nu am găsit în cărți: X.” Dacă nu e nimic util, răspunde doar „Nu am găsit în cărți.” Salutul și întrebările despre aplicație rămân naturale.';
+
+/** „Doar din cărți”, fără niciun fragment: răspuns scurt și fix. */
+export const BOOKS_ONLY_EMPTY_NOTICE =
+  'MOD „DOAR DIN CĂRȚI” (ales de student): nu s-a găsit niciun fragment relevant în biblioteca lui. Pentru întrebări de medicină sau de conținut răspunde doar „Nu am găsit în cărți.” (opțional o propoziție: reformulează sau alege altă carte), FĂRĂ cunoștințe generale, fără [n], fără pagini inventate. „CE DISCUTĂ STUDENTUL ACUM”, dacă există, rămâne material valid. Salutul și întrebările despre aplicație primesc răspuns natural.';
 
 /** Partea stabilă a promptului de chat (fără blocuri dinamice). */
 export function buildChatBase(
@@ -325,6 +342,8 @@ export function composeChatSystemPrompt(input: ChatPromptInput): string {
   // ~190 de tokeni economisiți la fiecare mesaj medical: blocul complet despre aplicație doar când întrebarea o atinge.
   const app = Boolean(input.appQuestion) || mentionsApp(input.userMessage) || Boolean(summary);
 
+  // „Doar din cărți” nu se aplică întrebărilor despre aplicație.
+  const strict = Boolean(input.booksOnly) && !input.appQuestion;
   const live: string[] = [];
   if (diagrams) live.push(diagramLayoutHint(input.userMessage));
   if (input.appQuestion) {
@@ -347,12 +366,17 @@ export function composeChatSystemPrompt(input: ChatPromptInput): string {
   if (tutor) live.push(`CE DISCUTĂ STUDENTUL ACUM (baza răspunsului, indiferent de bibliotecă):\n${tutor}`);
   live.push(
     hasContext
-      ? `CONTEXT DIN BIBLIOTECA UTILIZATORULUI (citează cu etichetele [n] exacte; ce nu apare aici spune explicit și marchează „din cunoștințe generale”):
+      ? `CONTEXT DIN BIBLIOTECA UTILIZATORULUI (citează cu etichetele [n] exacte; ce nu apare aici spune explicit: „Nu am găsit în cărți” sau „Din cunoștințe generale (nu din cărți)”, fără [n]):
 ${contextSummary}`
-      : 'NU EXISTĂ CONTEXT din biblioteca utilizatorului: răspunde natural din cunoștințe medicale, fără meta-comentarii despre bibliotecă, documente sau folder („nu am găsit…”, „nu e din biblioteca ta”); doar dacă a cerut explicit ceva din documentele lui, spune scurt că nu ai găsit.',
+      : strict
+        ? BOOKS_ONLY_EMPTY_NOTICE
+        : input.searchedLibrary
+        ? NOTHING_FOUND_NOTICE
+        : 'NU EXISTĂ CONTEXT din biblioteca utilizatorului: răspunde natural din cunoștințe medicale, fără meta-comentarii despre bibliotecă, documente sau folder („nu am găsit…”, „nu e din biblioteca ta”); doar dacă a cerut explicit ceva din documentele lui, spune scurt că nu ai găsit.',
   );
   // Ultimul lucru citit de model: fără reamintire, modelele lăsau des răspunsul fără niciun [n] deși aveau fragmentele (3 din 6, test live 19 oct 2026).
   if (hasContext && book) live.push(BOOK_CITATION_REMINDER);
+  if (strict && hasContext) live.push(BOOKS_ONLY_RULE);
 
   return [buildChatBase(mode, { book, diagrams, math, app }), ...live].join('\n\n');
 }

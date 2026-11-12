@@ -57,6 +57,10 @@ const CHAT_MODE_TEMPERATURE: Record<ChatMode, number> = {
 interface ChatResponseOptions {
   mode?: ChatMode;
   hasContext?: boolean;
+  /** Biblioteca a fost căutată și n-a dat nimic (vezi `NOTHING_FOUND_NOTICE`). */
+  searchedLibrary?: boolean;
+  /** „Doar din cărți”: fără cunoștințe generale (vezi `BOOKS_ONLY_RULE`). */
+  booksOnly?: boolean;
   scopedSourceName?: string;
   /** Forțează (true) sau oprește (false) modulul „carte”; implicit se deduce din sursă și din context. */
   bookMode?: boolean;
@@ -548,6 +552,8 @@ export function buildChatSystemPrompt(contextSummary: string, options: ChatRespo
     mode: options.mode ?? 'grounded',
     contextSummary,
     hasContext: options.hasContext,
+    searchedLibrary: options.searchedLibrary,
+    booksOnly: options.booksOnly,
     scopedSourceName: options.scopedSourceName,
     bookMode: options.bookMode,
     studyContext: options.studyContext,

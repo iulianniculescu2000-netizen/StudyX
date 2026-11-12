@@ -17,14 +17,14 @@ declare global {
       setZoomFactor?: (factor: number) => void;
       getZoomFactor?: () => number;
       appReady: () => void;
-      autoBackup: (data: string) => Promise<{ success: boolean; path?: string; error?: string }>;
+      autoBackup: (data: string, kind?: 'pre-update') => Promise<{ success: boolean; path?: string; error?: string }>;
       isElectron: boolean;
       updaterCheck: () => Promise<unknown>;
       updaterDownload: (manifest: unknown) => Promise<unknown>;
       updaterRestart: () => void;
       updaterInstallDownloaded: (installerPath?: string) => Promise<boolean>;
       updaterGetVersion: () => Promise<string>;
-      onUpdateProgress: (cb: (data: { percent: number; file: string }) => void) => () => void;
+      onUpdateProgress: (cb: (data: { percent: number; file: string; received?: number; total?: number }) => void) => () => void;
       openJsonFiles: () => Promise<{ name: string; content: string }[] | null>;
       openImageFile: () => Promise<string | null>;
       readOCRPath: (path: string) => Promise<string | null>;

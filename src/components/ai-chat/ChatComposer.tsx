@@ -1,6 +1,6 @@
 import { memo, type RefObject } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowRight, ChevronDown, ImageIcon, SendHorizonal, Sparkles, Square, X } from 'lucide-react';
+import { ArrowRight, BookOpen, ChevronDown, ImageIcon, SendHorizonal, Sparkles, Square, X } from 'lucide-react';
 import type { Theme } from '../../theme/themes';
 import { CHAT_MODES, type ChatMode } from './shared';
 import HelpTip from '../ui/HelpTip';
@@ -30,6 +30,9 @@ interface ChatComposerProps {
   quizContext: { questionText: string } | null;
   onClearQuizContext: () => void;
   /** Studio view with a ready source: offers the two one-tap prompts. */
+  /** „Doar din cărți”: răspunsuri exclusiv din fragmentele găsite în bibliotecă. */
+  booksOnly?: boolean;
+  onToggleBooksOnly?: () => void;
   showStudioShortcuts: boolean;
   onStudioShortcut: (kind: 'diagram' | 'summarize') => void;
 }
@@ -41,7 +44,7 @@ interface ChatComposerProps {
 function ChatComposer({
   theme, immersive, view, input, onInputChange, pastedImage, onPastedImage, textareaRef, placeholder, loading,
   onSend, onStop, mode, manualMode, modeLabel, modePickerOpen, onModePickerOpen, onAutoMode, onPickMode, quizContext,
-  onClearQuizContext, showStudioShortcuts, onStudioShortcut,
+  onClearQuizContext, booksOnly = false, onToggleBooksOnly, showStudioShortcuts, onStudioShortcut,
 }: ChatComposerProps) {
   const canSend = input.trim().length > 0 || pastedImage !== null;
 
@@ -166,6 +169,18 @@ function ChatComposer({
                 ))}
                 <HelpTip id="chat-mode" size={16} />
               </>
+            )}
+            {onToggleBooksOnly && (
+              <button
+                type="button"
+                onClick={onToggleBooksOnly}
+                aria-pressed={booksOnly}
+                className="composer-chip"
+                data-active={booksOnly}
+                title={booksOnly ? 'Doar din cărți: activ. Răspunsurile folosesc exclusiv fragmentele găsite.' : 'Doar din cărți: răspunde exclusiv din fragmentele găsite în bibliotecă'}
+              >
+                <BookOpen size={12} /> Doar din cărți
+              </button>
             )}
           </div>
 

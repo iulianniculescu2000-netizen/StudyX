@@ -71,7 +71,9 @@ import ChatHeader from './ai-chat/ChatHeader';
 import { useOptionCards } from './ai-chat/useOptionCards';
 import StudioPanel from './ai-chat/StudioPanel';
 import { citationFromSource, openBookCitation } from './ai-chat/citations';
-import { buildNumberedContext } from '../ai/contextBuilder';
+import { buildNumberedContext, chunkBodyText } from '../ai/contextBuilder';
+import { citationsForAnswer, enforceBooksOnly, stripCitationsAfterGeneralKnowledge } from '../ai/groundingGuard';
+import { assessAnswerSupport } from '../ai/answerSupport';
 import { CHAT_STORAGE_KEY, useChatMessages } from './ai-chat/useChatMessages';
 import { useChatThread } from './ai-chat/useChatThread';
 import { useScopedSource } from './ai-chat/useScopedSource';
@@ -153,6 +155,8 @@ export default function AIChatDrawer() {
   const addQuiz = useQuizStore((state) => state.addQuiz);
   const knowledgeSources = useAIStore((state) => state.knowledgeSources);
   const hasKey = useAIStore((state) => state.hasKey);
+  const booksOnly = useAIStore((state) => state.booksOnly);
+  const setBooksOnly = useAIStore((state) => state.setBooksOnly);
   const providerKeys = useAIStore((state) => state.providerKeys);
   const recordAIInteraction = useAIStore((state) => state.recordAIInteraction);
   const memoryContext = useAIStore((state) => (
@@ -782,7 +786,7 @@ export default function AIChatDrawer() {
         const chunk = contextChunks.find((entry) => entry.id === source.id);
         return {
           ...citationFromSource(source, chunk?.topic),
-          excerpt: chunk ? extractRelevantExcerpt(chunk.text, retrievalText) : source.excerpt,
+          excerpt: chunk ? extractRelevantExcerpt(chunkBodyText(chunk.text, chunk.heading), retrievalText) : source.excerpt,
         };
       });
 
@@ -871,6 +875,8 @@ export default function AIChatDrawer() {
         {
           mode: activeMode,
           hasContext: contextChunks.length > 0 || Boolean(chapterBlock),
+          searchedLibrary: readySources.length > 0 && contextChunks.length === 0 && !chapterBlock,
+          booksOnly,
           // Grila discutată intră în prompt chiar când biblioteca nu a dat fragmente.
           tutorContext: quizContextPrefix.trim() || undefined,
           recentDiagram: [...messages.slice(-4), userMsg].some((m) => m.mode === 'diagram' || m.content.includes('```schema') || (m.role === 'user' && suggestsDiagram(m.content))),
@@ -892,7 +898,8 @@ export default function AIChatDrawer() {
         let finalTextOverride: string | undefined;
         if (streamedAnswer.trim()) {
           try {
-            const cleaned = await checkAndComplete({ answer: streamedAnswer });
+            const checked = stripCitationsAfterGeneralKnowledge(await checkAndComplete({ answer: streamedAnswer }));
+            const cleaned = booksOnly ? enforceBooksOnly(checked) : checked;
             if (cleaned !== streamedAnswer) {
               streamedAnswer = cleaned;
               finalTextOverride = cleaned;
@@ -916,9 +923,14 @@ export default function AIChatDrawer() {
           const last = next[next.length - 1];
           if (last?.role === 'assistant') {
             const shownText = finalTextOverride ?? finalText;
+            const answerForSupport = shownText || streamedAnswer;
             next[next.length - 1] = {
               ...last,
               ...(shownText ? { content: shownText } : {}),
+              // Răspuns declarat „din cunoștințe generale” și fără [n]: fără chipuri de sursă.
+              ...(last.citations?.length ? { citations: citationsForAnswer(answerForSupport, last.citations) } : {}),
+              // Indicator de încredere, calculat din [n] și scorurile retrieverului; doar când biblioteca a fost folosită.
+              ...(answerForSupport.trim() && (readySources.length > 0 || citations.length > 0) ? { support: assessAnswerSupport(answerForSupport, citations) } : {}),
               ...(answerTruncated ? { truncated: true } : {}),
               ...(servedMeta ? { served: servedMeta } : {}),
             };
@@ -1767,6 +1779,8 @@ export default function AIChatDrawer() {
                   quizContext={activeQuizContext}
                   onClearQuizContext={() => setActiveQuizContext(null)}
                   showStudioShortcuts={readySources.length > 0}
+                  booksOnly={booksOnly}
+                  onToggleBooksOnly={() => setBooksOnly(!booksOnly)}
                   onStudioShortcut={(kind) => {
                     setView('chat');
                     setMode(kind === 'diagram' ? 'diagram' : 'summarize');

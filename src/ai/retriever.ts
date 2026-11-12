@@ -40,6 +40,17 @@ export const SECTION_INTENT_BONUS = 1.25;
 const MIN_TERM_IDF_SHARE = 0.5;
 /** Ponderea maximă a similarității când vectorul întrebării e cel local (hash de cuvinte, nu semantic). */
 const LOCAL_SEMANTIC_WEIGHT = 0.08;
+/** Cartea numită în întrebare („din Kumar”) urcă, celelalte cărți de bază coboară (nu dispar: un pasaj mult mai bun tot câștigă). */
+const NAMED_BOOK_BONUS = 1.3;
+const OTHER_BOOK_FACTOR = 0.6;
+
+/** Cartea de bază numită în întrebare, dacă e una singură. */
+export function bookNamedIn(query: string): 'K' | 'L' | 'S' | null {
+  const text = query.toLowerCase();
+  const named = [/\bkumar\b|\bclark\b/.test(text) && 'K', /\blawrence\b/.test(text) && 'L', /\bsinopsis/.test(text) && 'S'].filter(Boolean) as Array<'K' | 'L' | 'S'>;
+  return named.length === 1 ? named[0] : null;
+}
+
 /** Fragmentul care continuă subsecțiunea cerută primește cel puțin această parte din scorul fragmentului dinainte. */
 const CONTINUATION_SCORE_SHARE = 0.9;
 
@@ -63,7 +74,14 @@ const DOC_CACHE_LIMIT = 30000;
  * căutat și nu era găsit; titlul detectat la indexare e adesea greșit în cărți („TERAPIE INTENSIVĂ” la anemie).
  * Paginile din afara PDF-ului (Lawrence, cu `printedPage`) nu au corespondent în plan.
  */
-export function bookSectionTitle(chunk: Partial<Pick<ChunkRecord, 'source' | 'page' | 'pageEnd' | 'printedPage'>>): string {
+/** Fragment din baza structurată a cărții (`bookStructure`): textul începe cu propriul titlu „Subiect › Secțiune”, luat din carte. */
+export function isStructuredBookChunk(chunk: Partial<Pick<ChunkRecord, 'text' | 'heading'>>): boolean {
+  return Boolean(chunk.heading && chunk.text?.startsWith(`${chunk.heading}\n\n`));
+}
+
+export function bookSectionTitle(chunk: Partial<Pick<ChunkRecord, 'source' | 'page' | 'pageEnd' | 'printedPage' | 'text' | 'heading'>>): string {
+  // Fragmentul structurat își are deja titlul exact în text; titlul din plan după pagină l-ar putea contrazice (pagini împărțite).
+  if (isStructuredBookChunk(chunk)) return '';
   if (!chunk.source || !isBundledBookFileName(chunk.source) || typeof chunk.page !== 'number' || chunk.printedPage !== undefined) return '';
   const book = bookOfSourceName(chunk.source);
   return book ? topicTitlesForPages(book, chunk.page, chunk.pageEnd ?? chunk.page).join(' · ') : '';
@@ -334,6 +352,8 @@ export function rankChunks(
   const localVector = queryEmbedding.length > 0 && queryEmbedding.length !== API_EMBEDDING_DIM;
   const semanticWeight = localVector ? Math.min(baseSemanticWeight, LOCAL_SEMANTIC_WEIGHT) : baseSemanticWeight;
   const bm25Weight = baseBm25Weight + (baseSemanticWeight - semanticWeight);
+  // „Explică-mi guta din Kumar”: cartea numită în întrebare are întâietate față de celelalte cărți de bază.
+  const namedBook = bookNamedIn(query);
   const activeHeading = normalizeHeading(filters.activeHeading);
   const scopeHeadings = (filters.activeScope?.headings ?? []).map(normalizeHeading).filter((heading) => heading.length >= 3);
   const scope = filters.activeScope && (scopeHeadings.length > 0 || filters.activeScope.pageStart !== undefined)
@@ -379,7 +399,8 @@ export function rankChunks(
     const isBook = isBundledBookFileName(chunk.source);
     const bookBonus = filters.rezidentiat && isBook ? BOOK_SCORE_BONUS : 1;
     const sectionBonus = inWantedSection(chunk, doc) ? SECTION_INTENT_BONUS : 1;
-    const score = relevance * rerank * (1 + personalBoost) * bookBonus * sectionBonus;
+    const namedBonus = namedBook && isBook ? (bookOfSourceName(chunk.source) === namedBook ? NAMED_BOOK_BONUS : OTHER_BOOK_FACTOR) : 1;
+    const score = relevance * rerank * (1 + personalBoost) * bookBonus * sectionBonus * namedBonus;
     const tier: SourceTier | undefined = isBook ? 'book' : filters.rezidentiat ? 'bank' : undefined;
 
     return {

@@ -535,3 +535,129 @@ export function buildSummary(plan: Plan, s: PlanState, today: string, now: numbe
     ...(chapter ? { chapter } : {}),
   };
 }
+
+// ── Catching up: re-spreading what is left over the weeks that remain ──────────────────────────────
+
+export interface CatchUpWeek {
+  /** Monday of the week. */
+  week: string;
+  /** Open topics the week holds now (the student's picks, or what the plan itself proposes). */
+  before: number[];
+  /** Open topics the week would hold after catching up, in pass order. */
+  after: number[];
+  /** Hours of study the topics in `after` take. */
+  hours: number;
+  /** Hours the daily rhythm allows in the part of the week that is left. */
+  capacity: number;
+}
+
+export interface CatchUp {
+  /** The pass being re-planned (1–4). */
+  phase: number;
+  /** Topics whose planned window has ended while they are not done. */
+  behind: number;
+  /** Hours of study those topics take. */
+  behindHours: number;
+  /** Open topics of the pass and their hours. */
+  remaining: number;
+  remainingHours: number;
+  /** Hours the daily rhythm allows from today to the end of the pass (or the exam). */
+  capacityHours: number;
+  /** 'on-track': nothing is late; 'behind': late but the rest still fits; 'tight': it does not fit even at the full rhythm. */
+  status: 'on-track' | 'behind' | 'tight';
+  /** Weeks of the pass still ahead, every one of them (changed or not). */
+  weeks: CatchUpWeek[];
+  /** Topics that would land in another week than today. */
+  moved: number;
+}
+
+const sameSet = (a: number[], b: number[]) => a.length === b.length && a.every((x) => b.includes(x));
+
+/**
+ * Spreads the open topics of the running pass over the study weeks that are left, keeping the order of the
+ * pass and never loading a week beyond what the daily rhythm (`DAY_TARGET`) allows from today on. When the
+ * rest needs less than the rhythm gives, every week is loaded evenly with the same share instead of packing
+ * the first weeks full. When it needs more, the weeks are full and the last one takes what does not fit
+ * (`status: 'tight'`). Pure: it changes nothing; `applyCatchUp` writes the result.
+ * Returns null when no study pass is running or no study week of it remains.
+ */
+export function catchUpPlan(plan: Plan, s: PlanState, today: string): CatchUp | null {
+  const ph = activePhase(plan, today);
+  if (ph > 4) return null;
+  // A pass cut short by an earlier exam ends the day before the exam.
+  const lastDay = [plan.ends[ph - 1], addDays(s.exam || plan.exam, -1)].reduce((x, y) => (x < y ? x : y));
+  const study = plan.weeks.filter((w) => w.k === String(ph) && addDays(w.d, 6) >= today && w.d <= lastDay);
+
+  const win = computeWindows(plan, s, today);
+  const behindList = overdueTopics(plan, s, win, ph, today);
+  const hoursOf = (i: number) => plan.topics[i].h[ph - 1];
+  const open = plan.topics.filter((c) => c.pages > 0 && statusOf(s, ph, c.index) < 2).map((c) => c.index);
+  const sum = (list: number[]) => list.reduce((n, i) => n + hoursOf(i), 0);
+  const round = (x: number) => Math.round(x * 10) / 10;
+
+  const capOf = (w: Week) => {
+    let cap = 0;
+    for (let d = w.d < today ? today : w.d; d <= addDays(w.d, 6) && d <= lastDay; d = addDays(d, 1)) cap += targetFor(d);
+    return cap;
+  };
+  const usable = study.filter((w) => capOf(w) > 0);
+  if (usable.length === 0) return null;
+  const caps = usable.map(capOf);
+  const capacity = caps.reduce((n, x) => n + x, 0);
+
+  const remainingHours = sum(open);
+  const share = remainingHours > 0 ? Math.min(1, remainingHours / capacity) : 0;
+  const slots: number[][] = usable.map(() => []);
+  let before = 0;
+  open.forEach((i) => {
+    const mid = before + hoursOf(i) / 2;
+    before += hoursOf(i);
+    // the week whose cumulative budget covers the middle of this topic; the last week takes the overflow
+    let w = 0;
+    let acc = 0;
+    while (w < usable.length - 1 && acc + caps[w] * share < mid) { acc += caps[w] * share; w += 1; }
+    slots[w].push(i);
+  });
+
+  const weeks: CatchUpWeek[] = usable.map((w, k) => {
+    const picks = picksOf(s, w.d);
+    const held = (picks.length ? picks : suggestFor(plan, w)).filter((i) => statusOf(s, ph, i) < 2 && plan.topics[i].pages > 0);
+    return { week: w.d, before: held, after: slots[k], hours: round(sum(slots[k])), capacity: round(caps[k]) };
+  });
+  const moved = weeks.reduce((n, w) => n + w.after.filter((i) => !w.before.includes(i)).length, 0);
+  const status = behindList.length === 0 ? 'on-track' : remainingHours > capacity + 1e-9 ? 'tight' : 'behind';
+  return {
+    phase: ph,
+    behind: behindList.length,
+    behindHours: round(sum(behindList)),
+    remaining: open.length,
+    remainingHours: round(remainingHours),
+    capacityHours: round(capacity),
+    status,
+    weeks,
+    moved,
+  };
+}
+
+/**
+ * Writes a catch-up into the student's weekly picks (the same field the Săptămâni tab uses, so the saved
+ * shape does not change). Topics already finished that the week held stay in it; only the weeks whose open
+ * topics differ are touched.
+ */
+export function applyCatchUp(plan: Plan, s: PlanState, c: CatchUp): PlanState {
+  const moving = new Set(c.weeks.flatMap((w) => w.after));
+  const target = new Set(c.weeks.map((w) => w.week));
+  let next = s;
+  // A reassigned topic left in an older week's picks would stretch its window back into the past.
+  for (const w of plan.weeks) {
+    if (target.has(w.d)) continue;
+    const picks = picksOf(s, w.d);
+    if (picks.some((i) => moving.has(i))) next = withPicksFor(next, w.d, picks.filter((i) => !moving.has(i)));
+  }
+  for (const w of c.weeks) {
+    if (sameSet(w.before, w.after)) continue;
+    const kept = picksOf(s, w.week).filter((i) => statusOf(s, c.phase, i) >= 2 && !w.after.includes(i));
+    next = withPicksFor(next, w.week, [...kept, ...w.after]);
+  }
+  return next;
+}

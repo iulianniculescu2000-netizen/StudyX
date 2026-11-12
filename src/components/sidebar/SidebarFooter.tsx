@@ -69,7 +69,7 @@ export default function SidebarFooter({ collapsed, toggleCollapsed, logout, comp
                 status={updateStatus}
                 localVersion={localVersion}
                 downloadPercent={downloadPercent}
-                onOpen={() => setShowUpdateModal(true)}
+                onOpen={() => setShowUpdateModal(true, { manual: true })}
                 theme={theme}
               />
             </div>
@@ -92,7 +92,7 @@ export default function SidebarFooter({ collapsed, toggleCollapsed, logout, comp
           status={updateStatus}
           localVersion={localVersion}
           downloadPercent={downloadPercent}
-          onOpen={() => setShowUpdateModal(true)}
+          onOpen={() => setShowUpdateModal(true, { manual: true })}
           theme={theme}
         />
 

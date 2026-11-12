@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import raw from '../../data/organizare/plan.json';
 import {
-  accuracySeries, activePhase, addPicks, buildSummary, computeWindows, countStatus, currentIndex, daysBetween,
+  applyCatchUp, catchUpPlan, accuracySeries, activePhase, addPicks, buildSummary, computeWindows, countStatus, currentIndex, daysBetween,
   emptyState, focusNow, heatGrid, hoursSeries, insights, mondayOf, nextStatus, normalizePlan, readState, removePick, statusOf,
   isOverdueStart, overdueTopics, passesCutByExam, studyStats, suggestFor, toggleGroup, togglePick, upNext, weekIndex, weekProgress, withDay, withStatus,
 } from './engine';
@@ -261,5 +261,85 @@ describe('state and summary', () => {
     s = withStatus(s, 1, 0, 2, '2026-10-06');
     expect(buildSummary(plan, s, '2026-10-06', 1).chapter).toMatchObject({ index: 0, done: 1 });
     expect(buildSummary(plan, s, '2027-11-01', 1).chapter).toBeUndefined();
+  });
+});
+
+describe('catching up', () => {
+  const NOW = '2026-11-25'; // a Wednesday in a study week of the first pass; 106 topics were planned before it
+  /** The student did the first 60 topics and skipped the rest of the days so far. */
+  const BEHIND = () => plan.topics.slice(0, 60).reduce((s, c) => withStatus(s, 1, c.index, 2, '2026-11-20'), S());
+  const open1 = (s: ReturnType<typeof S>) => plan.topics.filter((c) => c.pages > 0 && statusOf(s, 1, c.index) < 2).map((c) => c.index);
+
+  it('says the plan is on track when nothing is late, and has nothing to do outside a study pass', () => {
+    expect(catchUpPlan(plan, S(), '2026-10-06')?.status).toBe('on-track');
+    expect(catchUpPlan(plan, S(), '2027-11-01')).toBeNull();
+  });
+
+  it('counts skipped days as late topics with their hours', () => {
+    const base = BEHIND();
+    const c = catchUpPlan(plan, base, NOW)!;
+    expect(c.status).toBe('behind');
+    expect(c.behind).toBeGreaterThan(30);
+    expect(c.behindHours).toBeGreaterThan(10);
+    const done = overdueTopics(plan, base, computeWindows(plan, base, NOW), 1, NOW).reduce((s, i) => withStatus(s, 1, i, 2, NOW), base);
+    expect(catchUpPlan(plan, done, NOW)?.status).toBe('on-track');
+  });
+
+  it('puts every open topic in exactly one remaining week, in the order of the pass', () => {
+    const s = BEHIND();
+    const c = catchUpPlan(plan, s, NOW)!;
+    const flat = c.weeks.flatMap((w) => w.after);
+    expect(flat).toEqual(open1(s));
+    expect(flat).not.toContain(59);
+    expect(c.weeks[0].week).toBe('2026-11-23');
+    expect(c.weeks.every((w) => w.week <= plan.ends[0])).toBe(true);
+  });
+
+  it('keeps the daily rhythm: no week holds more than the hours left in it', () => {
+    const c = catchUpPlan(plan, BEHIND(), NOW)!;
+    expect(c.status).toBe('behind');
+    // Wed-Sun of the current week: 3 x 2.5 + 5.5 = 13 h
+    expect(c.weeks[0].capacity).toBe(13);
+    c.weeks.forEach((w) => expect(w.hours).toBeLessThanOrEqual(w.capacity + 2.1));
+    expect(c.weeks.slice(1).every((w) => w.capacity === 18)).toBe(true);
+  });
+
+  it('spreads a small rest evenly instead of filling the first weeks', () => {
+    let s = S();
+    for (const c of plan.topics) if (c.index > 40) s = withStatus(s, 1, c.index, 2, NOW);
+    const c = catchUpPlan(plan, s, NOW)!;
+    const hours = c.weeks.map((w) => w.hours);
+    expect(Math.max(...hours)).toBeLessThanOrEqual(Math.min(c.weeks[0].capacity, 18));
+    expect(c.weeks.filter((w) => w.after.length > 0).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('reports "tight" when the rest cannot fit before an earlier exam, and still places every topic', () => {
+    const s = { ...BEHIND(), exam: '2026-12-06' };
+    const c = catchUpPlan(plan, s, NOW)!;
+    expect(c.status).toBe('tight');
+    expect(c.remainingHours).toBeGreaterThan(c.capacityHours);
+    expect(c.weeks.flatMap((w) => w.after)).toEqual(open1(s));
+    expect(c.weeks.every((w) => w.week <= '2026-11-30')).toBe(true);
+  });
+
+  it('applying it clears the lateness, keeps finished picks, and is a no-op the second time', () => {
+    const s = addPicks(addPicks(BEHIND(), '2026-11-02', [80]), '2026-11-23', [0, 80]);
+    const c = catchUpPlan(plan, s, NOW)!;
+    const next = applyCatchUp(plan, s, c);
+    expect(next.wk['2026-11-23']).toContain(0);
+    expect(Object.values(next.wk).filter((ks) => ks.includes(80))).toHaveLength(1);
+    expect(Object.keys(next).sort()).toEqual(Object.keys(s).sort());
+    expect(next.s1).toBe(s.s1);
+    const win = computeWindows(plan, next, NOW);
+    expect(overdueTopics(plan, next, win, 1, NOW)).toEqual([]);
+    const again = catchUpPlan(plan, next, NOW)!;
+    expect(again.status).toBe('on-track');
+    expect(again.moved).toBe(0);
+    expect(applyCatchUp(plan, next, again)).toEqual(next);
+  });
+
+  it('does not change anything for a plan that is already on track', () => {
+    const c = catchUpPlan(plan, S(), '2026-10-06')!;
+    expect(applyCatchUp(plan, S(), { ...c, weeks: c.weeks.map((w) => ({ ...w, before: w.after })) })).toEqual(S());
   });
 });

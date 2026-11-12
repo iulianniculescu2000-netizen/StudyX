@@ -5,7 +5,7 @@ import type { BookViewRequest } from './BookPdfReader';
 import { OPEN_BOOK_EVENT, requestForCitation, type OpenBookDetail } from './bookRequest';
 import { useAIStore } from '../../store/aiStore';
 import { BOOK_SHORT } from '../../lib/curriculum';
-import { extraPageAt } from '../../lib/bookText';
+import { extraPageAt, loadBookPages, pageHoldingExcerpt } from '../../lib/bookText';
 import { findCitationSource, loadSourceCitationText, type SourceCitationTarget } from './sourceCitation';
 
 /** Gazdele montate; doar prima ascultă evenimentul, ca o citare să nu deschidă două cititoare. */
@@ -39,10 +39,7 @@ export default function BookViewerHost() {
       setRequest(null);
       setSourceTarget({ ...detail, sourceId: source?.id ?? detail?.sourceId ?? '', sourceName: source?.name ?? detail?.sourceName ?? 'Documentul citat' });
     };
-    const onOpen = (event: Event) => {
-      if (hosts[0] !== id) return;
-      const detail = (event as CustomEvent<Partial<OpenBookDetail> & SourceCitationTarget>).detail ?? {};
-      const turn = ++latest;
+    const openAt = (detail: Partial<OpenBookDetail> & SourceCitationTarget, turn: number) => {
       const book = detail.book;
       // Lawrence are pagini indexate după ultima pagină a PDF-ului (vezi bookText): cititorul de PDF le-ar strânge la ultima pagină.
       if (book === 'L' && typeof detail.pdfPage === 'number') {
@@ -59,6 +56,21 @@ export default function BookViewerHost() {
         return;
       }
       open(detail);
+    };
+    const onOpen = (event: Event) => {
+      if (hosts[0] !== id) return;
+      const detail = (event as CustomEvent<Partial<OpenBookDetail> & SourceCitationTarget>).detail ?? {};
+      const turn = ++latest;
+      const { book, pdfPage, pdfPageEnd, excerpt } = detail;
+      // Fragment care se întinde pe mai multe pagini: se deschide pagina în care e textul citat, nu prima din interval.
+      if (book && typeof pdfPage === 'number' && typeof pdfPageEnd === 'number' && pdfPageEnd > pdfPage && excerpt) {
+        loadBookPages(book).then(
+          (pages) => { if (turn === latest) openAt({ ...detail, pdfPage: pageHoldingExcerpt(pages, pdfPage, pdfPageEnd, excerpt) }, turn); },
+          () => { if (turn === latest) openAt(detail, turn); },
+        );
+        return;
+      }
+      openAt(detail, turn);
     };
     window.addEventListener(OPEN_BOOK_EVENT, onOpen);
     return () => {

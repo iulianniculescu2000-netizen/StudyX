@@ -750,7 +750,7 @@ export default function Settings() {
             label="Actualizări"
             description={localVersion && localVersion !== '-' ? `Versiunea curentă: ${localVersion}` : 'Actualizările funcționează doar în aplicația desktop'}
             buttonLabel="Caută update"
-            onClick={() => useUpdateStore.getState().setShowUpdateModal(true)}
+            onClick={() => useUpdateStore.getState().setShowUpdateModal(true, { manual: true })}
           />
           </div>
         </Section>

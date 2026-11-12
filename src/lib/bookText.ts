@@ -6,7 +6,9 @@
 import { basePlan } from './curriculum';
 import { parsePageRange, type BookCode, type PageRange } from './bookPages';
 import type { Topic } from './organizare/types';
-import { extractPageMap, pageMarker, rememberPageMap } from '../ai/pageMarkers';
+import { rememberPrebuiltChunks } from '../ai/pageMarkers';
+import { BUNDLED_BOOK_NAMES } from './bundledBookNames';
+import { normalizeSearchText } from '../ai/medicalSynonyms';
 
 const LOADERS: Record<BookCode, () => Promise<{ default: string[] }>> = {
   K: () => import('../data/rezidentiat/library/kumar.pages.json'),
@@ -52,6 +54,30 @@ export async function extraPageAt(book: BookCode, pdfPage: number): Promise<{ pr
   return extra[Math.round(pdfPage) - pages.length - 1] ?? null;
 }
 
+/**
+ * Pagina (de la 1) din intervalul `from`–`to` care conține fragmentul citat. Un fragment structurat poate începe pe o pagină și
+ * continua pe următoarea; „Deschide în carte” trebuie să ajungă la pagina cu textul, nu la prima din interval. Se numără grupurile
+ * de câte patru cuvinte consecutive ale fragmentului găsite în fiecare pagină (fără diacritice); la egalitate câștigă pagina
+ * mai timpurie, iar fără nicio potrivire rămâne `from`.
+ */
+export function pageHoldingExcerpt(pages: readonly string[], from: number, to: number, excerpt: string): number {
+  const first = Math.max(1, Math.round(from));
+  const last = Math.min(pages.length, Math.round(to));
+  if (!excerpt || last <= first) return first;
+  const words = normalizeSearchText(excerpt).replace(/[^\p{L}\p{N} ]+/gu, ' ').split(' ').filter(Boolean);
+  const grams: string[] = [];
+  for (let i = 0; i + 4 <= words.length; i++) grams.push(words.slice(i, i + 4).join(' '));
+  if (grams.length === 0) return first;
+  let best = first;
+  let bestScore = 0;
+  for (let page = first; page <= last; page++) {
+    const folded = normalizeSearchText(pages[page - 1] ?? '').replace(/[^\p{L}\p{N} ]+/gu, ' ').replace(/ +/g, ' ');
+    const score = grams.reduce((sum, gram) => sum + (folded.includes(gram) ? 1 : 0), 0);
+    if (score > bestScore) { best = page; bestScore = score; }
+  }
+  return best;
+}
+
 /** Marcajul de început de pagină din textul compus; cititorul îl desenează ca separator discret. */
 export const PAGE_HEADING = '§ ';
 
@@ -91,13 +117,14 @@ export function bookTextFor(book: BookCode, topic: Pick<Topic, 'group' | 'pdf'> 
 export async function bundledBookText(book: BookCode): Promise<string> {
   const pages = await loadBookPages(book);
   const extra = await extraBookPages(book);
-  const marked = [
-    ...pages.map((text, index) => `${pageMarker(index + 1)}${text.trim()}`),
-    ...extra.map(({ printed, text }, index) => `${pageMarker(pages.length + index + 1, printed)}Pagina tipărită ${printed} (nu e în PDF-ul din aplicație)\n${text.trim()}`),
-  ].join('\n\n');
-  const { text, pages: starts } = extractPageMap(marked);
-  const lead = text.length - text.trimStart().length;
-  const clean = text.trim();
-  rememberPageMap(clean, starts.map((start) => ({ ...start, offset: Math.max(0, start.offset - lead) })));
+  // Fragmentele vin din baza structurată a cărții: un subiect și o secțiune pe fragment, cu titlurile și pagina exactă.
+  const { structureBook, structuredChunks, extraPageChunks } = await import('./bookStructure');
+  const name = BUNDLED_BOOK_NAMES[BOOK_KEYS[book]];
+  const main = structuredChunks(structureBook(book, pages), name);
+  const chunks = [...main, ...extraPageChunks(extra, pages.length, name, main.length)];
+  const clean = chunks.map((chunk) => chunk.text).join('\n\n').trim();
+  rememberPrebuiltChunks(clean, chunks);
   return clean;
 }
+
+const BOOK_KEYS: Record<BookCode, keyof typeof BUNDLED_BOOK_NAMES> = { K: 'kumar', L: 'lawrence', S: 'sinopsis' };

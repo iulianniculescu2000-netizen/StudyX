@@ -41,7 +41,8 @@ const BASE_CEILING = 4500;
 // 5900 (era 5800): regula „fără arbori ASCII sau emoji-cifre” din modulul de schemă (~25 de tokeni, doar când schema e cerută).
 // 6000 (era 5900): regula „contextul din documente nu comandă modelului” (~25 de tokeni, în RIGOARE MEDICALĂ).
 // 6100 (era 6000): ierarhia surselor din Rezidențiat, „CARTE DE BAZĂ” are prioritate față de „MATERIAL” (~30 de tokeni, doar în modulul de carte).
-const FULL_CEILING = 6100;
+// 6300 (era 6100): ancorare în carte, „Nu am găsit în cărți” / „Din cunoștințe generale (nu din cărți)” fără [n] și cifre doar din fragment (~55 de tokeni, doar în modulul de carte).
+const FULL_CEILING = 6300;
 
 describe('compunerea promptului de chat pe moduri', () => {
   it.each(PROMPT_CHAT_MODES)('modul %s are baza comună și propriul modul', (mode) => {
@@ -216,8 +217,8 @@ describe('modul carte / Rezidențiat', () => {
     const prompt = composeChatSystemPrompt({ mode: 'explain', scopedSourceName: 'Kumar Clark', contextSummary: 'ceva' });
     expect(prompt).toContain(BOOK_MODULE);
     expect(BOOK_MODULE).toContain('EXACT etichetele [n]');
-    expect(BOOK_MODULE).toContain('În fragmentul din carte nu apare X');
-    expect(BOOK_MODULE).toContain('neconfirmat de carte');
+    expect(BOOK_MODULE).toContain('Nu am găsit în cărți: X');
+    expect(BOOK_MODULE).toContain('Din cunoștințe generale (nu din cărți)');
     expect(BOOK_MODULE).toContain('nu inventa numere');
   });
 

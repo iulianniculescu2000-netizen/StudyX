@@ -16,6 +16,7 @@ import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useScrollLock } from '../hooks/useScrollLock';
 import Portal from './Portal';
 import { plural } from '../lib/plural';
+import { describeDownload, meaningfulChanges } from '../lib/updateUi';
 import type { Quiz } from '../types';
 
 function uid() {
@@ -68,6 +69,50 @@ function VersionPill({ label, value, tone }: { label: string; value: string; ton
         {value}
       </div>
     </div>
+  );
+}
+
+/** „Ce s-a schimbat”: notele manifestului, fără rândul de rezervă „StudyX x.y.z”. */
+function ChangesList({ changes, version }: { changes: string[] | undefined; version: string }) {
+  const theme = useTheme();
+  const items = meaningfulChanges(changes, version);
+  if (items.length === 0) return null;
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: theme.text3, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+        Ce s-a schimbat
+      </div>
+      <ul
+        className="custom-scrollbar"
+        style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 180, overflowY: 'auto' }}
+      >
+        {items.map((c, i) => (
+          <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: theme.text2, lineHeight: 1.5 }}>
+            <ChevronRight size={14} color={theme.accent} style={{ flexShrink: 0, marginTop: 2 }} />
+            {c}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** Amână deschiderea automată a ferestrei până la ora 18:00 (azi sau mâine). */
+function SnoozeButton({ onSnooze }: { onSnooze: () => void }) {
+  const theme = useTheme();
+  return (
+    <button
+      type="button"
+      onClick={onSnooze}
+      className="hover:bg-[var(--hover-fill)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
+      style={{
+        width: '100%', marginTop: 8, padding: '9px 16px', borderRadius: 'var(--r-sm)',
+        border: `1px solid ${theme.border}`, background: 'transparent', color: theme.text2,
+        cursor: 'pointer', fontSize: 13, fontWeight: 600,
+      }}
+    >
+      Amână până diseară
+    </button>
   );
 }
 
@@ -205,8 +250,8 @@ export default function UpdateModal() {
   const titleId = useId();
   const {
     showUpdateModal, setShowUpdateModal,
-    status, localVersion, manifest, downloadPercent, lastCheckedAt, error,
-    checkForUpdate, downloadUpdate, applyUpdate, dismiss,
+    status, localVersion, manifest, downloadPercent, downloadStats, errorStage, lastCheckedAt, error,
+    checkForUpdate, downloadUpdate, applyUpdate, snoozeUntilTonight, dismiss,
     installedContentIds, contentInstalling, setContentInstalling, markContentInstalled,
   } = useUpdateStore();
   const addQuiz = useQuizStore((s) => s.addQuiz);
@@ -454,15 +499,29 @@ export default function UpdateModal() {
                           </span>
                         </div>
                         <p style={{ margin: '0 0 14px', fontSize: 13, color: theme.text2 }}>{error}</p>
+                        {errorStage === 'download' && manifest && (
+                          <p style={{ margin: '0 0 14px', fontSize: 12, color: theme.text3 }}>
+                            Conexiunea s-a întrerupt sau serverul nu a răspuns. Poți relua descărcarea oricând; datele tale nu sunt afectate.
+                          </p>
+                        )}
                         <button
-                          onClick={() => { dismiss(); checkForUpdate(); }}
+                          onClick={() => {
+                            if (errorStage === 'download' && manifest) { void downloadUpdate(); return; }
+                            if (errorStage === 'install') { void applyUpdate(); return; }
+                            dismiss();
+                            void checkForUpdate();
+                          }}
                           style={{
                             padding: '8px 16px', borderRadius: 'var(--r-sm)', border: `1px solid ${theme.danger}4D`,
                             background: `${theme.danger}14`, color: theme.danger,
                             cursor: 'pointer', fontSize: 13, fontWeight: 600,
                           }}
                         >
-                          Încearcă din nou
+                          {errorStage === 'download' && manifest
+                            ? 'Reia descărcarea'
+                            : errorStage === 'install'
+                              ? 'Încearcă din nou instalarea'
+                              : 'Încearcă din nou'}
                         </button>
                       </motion.div>
                     )}
@@ -610,16 +669,7 @@ export default function UpdateModal() {
                                               </span>
                                            </div>
 
-                                           {manifest.changes?.length > 0 && (
-                                             <ul style={{ margin: '0 0 16px', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                               {manifest.changes.map((c, i) => (
-                                                 <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: theme.text2, lineHeight: 1.5 }}>
-                                                   <ChevronRight size={14} color={theme.accent} style={{ flexShrink: 0, marginTop: 2 }} />
-                                                   {c}
-                                                 </li>
-                                               ))}
-                                             </ul>
-                                           )}
+                                           <ChangesList changes={manifest.changes} version={manifest.version} />
 
                                            {manifest.isSequential && (manifest.stepsRemaining ?? 0) > 1 && (
                                              <div style={{
@@ -643,6 +693,7 @@ export default function UpdateModal() {
                                            >
                                               <Download size={15} /> Începe descărcarea
                                            </motion.button>
+                                           <SnoozeButton onSnooze={snoozeUntilTonight} />
                                         </div>
                                       )}
 
@@ -664,6 +715,11 @@ export default function UpdateModal() {
                                             transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
                                             label="Descărcare actualizare"
                                           />
+                                          {describeDownload(downloadStats) && (
+                                            <div style={{ marginTop: 8, fontSize: 12, color: theme.text3, fontVariantNumeric: 'tabular-nums' }}>
+                                              {describeDownload(downloadStats)}
+                                            </div>
+                                          )}
                                         </div>
                                       )}
 
@@ -674,10 +730,11 @@ export default function UpdateModal() {
                                            border: `1px solid ${theme.success}30`
                                         }}>
                                           <p style={{ margin: '0 0 16px', fontSize: 13, color: theme.text2 }}>
-                                            Pachetul a fost descărcat cu succes. Repornește aplicația pentru a aplica modificările.
+                                            Pachetul a fost descărcat cu succes. Înainte de instalare salvăm o copie a datelor tale; apoi repornește aplicația pentru a aplica modificările.
                                           </p>
+                                          {manifest && <ChangesList changes={manifest.changes} version={manifest.version} />}
                                           <motion.button
-                                            onClick={applyUpdate}
+                                            onClick={() => { void applyUpdate(); }}
                                             whileTap={calmMotion ? undefined : { scale: 0.97 }}
                                             style={{
                                               width: '100%', padding: '10px 16px', borderRadius: 'var(--r-sm)', border: 'none',
@@ -689,6 +746,7 @@ export default function UpdateModal() {
                                           >
                                             <RotateCcw size={15} /> Repornește StudyX
                                           </motion.button>
+                                          <SnoozeButton onSnooze={snoozeUntilTonight} />
                                         </div>
                                       )}
                                     </motion.div>

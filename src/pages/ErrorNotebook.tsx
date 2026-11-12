@@ -1,7 +1,7 @@
 import { plural } from '../lib/plural';
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, Search, Sparkles, Repeat2, BookMarked } from 'lucide-react';
+import { ChevronDown, Search, Sparkles, Repeat2, BookMarked, Layers, Check } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useTheme } from '../theme/ThemeContext';
 import PageHeader from '../components/ui/PageHeader';
@@ -25,6 +25,9 @@ import CrossCheckCard from '../components/ai-chat/CrossCheckCard';
 import FxPage from '../components/fx/FxPage';
 import { askAiAboutError } from '../lib/errorNotebookActions';
 import { withoutSemicolons } from '../helpers/quizAi';
+import ErrorRecapModal from '../components/errors/ErrorRecapModal';
+import { addErrorCards, pickRecapEntries } from '../lib/errorNotebookStudy';
+import { useToastStore } from '../store/toastStore';
 
 const SORTS: ReadonlyArray<{ id: ErrorSort; label: string }> = [
   { id: 'wrong', label: 'Cele mai greșite' },
@@ -46,11 +49,20 @@ type FlatErrorItem =
       isFirstOverall: boolean;
     };
 
-function EntryRow({ entry, open, onToggle, anchor }: { entry: ErrorEntry; open: boolean; onToggle: () => void; anchor?: boolean }) {
+function EntryRow({ entry, open, onToggle, anchor, selected, onSelect }: { entry: ErrorEntry; open: boolean; onToggle: () => void; anchor?: boolean; selected: boolean; onSelect: () => void }) {
   const theme = useTheme();
   const panelId = `err-${entry.key.replace(/[^a-z0-9]/gi, '')}`;
   return (
-    <div {...(anchor ? { 'data-tutorial': 'errors-entry' } : {})} className="glass-panel rounded-[var(--r-md)]">
+    <div {...(anchor ? { 'data-tutorial': 'errors-entry' } : {})} className="glass-panel flex items-start rounded-[var(--r-md)]">
+      <input
+        type="checkbox"
+        checked={selected}
+        onChange={onSelect}
+        aria-label={`Selectează: ${entry.question.text}`}
+        className="focus-ring ml-4 mt-4 h-4 w-4 shrink-0 cursor-pointer"
+        style={{ accentColor: theme.accent }}
+      />
+      <div className="min-w-0 flex-1">
       <button
         type="button"
         onClick={onToggle}
@@ -83,7 +95,7 @@ function EntryRow({ entry, open, onToggle, anchor }: { entry: ErrorEntry; open: 
             ))}
           </ul>
           {entry.question.explanation && (
-            <p className="text-[13px] leading-relaxed" style={{ color: theme.text2 }}>{withoutSemicolons(entry.question.explanation)}</p>
+            <p className="text-[13px] leading-relaxed whitespace-pre-line" style={{ color: theme.text2 }}>{withoutSemicolons(entry.question.explanation)}</p>
           )}
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => askAiAboutError(entry, 'explain')} className="fine-chip press-feedback focus-ring flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold" style={{ color: theme.accentText }}>
@@ -100,6 +112,7 @@ function EntryRow({ entry, open, onToggle, anchor }: { entry: ErrorEntry; open: 
           />
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -112,6 +125,9 @@ export default function ErrorNotebook() {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<ErrorSort>('wrong');
   const [openKey, setOpenKey] = useState<string | null>(null);
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const [recapOpen, setRecapOpen] = useState(false);
+  const addToast = useToastStore((state) => state.addToast);
 
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -244,6 +260,25 @@ export default function ErrorNotebook() {
     }
   }, [activeTour, currentStep]);
 
+  // Selecția (dacă există) are prioritate; altfel, toate greșelile active din lista afișată.
+  const targets = useMemo(() => {
+    const ordered = groups.flatMap((group) => group.entries);
+    const chosen = ordered.filter((entry) => selected.has(entry.key));
+    return chosen.length > 0 ? chosen : ordered;
+  }, [groups, selected]);
+  const hasSelection = targets.length > 0 && targets.every((entry) => selected.has(entry.key));
+  const toggleSelected = (key: string) => setSelected((prev) => {
+    const next = new Set(prev);
+    if (!next.delete(key)) next.add(key);
+    return next;
+  });
+
+  const makeCards = () => {
+    const { added, skipped } = addErrorCards(targets);
+    if (added === 0 && skipped > 0) addToast('Cardurile există deja în „Din caietul de erori”.', 'info');
+    else addToast(`${plural(added, 'card adăugat', 'carduri adăugate')} în „Din caietul de erori”${skipped > 0 ? ` (${skipped} existente sărite)` : ''}.`);
+  };
+
   const practice = () => {
     const ordered = groups.flatMap((group) => group.entries);
     const quiz = buildErrorPracticeQuiz(ordered);
@@ -263,6 +298,16 @@ export default function ErrorNotebook() {
           actions={(
             <>
               <TourHelpButton tour="errors" label="Vezi turul Caietului de erori" />
+              {visible.length > 0 && (
+                <>
+                  <button type="button" onClick={makeCards} className="fine-chip press-feedback focus-ring flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-semibold" style={{ color: theme.accentText }}>
+                    <Layers size={14} aria-hidden="true" />Transformă în carduri{hasSelection ? ` (${targets.length})` : ''}
+                  </button>
+                  <button type="button" onClick={() => setRecapOpen(true)} className="fine-chip press-feedback focus-ring flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-semibold" style={{ color: theme.accentText }}>
+                    <Check size={14} aria-hidden="true" />Mini-recapitulare
+                  </button>
+                </>
+              )}
               {visible.length > 0 && (
                 <button type="button" data-tutorial="errors-practice" onClick={practice} className="press-feedback focus-ring rounded-full px-4 py-2 text-[13px] font-semibold text-white" style={{ background: theme.accent }}>
                   Repetă {Math.min(visible.length, 20)}
@@ -336,6 +381,8 @@ export default function ErrorNotebook() {
                           entry={item.entry}
                           open={openKey === item.entry.key}
                           onToggle={() => setOpenKey(openKey === item.entry.key ? null : item.entry.key)}
+                          selected={selected.has(item.entry.key)}
+                          onSelect={() => toggleSelected(item.entry.key)}
                         />
                       )}
                     </div>
@@ -346,6 +393,7 @@ export default function ErrorNotebook() {
           </>
         )}
       </div>
+      <ErrorRecapModal open={recapOpen} entries={pickRecapEntries(targets)} onClose={() => setRecapOpen(false)} />
     </FxPage>
   );
 }

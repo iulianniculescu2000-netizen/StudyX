@@ -69,6 +69,8 @@ export type ChatMessage = {
   truncated?: boolean;
   /** Cine a scris răspunsul (furnizor, model, local/cloud) și, la local, viteza: insigna de sub răspuns. */
   served?: import('./servedBadge').ServedInfo;
+  /** Cât de bine se sprijină răspunsul pe cărți (calculat determinist, vezi `answerSupport.ts`). */
+  support?: import('../../ai/answerSupport').AnswerSupport;
   /** Saved "Verifică cu alt model" verdict. */
   crossCheck?: import('./CrossCheckCard').CrossCheckSaved;
   /** Cerere de flashcarduri / grile care așteaptă alegerile utilizatorului (nivel, număr, folder). */

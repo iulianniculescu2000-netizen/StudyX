@@ -25,11 +25,15 @@ import { BOOK_SHORT, chapterTopics, curriculumChapters } from '../lib/curriculum
 import { chapterBookHref } from '../lib/organizare/appLinks';
 import { findRezidentiatRootFolder, isUnderRezidentiatRoot } from '../lib/rezidentiatRoot';
 import { useRezidentiatOverview } from './residency/useResidencyData';
+import { dispatchOpenBook } from './pdf/bookRequest';
+import { loadBookPages } from '../lib/bookText';
+import type { BookCode } from '../lib/bookPages';
+import { buildBookIndex, searchBook, type BookIndex } from './search/bookSearch';
 
-type Section = 'actions' | 'pages' | 'rezidentiat' | 'folders' | 'quizzes' | 'questions' | 'cards' | 'notes' | 'sources';
+type Section = 'actions' | 'pages' | 'rezidentiat' | 'folders' | 'quizzes' | 'questions' | 'cards' | 'notes' | 'sources' | 'books';
 
 /** Ordinea secțiunilor în lista de rezultate. */
-const SECTION_ORDER: Section[] = ['pages', 'rezidentiat', 'folders', 'quizzes', 'questions', 'cards', 'notes', 'sources'];
+const SECTION_ORDER: Section[] = ['pages', 'rezidentiat', 'folders', 'quizzes', 'questions', 'cards', 'notes', 'sources', 'books'];
 const SECTION_LABEL: Record<Section, string> = {
   actions: 'Acțiuni rapide',
   pages: 'Pagini',
@@ -40,6 +44,7 @@ const SECTION_LABEL: Record<Section, string> = {
   cards: 'Flashcarduri',
   notes: 'Notițe',
   sources: 'Biblioteca AI',
+  books: 'Cărți',
 };
 const MAX_RESULTS = 20;
 
@@ -54,6 +59,8 @@ interface SearchResult {
   icon: LucideIcon;
   /** Acțiune fără rută proprie (deschide chatul AI). */
   action?: 'chat';
+  /** Rezultat din cărțile incluse: se deschide în cititor la pagina din PDF. */
+  book?: { book: BookCode; pdfPage: number };
   /** Textul principal cu potrivirile marcate (rezultate din conținut). */
   segments?: Segment[];
   /** Rând suplimentar când potrivirea e în opțiuni / explicație / verso. */
@@ -325,6 +332,59 @@ function useContentResults(query: string): { result: SearchResult; score: number
   }, [deferred, quizzes, notes]);
 }
 
+const BOOK_CODES: BookCode[] = ['K', 'L', 'S'];
+const BOOK_DEBOUNCE_MS = 120;
+const BOOKS_PER_BOOK = 2;
+
+/** Indexurile cărților se construiesc o singură dată, la prima deschidere a căutării, și rămân în memorie. */
+let bookIndexes: Promise<BookIndex[]> | null = null;
+function loadBookIndexes(): Promise<BookIndex[]> {
+  bookIndexes ??= Promise.all(
+    BOOK_CODES.map(async (code) => buildBookIndex(code, await loadBookPages(code))),
+  ).catch(() => {
+    bookIndexes = null;
+    return [];
+  });
+  return bookIndexes;
+}
+
+/** Căutarea în cărți: indexul se încarcă după ce panoul s-a desenat, iar interogarea are debounce. */
+function useBookResults(query: string): SearchResult[] {
+  const [indexes, setIndexes] = useState<BookIndex[]>([]);
+  const [debounced, setDebounced] = useState('');
+  useEffect(() => {
+    let alive = true;
+    const timer = window.setTimeout(() => {
+      void loadBookIndexes().then((loaded) => { if (alive) setIndexes(loaded); });
+    }, 80);
+    return () => { alive = false; window.clearTimeout(timer); };
+  }, []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(query), BOOK_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [query]);
+  return useMemo(() => {
+    if (debounced.length < 3 || debounced !== query) return [];
+    const out: SearchResult[] = [];
+    for (const index of indexes) {
+      for (const hit of searchBook(index, debounced, BOOKS_PER_BOOK)) {
+        out.push({
+          id: `book-${hit.book}-${hit.pdfPage}`,
+          section: 'books',
+          label: `${BOOK_SHORT[hit.book]}, p. ${hit.pdfPage}`,
+          sub: 'Carte',
+          href: '',
+          color: 'orange',
+          icon: BookOpen,
+          book: { book: hit.book, pdfPage: hit.pdfPage },
+          hint: { label: 'Text', segments: hit.snippet },
+        });
+      }
+    }
+    return out;
+  }, [debounced, query, indexes]);
+}
+
 export default function GlobalSearch() {
   const [open, setOpen] = useState(false);
   // Se schimbă la fiecare deschidere, ca panoul să pornească de la zero (interogare goală, primul rând activ).
@@ -380,6 +440,7 @@ function SearchPanel({ onClose }: { onClose: () => void }) {
   const pageEntries = usePageEntries();
   const dataEntries = useDataEntries();
   const contentResults = useContentResults(query.trim());
+  const bookResults = useBookResults(query.trim());
 
   const trimmed = query.trim();
 
@@ -398,8 +459,9 @@ function SearchPanel({ onClose }: { onClose: () => void }) {
     for (const item of contentResults) scored.push(item);
     const top = scored.sort((a, b) => b.score - a.score).slice(0, MAX_RESULTS).map((entry) => entry.result);
     // Grupate pe secțiuni, în ordinea fixă; în interiorul secțiunii rămâne ordinea scorului.
-    return SECTION_ORDER.flatMap((section) => top.filter((result) => result.section === section));
-  }, [trimmed, pageEntries, dataEntries, contentResults]);
+    const all = [...top, ...bookResults];
+    return SECTION_ORDER.flatMap((section) => all.filter((result) => result.section === section));
+  }, [trimmed, pageEntries, dataEntries, contentResults, bookResults]);
 
   const navigable = trimmed.length === 0 ? QUICK_ACTIONS : results;
   const safeActiveIdx = navigable.length > 0 ? Math.min(activeIdx, navigable.length - 1) : 0;
@@ -417,6 +479,10 @@ function SearchPanel({ onClose }: { onClose: () => void }) {
     onClose();
     if (result.action === 'chat') {
       setChatOpen(true);
+      return;
+    }
+    if (result.book) {
+      dispatchOpenBook({ book: result.book.book, pdfPage: result.book.pdfPage });
       return;
     }
     navigate(result.href);

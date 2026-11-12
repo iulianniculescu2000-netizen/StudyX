@@ -65,7 +65,7 @@ Object.defineProperty(window, 'electronAPI', {
     getZoomFactor: () => 1,
     storageLoad: () => Promise.resolve(null),
     storageSave: () => Promise.resolve(),
-    autoBackup: () => Promise.resolve({ success: true, path: '/mock/backup' }),
+    autoBackup: (...args: unknown[]) => { void args; return Promise.resolve({ success: true, path: '/mock/backup' }); },
     updaterInstallDownloaded: () => Promise.resolve(),
     updaterCheckForUpdates: () => Promise.resolve({ hasUpdate: false }),
     updaterGetVersion: () => Promise.resolve('1.0.1'),

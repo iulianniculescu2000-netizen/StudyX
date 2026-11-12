@@ -10,24 +10,15 @@ import { embedTextLocal } from './embeddings';
 import { rankChunks, type RankableChunk } from './retriever';
 import { filterRelevantChunks } from '../components/ai-chat/retrievalQuery';
 import kumarPages from '../data/rezidentiat/library/kumar.pages.json';
+import { structureBook, structuredChunks } from '../lib/bookStructure';
 
 const SOURCE = 'Kumar și Clark – Medicină Clinică.pdf';
-const CHUNK_CHARS = 1400;
 
+/** Exact fragmentele pe care le indexează aplicația: baza structurată a cărții (subiect › secțiune, pagina exactă). */
 function bookChunks(): RankableChunk[] {
-  const pages = kumarPages as string[];
-  const chunks: RankableChunk[] = [];
-  pages.forEach((text, index) => {
-    for (let start = 0; start < text.length; start += CHUNK_CHARS) {
-      const piece = text.slice(start, start + CHUNK_CHARS);
-      if (piece.trim().length < 200) continue;
-      chunks.push({
-        id: `${SOURCE}-chunk-${chunks.length}`, text: piece, topic: 'Kumar', source: SOURCE, sourceId: 'kumar',
-        page: index + 1, embedding: embedTextLocal(piece),
-      });
-    }
-  });
-  return chunks;
+  return structuredChunks(structureBook('K', kumarPages as string[]), SOURCE).map((chunk) => ({
+    ...chunk, topic: 'Kumar', source: SOURCE, sourceId: 'kumar', embedding: embedTextLocal(chunk.text),
+  }));
 }
 
 const CHUNKS = bookChunks();
@@ -62,5 +53,16 @@ describe('întrebări lungi pe Kumar cu vectori locali', () => {
 
   it('o întrebare fără legătură cu medicina nu primește fragmente', () => {
     expect(search('Spune-mi o glumă')).toEqual([]);
+  });
+});
+
+describe('cartea numită în întrebare', () => {
+  it('„din Kumar”, „Lawrence”, „Sinopsis” sunt recunoscute; două cărți sau niciuna nu aleg nimic', async () => {
+    const { bookNamedIn } = await import('./retriever');
+    expect(bookNamedIn('Explică-mi guta din Kumar')).toBe('K');
+    expect(bookNamedIn('ce spune Lawrence despre hernii')).toBe('L');
+    expect(bookNamedIn('în Sinopsisul de medicină')).toBe('S');
+    expect(bookNamedIn('compară Kumar și Lawrence')).toBeNull();
+    expect(bookNamedIn('tratamentul gutei')).toBeNull();
   });
 });

@@ -189,6 +189,13 @@ export default function RelevantDocModal({ open, chunk, passage = null, onClose 
 
           {/* Corp Modal — Fragmentul de text */}
           <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-4">
+            {/* Explicația agentului e a lui, nu a cărții: stă în afara casetei „Din carte”, care conține doar textul cărții, neschimbat. */}
+            {passage?.why && (
+              <div className="mx-auto max-w-[72ch] text-[13px] leading-6" style={{ color: theme.text2 }}>
+                <span className="font-semibold" style={{ color: theme.text }}>Legătura cu grila: </span>
+                {passage.why}
+              </div>
+            )}
             <div
               className="p-4 rounded-[var(--r-md)] border text-[14px] leading-relaxed select-text"
               style={{
@@ -201,9 +208,6 @@ export default function RelevantDocModal({ open, chunk, passage = null, onClose 
                 <Bookmark size={13} />
                 <span>{passage ? 'Din carte' : 'Fragment extras din bibliografie'}</span>
               </div>
-              {passage?.why && (
-                <p className="mx-auto mb-3 max-w-[72ch] text-[13px] leading-6" style={{ color: theme.text2 }}>{passage.why}</p>
-              )}
               {usedRoles.length > 0 && (
                 <ul className="mx-auto mb-3 flex max-w-[72ch] flex-wrap gap-x-4 gap-y-1.5 text-[12px]" style={{ color: theme.text2 }} aria-label="Legenda evidențierilor">
                   {usedRoles.map((role) => (
@@ -216,7 +220,7 @@ export default function RelevantDocModal({ open, chunk, passage = null, onClose 
               )}
               <article ref={articleRef} className="mx-auto max-w-[72ch] space-y-4 break-words font-sans leading-7">
                 {textBlocks.map((block, index) => block.kind === 'heading' ? (
-                  <h4 key={index} className="pt-2 text-[13px] font-extrabold uppercase tracking-[0.08em]" style={{ color: theme.text }}>
+                  <h4 key={index} className="pt-2 text-[15px] font-semibold" style={{ color: theme.text }}>
                     {block.text}
                   </h4>
                 ) : block.kind === 'list' ? (

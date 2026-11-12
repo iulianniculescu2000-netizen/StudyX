@@ -193,6 +193,40 @@ export function rememberPageMap(cleanText: string, pages: PageStart[]): void {
   }
 }
 
+export interface PrebuiltChunk {
+  id: string;
+  text: string;
+  heading?: string;
+  chapter?: string;
+  page?: number;
+  pageEnd?: number;
+  printedPage?: number;
+}
+
+const pendingChunks = new Map<string, PrebuiltChunk[]>();
+
+/**
+ * Fragmentele gata făcute ale unui text (cărțile incluse, împărțite pe subiecte și secțiuni în `bookStructure`): indexarea
+ * le folosește în locul împărțirii generice. Legate de text prin aceeași amprentă ca harta paginilor.
+ */
+export function rememberPrebuiltChunks(cleanText: string, chunks: PrebuiltChunk[]): void {
+  if (chunks.length === 0) return;
+  pendingChunks.set(fingerprint(cleanText), chunks);
+  while (pendingChunks.size > MAX_PENDING) {
+    const oldest = pendingChunks.keys().next().value;
+    if (oldest === undefined) break;
+    pendingChunks.delete(oldest);
+  }
+}
+
+/** Scoate (o singură dată) fragmentele gata făcute pentru acest text, dacă există. */
+export function takePrebuiltChunks(cleanText: string): PrebuiltChunk[] | null {
+  const key = fingerprint(cleanText);
+  const chunks = pendingChunks.get(key) ?? null;
+  pendingChunks.delete(key);
+  return chunks;
+}
+
 /** Scoate (o singură dată) harta paginilor pentru acest text, dacă parserul a lăsat una. */
 export function takePageMap(cleanText: string): PageStart[] | null {
   const key = fingerprint(cleanText);

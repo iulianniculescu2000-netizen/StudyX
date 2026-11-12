@@ -896,21 +896,27 @@ function registerIpcHandlers() {
     return true;
   });
 
-  ipcMain.handle('app:autoBackup', async (_, { data }) => {
+  ipcMain.handle('app:autoBackup', async (_, { data, kind } = {}) => {
     try {
+      if (typeof data !== 'string') throw new Error('Invalid backup payload');
       // Test profiles must never rotate or overwrite the user's real backups.
       const backupDir = userDataOverride
         ? path.join(userDataOverride, 'backups')
         : path.join(app.getPath('documents'), 'StudyX-Backups');
       await fsp.mkdir(backupDir, { recursive: true });
+      // 'pre-update' copies have their own prefix and their own rotation (last 3),
+      // so they never push out the daily `studyx-backup-` files (and vice versa).
+      const preUpdate = kind === 'pre-update';
+      const prefix = preUpdate ? 'studyx-preupdate-' : 'studyx-backup-';
+      const keep = preUpdate ? 3 : 10;
       const files = await fsp.readdir(backupDir);
-      const existing = files.filter(f => f.startsWith('studyx-backup-')).sort();
-      while (existing.length >= 10) {
+      const existing = files.filter(f => f.startsWith(prefix)).sort();
+      while (existing.length >= keep) {
         const toDelete = existing.shift();
         if (toDelete) await fsp.unlink(path.join(backupDir, toDelete));
       }
       const dateStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      const filePath = path.join(backupDir, `studyx-backup-${dateStr}.json`);
+      const filePath = path.join(backupDir, `${prefix}${dateStr}.json`);
       await fsp.writeFile(filePath, data, 'utf-8');
       return { success: true, path: filePath };
     } catch (e) { return { success: false, error: e.message }; }

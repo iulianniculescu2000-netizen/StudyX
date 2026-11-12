@@ -72,7 +72,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Signal Electron that React is ready (used to avoid white flash on startup)
   appReady: () => ipcRenderer.send('app:ready'),
   // Auto-backup: write all app data to Documents/StudyX-Backups
-  autoBackup: (data) => ipcRenderer.invoke('app:autoBackup', { data }),
+  autoBackup: (data, kind) => ipcRenderer.invoke('app:autoBackup', { data, kind }),
   storageSave: (profileId, namespace, serialized) => ipcRenderer.invoke('storage:save', { profileId, namespace, serialized }),
   storageLoad: (profileId, namespace) => ipcRenderer.invoke('storage:load', { profileId, namespace }),
   storageDeleteProfile: (profileId) => ipcRenderer.invoke('storage:delete-profile', { profileId }),

@@ -13,6 +13,8 @@ export const OPEN_BOOK_EVENT = 'studyx:open-book';
 export interface OpenBookDetail {
   book: BookCode | undefined;
   pdfPage?: number;
+  /** Ultima pagină a fragmentului; cu `excerpt`, cititorul alege pagina din interval care conține textul. */
+  pdfPageEnd?: number;
   printedPage?: number;
   sourceId?: string;
   sourceName?: string;
@@ -63,11 +65,12 @@ export function citationChipParts(citation: Pick<Citation, 'source' | 'page' | '
 }
 
 /** Cere cititorului să deschidă pagina citată. Nu face nimic dacă nu există `window`. */
-export function openBookCitation(citation: Pick<Citation, 'source' | 'sourceId' | 'page' | 'printedPage' | 'excerpt' | 'tier'>): void {
+export function openBookCitation(citation: Pick<Citation, 'source' | 'sourceId' | 'page' | 'pageEnd' | 'printedPage' | 'excerpt' | 'tier'>): void {
   if (typeof window === 'undefined') return;
   const detail: OpenBookDetail = {
     book: bookOfSourceName(citation.source) ?? undefined,
     ...(citation.page !== undefined ? { pdfPage: citation.page } : {}),
+    ...(citation.pageEnd !== undefined ? { pdfPageEnd: citation.pageEnd } : {}),
     ...(citation.printedPage !== undefined ? { printedPage: citation.printedPage } : {}),
     ...(citation.sourceId ? { sourceId: citation.sourceId } : {}),
     sourceName: citation.source,

@@ -40,6 +40,7 @@ import { getHealthBadgeLabel } from './lib/healthReporter';
 import { useRuntimeStore } from './store/runtimeStore';
 import { beginStartupSession, completeStartupSession, inspectPreviousStartup } from './lib/startupSessionGuard';
 import { useUpdateStore } from './store/updateStore';
+import { isSnoozed } from './lib/updateUi';
 import { migrateLegacyUserMemory } from './ai/UserProfile';
 import { checkModelAvailability } from './lib/ai/modelHealing';
 
@@ -128,7 +129,8 @@ function AppContent({ splashVisible }: { splashVisible: boolean }) {
     if (updateStatus !== 'idle') return;
     const timer = window.setTimeout(async () => {
       await checkForUpdate();
-      if (useUpdateStore.getState().status === 'available') {
+      const { status, snoozedUntil } = useUpdateStore.getState();
+      if (status === 'available' && !isSnoozed(snoozedUntil, Date.now())) {
         addToast('Actualizare disponibilă pentru StudyX!', 'info', 6000);
         // Show the update modal after a short delay so the toast is visible first
         window.setTimeout(() => setShowUpdateModal(true), 1200);

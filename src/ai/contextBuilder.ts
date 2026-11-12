@@ -10,6 +10,15 @@ import { contextDuplicateKey, contextLimit, normalizeContextProse } from './cont
 import { repairOcr } from '../lib/ocrRepair';
 import type { SourceTier } from '../lib/bookTier';
 
+/**
+ * Textul cărții dintr-un fragment, fără titlul „Subiect › Secțiune” pe care îl pun în față fragmentele structurate ale cărților
+ * incluse (`bookStructure`): titlul e deja în antetul sursei și în citare, iar extrasul trebuie să fie doar text din carte.
+ */
+export function chunkBodyText(text: string, heading?: string): string {
+  const prefix = heading ? `${heading}\n\n` : '';
+  return prefix && text.startsWith(prefix) ? text.slice(prefix.length) : text;
+}
+
 /** Strictul necesar dintr-un rezultat de retrieval; `RetrievedChunk` și `ChunkRecord` se potrivesc. */
 export interface ContextChunkInput {
   id: string;
@@ -177,7 +186,7 @@ export function buildNumberedContext(chunks: ContextChunkInput[], maxChars: numb
 
   for (const chunk of chunks) {
     if (picked.length >= maxChunks) break;
-    const body = normalizeContextProse(repairOcr(chunk.text));
+    const body = normalizeContextProse(repairOcr(chunkBodyText(chunk.text, chunk.heading ?? chunk.metadata?.heading)));
     if (!body) continue;
     const pages = pagesOf(chunk);
     const key = contextDuplicateKey(body, [chunk.sourceId, chunk.source, pages.page, pages.pageEnd,
@@ -196,7 +205,7 @@ export function buildNumberedContext(chunks: ContextChunkInput[], maxChars: numb
     if (!first) return { context: '', sources: [] };
     const head = headerFor(1, first);
     const room = budget - head.length - 3;
-    const body = truncateAtBoundary(normalizeContextProse(repairOcr(first.text)), room);
+    const body = truncateAtBoundary(normalizeContextProse(repairOcr(chunkBodyText(first.text, first.heading ?? first.metadata?.heading))), room);
     if (!body) return { context: '', sources: [] };
     picked.push({ chunk: first, body });
   }

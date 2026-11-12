@@ -25,6 +25,7 @@ import TourHelpButton from '../tutorial/TourHelpButton';
 import { OrganizareContext, type OrganizareApi } from '../components/organizare/context';
 import { Card, GhostButton } from '../components/organizare/ui';
 import Overview from '../components/organizare/Overview';
+import CatchUpBanner from '../components/organizare/CatchUpBanner';
 
 // The heavier tabs are separate chunks. They are fetched in idle time once the plan is ready (and on hover/focus of
 // their tab), so the first switch never waits on the network or shows a skeleton in the middle of the transition.
@@ -320,6 +321,7 @@ export default function Organizare() {
 
         {api ? (
           <OrganizareContext.Provider value={api}>
+            {(tab === 'panou' || tab === 'saptamani') && <CatchUpBanner />}
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={tab}

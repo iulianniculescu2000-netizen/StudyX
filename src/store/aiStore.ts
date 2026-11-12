@@ -4,7 +4,7 @@ import { chunkDocument } from '../ai/chunker';
 import { addChunksToVault, clearVault, getPageCoverageBySource, lacksPageInfo, getVaultChunksBySource, removeChunksBySource } from '../ai/vectorStore';
 import { retrieveRelevantChunks, type RetrievalScope } from '../ai/retriever';
 import { buildNumberedContext, type NumberedContext } from '../ai/contextBuilder';
-import { assignPagesToChunks, takePageMap } from '../ai/pageMarkers';
+import { assignPagesToChunks, takePageMap, takePrebuiltChunks } from '../ai/pageMarkers';
 import { currentProfileEpoch, ProfileChangedError } from './profileEpoch';
 import { createSafePersistStorage } from './safeStorage';
 import { matchBookByName } from '../data/residencyCurriculum';
@@ -195,6 +195,8 @@ export interface AIState {
     lastCleared: number | null;
   };
   studyMemory: Record<string, AIStudyMemoryProfile>;
+  /** „Doar din cărți”: chatul răspunde exclusiv din fragmentele găsite în bibliotecă (preferință globală, ca furnizorul). */
+  booksOnly: boolean;
 }
 
 export interface AIActions {
@@ -237,6 +239,7 @@ export interface AIActions {
   recordAIInteraction: (profileId: string, input: AIInteractionMemoryInput) => void;
   getAIMemoryContext: (profileId: string) => string;
   clearAIMemory: (profileId?: string) => void;
+  setBooksOnly: (value: boolean) => void;
   reset: () => void;
   /** Per-profile: knowledge sources + library folders load/save through profileStorage.ts, not the global zustand persist blob. */
   _hydrate: (data: { knowledgeSources: AIKnowledgeSource[]; libraryFolders: AILibraryFolder[] }) => void;
@@ -310,6 +313,7 @@ const createDefaultState = (): AIState => ({
     lastCleared: null,
   },
   studyMemory: {},
+  booksOnly: false,
 });
 
 function createMemoryProfile(profileId: string): AIStudyMemoryProfile {
@@ -493,6 +497,12 @@ export function isSourceReady(source: { indexStatus?: AIKnowledgeSource['indexSt
 
 /** Chunking + pagini + capitol, la fel pentru indexarea inițială și pentru reindexare. */
 async function buildSourceChunks(name: string, normalizedText: string) {
+  // Cărțile incluse vin deja împărțite pe subiecte și secțiuni, cu pagina exactă (`bookStructure`).
+  const prebuilt = takePrebuiltChunks(normalizedText);
+  if (prebuilt) {
+    takePageMap(normalizedText);
+    return { chunks: prebuilt, hasPages: prebuilt.some((chunk) => typeof chunk.page === 'number') };
+  }
   const curriculumBook = matchBookByName(name);
   const rawChunks = await chunkDocument(normalizedText, name, {
     chunkSize: 1500,
@@ -967,6 +977,8 @@ export const useAIStore = create<AIState & AIActions>()(
           }, false, 'ai/recordAIInteraction');
         },
 
+        setBooksOnly: (value) => set({ booksOnly: Boolean(value) }, false, 'ai/setBooksOnly'),
+
         getAIMemoryContext: (profileId) => buildMemoryContext(get().studyMemory[profileId]),
 
         clearAIMemory: (profileId) => set((state) => {
@@ -1003,6 +1015,7 @@ export const useAIStore = create<AIState & AIActions>()(
           hasKey: state.hasKey,
           cache: state.cache,
           studyMemory: state.studyMemory,
+          booksOnly: state.booksOnly,
         }),
         onRehydrateStorage: () => (state) => {
           if (!state) return;
@@ -1061,6 +1074,7 @@ export const useAIStore = create<AIState & AIActions>()(
             lastCleared: typeof state.cache?.lastCleared === 'number' ? state.cache.lastCleared : null,
           };
           state.studyMemory = normalizeStudyMemory(state.studyMemory);
+          state.booksOnly = state.booksOnly === true;
         },
       },
     ),
