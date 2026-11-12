@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { expectNoA11yViolations } from '../test/a11y';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ThemeProvider } from '../theme/ThemeContext';
@@ -84,5 +85,40 @@ describe('Notes question links', () => {
 
     fireEvent.change(searchInput, { target: { value: 'negasit_xyz' } });
     expect(screen.getByText('Nicio notiță nu corespunde')).toBeInTheDocument();
+  });
+});
+
+describe('Notes schemes', () => {
+  const code = 'graph TD\n  A[Start] --> B[Final]';
+  const id = 'schema-abc';
+  beforeEach(() => {
+    useNotesStore.getState()._hydrate({ notes: { [id]: `Schema mea\n\n\`\`\`schema\n${code}\n\`\`\`` } });
+    useQuizStore.setState({ quizzes: [], sessions: [], _hasHydrated: true });
+  });
+  const view = () => render(<MemoryRouter><ThemeProvider><Notes /></ThemeProvider></MemoryRouter>);
+
+  it('shows a schema note under Scheme, not Grilă ștearsă, without open link', async () => {
+    const { container } = view();
+    expect(screen.getByRole('heading', { name: 'Scheme' })).toBeInTheDocument();
+    expect(screen.queryByText('Grilă ștearsă')).toBeNull();
+    expect(screen.queryByRole('link')).toBeNull();
+    expect(screen.getByText('Schema mea')).toBeInTheDocument();
+    await expectNoA11yViolations(container);
+  });
+
+  it('edits the source and saves it', () => {
+    view();
+    fireEvent.click(screen.getByRole('button', { name: /Editează schema/ }));
+    fireEvent.change(screen.getByLabelText(/Sursa schemei/), { target: { value: 'graph TD\n  A[Nou] --> B[Final]' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvează' }));
+    expect(useNotesStore.getState().notes[id]).toContain('A[Nou]');
+  });
+
+  it('asks for confirmation before deleting', () => {
+    view();
+    fireEvent.click(screen.getByRole('button', { name: 'Șterge notița' }));
+    expect(useNotesStore.getState().notes[id]).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Șterge' }));
+    expect(useNotesStore.getState().notes[id]).toBeUndefined();
   });
 });

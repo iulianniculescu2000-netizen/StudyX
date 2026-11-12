@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { StickyNote, Search, Trash2, X, Sparkles, Loader2, CreditCard, ExternalLink, FileQuestion, HelpCircle, Filter } from 'lucide-react';
+import { StickyNote, Search, Trash2, X, Sparkles, Loader2, CreditCard, ExternalLink, FileQuestion, HelpCircle, Filter, Network, Pencil } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
 import { useNotesStore } from '../store/notesStore';
 import { useQuizStore } from '../store/quizStore';
@@ -16,6 +16,20 @@ import EmptyState from '../components/ui/EmptyState';
 import { plural } from '../lib/plural';
 import { useAdaptiveMotion } from '../hooks/useAdaptiveMotion';
 import { dur, ease } from '../theme/motion';
+import { renderDiagramBlock } from '../components/ai-chat/diagram';
+import { sanitizeSvg } from '../components/ai-chat/sanitize';
+import { parseSchemaSource, schemaNoteText, schemaTitle } from '../lib/ai/schemaStudy';
+
+const SCHEMA_GROUP = '__schema__';
+const isSchemaId = (id: string) => id.startsWith('schema-');
+
+/** Notița unei scheme: prima linie e titlul, sursa e în blocul ```schema. */
+function splitSchemaNote(text: string): { title: string; code: string } {
+  const m = /```[\w-]*\n([\s\S]*?)\n?```/.exec(text);
+  const code = (m ? m[1] : text).trim();
+  const title = text.split('\n')[0]?.trim() || 'Schemă din chat';
+  return { title, code };
+}
 
 type EnrichedNoteItem = {
   questionId: string;
@@ -51,6 +65,9 @@ export default function Notes() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [aiConverting, setAiConverting] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const setNote = useNotesStore((s) => s.setNote);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState('');
 
   // Căutarea și grila selectată trăiesc în URL (?q=&quiz=), ca să supraviețuiască reîncărcării.
   const [searchParams, setSearchParams] = useSearchParams();
@@ -80,24 +97,28 @@ export default function Notes() {
       .sort((a, b) => (a.quiz?.title ?? '').localeCompare(b.quiz?.title ?? '', 'ro'));
   }, [notes, quizzes]);
 
+  const groupKeyOf = (n: { questionId: string; quiz: { id: string } | null }) =>
+    isSchemaId(n.questionId) && !n.quiz ? SCHEMA_GROUP : (n.quiz?.id ?? '__orphan__');
+
   const filtered = enriched.filter(n => {
-    if (quizFilter && (n.quiz?.id ?? '__orphan__') !== quizFilter) return false;
+    if (quizFilter && groupKeyOf(n) !== quizFilter) return false;
     if (!search.trim()) return true;
     return matchesQuery(`${n.text} ${n.question?.text ?? ''} ${n.quiz?.title ?? ''}`, search);
   });
   const filterTitle = quizFilter
-    ? (quizzes.find(q => q.id === quizFilter)?.title ?? (quizFilter === '__orphan__' ? 'Grilă ștearsă' : 'Grilă'))
+    ? (quizzes.find(q => q.id === quizFilter)?.title ?? (quizFilter === SCHEMA_GROUP ? 'Scheme' : quizFilter === '__orphan__' ? 'Grilă ștearsă' : 'Grilă'))
     : '';
 
   // Group by quiz
   const grouped = useMemo(() => {
     const map = new Map<string, typeof filtered>();
     for (const n of filtered) {
-      const key = n.quiz?.id ?? '__orphan__';
+      const key = groupKeyOf(n);
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(n);
     }
     return map;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtered]);
 
   const parentRef = useRef<HTMLDivElement>(null);
@@ -404,7 +425,12 @@ export default function Notes() {
                 >
                   {item.kind === 'header' ? (
                     <div className="flex items-center gap-2 pt-2 mb-1">
-                      {item.quiz ? (
+                      {item.quizId === SCHEMA_GROUP ? (
+                        <div className="flex items-center gap-2" style={{ color: theme.accentText }}>
+                          <Network size={14} aria-hidden="true" />
+                          <h2 className="font-semibold text-sm">Scheme</h2>
+                        </div>
+                      ) : item.quiz ? (
                         <Link
                           to={`/quiz/${item.quiz.id}`}
                           className="group focus-ring inline-flex items-center gap-2 rounded-[var(--r-sm)] transition-opacity hover:opacity-90"
@@ -426,7 +452,7 @@ export default function Notes() {
                       {!quizFilter && grouped.size > 1 && (
                         <button
                           onClick={() => updateParam('quiz', item.quizId)}
-                          aria-label={`Arată doar notițele din ${item.quiz?.title ?? 'grila ștearsă'}`}
+                          aria-label={`Arată doar notițele din ${item.quizId === SCHEMA_GROUP ? 'scheme' : (item.quiz?.title ?? 'grila ștearsă')}`}
                           title="Arată doar această grilă"
                           className="fine-row press-feedback ml-auto p-1.5"
                           style={{ color: theme.text3 }}>
@@ -440,6 +466,62 @@ export default function Notes() {
                       className="glass-panel rounded-[var(--r-lg)] p-4 sm:p-5"
                     >
                       {/* Keep the question, personal note and actions in separate visual rows. */}
+                      {item.note.questionId.startsWith('schema-') && !item.note.quiz ? (() => {
+                        const id = item.note.questionId;
+                        const { title, code } = splitSchemaNote(item.note.text);
+                        if (editingId === id) {
+                          return (
+                            <div>
+                              <label htmlFor={`schema-edit-${id}`} className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider" style={{ color: theme.text3 }}>
+                                Sursa schemei: {title}
+                              </label>
+                              <textarea
+                                id={`schema-edit-${id}`}
+                                value={draft}
+                                onChange={(e) => setDraft(e.target.value)}
+                                rows={10}
+                                spellCheck={false}
+                                className="focus-ring w-full rounded-[var(--r-md)] p-3 font-mono text-xs leading-relaxed"
+                                style={{ background: theme.surface2, border: `1px solid ${theme.border}`, color: theme.text }}
+                              />
+                              <div className="mt-2 flex justify-end gap-2">
+                                <button type="button" onClick={() => setEditingId(null)}
+                                  className="fine-chip press-feedback focus-ring px-3 py-1.5 rounded-[var(--r-sm)] text-xs font-semibold"
+                                  style={{ color: theme.text2 }}>Anulează</button>
+                                <button type="button" disabled={!draft.trim()}
+                                  onClick={() => {
+                                    const next = draft.trim();
+                                    setNote(id, schemaNoteText(schemaTitle(parseSchemaSource(next)), next));
+                                    setEditingId(null);
+                                  }}
+                                  className="press-feedback focus-ring px-3 py-1.5 rounded-[var(--r-sm)] text-xs font-semibold text-white disabled:opacity-50"
+                                  style={{ background: theme.accent }}>Salvează</button>
+                              </div>
+                            </div>
+                          );
+                        }
+                        const html = renderDiagramBlock(code, 'schema');
+                        return (
+                          <div>
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                              <h3 className="text-sm font-semibold" style={{ color: theme.text }}>{title}</h3>
+                              <button type="button"
+                                onClick={() => { setDraft(code); setEditingId(id); }}
+                                aria-label={`Editează schema: ${title}`}
+                                className="press-feedback focus-ring inline-flex items-center gap-1.5 rounded-[var(--r-sm)] px-2 py-1.5 text-xs font-semibold"
+                                style={{ color: theme.accentText, background: `${theme.accent}12` }}>
+                                <Pencil size={13} aria-hidden="true" /> Editează
+                              </button>
+                            </div>
+                            {html ? (
+                              <div className="overflow-x-auto"
+                                dangerouslySetInnerHTML={{ __html: sanitizeSvg(html.replace('role="img"', 'role="group"')) }} />
+                            ) : (
+                              <pre className="overflow-x-auto rounded-[var(--r-md)] p-3 text-xs" style={{ background: theme.surface2, color: theme.text2 }}><code>{code}</code></pre>
+                            )}
+                          </div>
+                        );
+                      })() : (<>
                       {item.note.question && (
                         <div className="mb-3">
                           <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: theme.text3 }}>
@@ -456,6 +538,7 @@ export default function Notes() {
                       <p className="note-body text-sm whitespace-pre-wrap break-words leading-relaxed" style={{ color: theme.text2 }}>
                         {item.note.text}
                       </p>
+                      </>)}
 
                       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t pt-3" style={{ borderColor: theme.border }}>
                         {item.note.quiz && item.note.question ? (
