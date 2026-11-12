@@ -16,13 +16,15 @@ export interface DashboardTodayCardProps {
   /** Rezumatul planului din Organizare, dacă a fost deschis vreodată. */
   plan: PlanSummary | null;
   today: Date;
+  /** Coada unificată a zilei (carduri, grile, erori): când lipsește, rămâne rândul clasic de recapitulare. */
+  daily?: { counts: Record<'card' | 'grila' | 'eroare', number>; quickMinutes: number };
 }
 
 /**
  * „Azi”: ce are de făcut studentul acum, din date reale. Un rând pentru recapitulare (doar dacă există
  * întrebări scadente) și unul pentru ținta din plan (doar dacă există plan). Fără date, nu se afișează nimic.
  */
-export default function DashboardTodayCard({ dueCount, plan, today }: DashboardTodayCardProps) {
+export default function DashboardTodayCard({ dueCount, plan, today, daily }: DashboardTodayCardProps) {
   const theme = useTheme();
   const { calmMotion } = useAdaptiveMotion();
 
@@ -63,11 +65,13 @@ export default function DashboardTodayCard({ dueCount, plan, today }: DashboardT
             </div>
             <div className="min-w-0">
               <div className="text-lg font-semibold leading-snug tracking-tight tabular-nums sm:text-xl" style={{ color: theme.text }}>
-                {plural(dueCount, 'întrebare', 'întrebări')} de recapitulat
+                {daily ? `${plural(dueCount, 'element', 'elemente')} de revăzut` : `${plural(dueCount, 'întrebare', 'întrebări')} de recapitulat`}
               </div>
-              <div className="mt-1 text-[12px] leading-relaxed" style={{ color: theme.text3 }}>Din coada zilnică de recapitulare</div>
+              <div className="mt-1 text-[12px] leading-relaxed" style={{ color: theme.text3 }}>{daily
+                  ? [daily.counts.card > 0 && plural(daily.counts.card, 'card', 'carduri'), daily.counts.grila > 0 && plural(daily.counts.grila, 'grilă', 'grile'), daily.counts.eroare > 0 && `${daily.counts.eroare} din caietul de erori`].filter(Boolean).join(' · ')
+                  : 'Din coada zilnică de recapitulare'}</div>
             </div>
-            <Link to="/daily-review" className={`${primary} col-start-2 text-center sm:col-start-auto`} style={{ background: theme.accent }}>Recapitulează</Link>
+            <Link to="/daily-review" className={`${primary} col-start-2 text-center sm:col-start-auto`} style={{ background: theme.accent }}>{daily ? `Începe, ${daily.quickMinutes} min` : 'Recapitulează'}</Link>
           </div>
         )}
         {plan && (

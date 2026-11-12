@@ -31,7 +31,7 @@ import { isRezidentiatQuiz } from '../lib/rezidentiatBank';
 import { isFlashcardDeck } from '../lib/deckKind';
 import { countDashboardQuizzes } from '../lib/dashboardCounts';
 import { isChapterDeck } from '../lib/chapterDecks';
-import { buildDueItems } from '../lib/dueItems';
+import { buildDailyQueue, minutesOf, planTimeBox } from '../lib/dailyQueue';
 import { computeTopicMastery, folderNamesOf, isTopicPracticeQuiz, pickStudyFocus } from '../lib/topicMastery';
 import { useFolderStore } from '../store/folderStore';
 import { buildTopicPracticeQuiz } from '../lib/topicPractice';
@@ -164,8 +164,10 @@ export default function Dashboard() {
   }, []);
   const hour = now.getHours();
 
-  // Same list as the Recapitulare page: only real, still existing multiple-choice questions.
-  const dueCount = useMemo(() => buildDueItems(questionStats ?? {}, quizzes).length, [questionStats, quizzes]);
+  // Aceeași coadă ca pagina Sesiune zilnică: carduri, grile scadente și greșeli deschise.
+  const dailyQueue = useMemo(() => buildDailyQueue({ quizzes, stats: questionStats ?? {} }), [questionStats, quizzes]);
+  const dueCount = dailyQueue.items.length;
+  const daily = useMemo(() => ({ counts: dailyQueue.counts, quickMinutes: minutesOf(planTimeBox(dailyQueue.items).seconds) }), [dailyQueue]);
 
   // „Pentru tine”: subiecte slabe sau lăsate în urmă, din aceleași răspunsuri ca restul panoului (fără AI).
   const navigate = useNavigate();
@@ -243,7 +245,7 @@ export default function Dashboard() {
         <div className="mx-auto max-w-4xl">
           <PageHeader eyebrow="Panou" title={title} subtitle={subtitle} tour={{ id: 'dashboard', label: 'Vezi turul Panoului' }} />
           <DashboardTipStrip context={tipContext} />
-          <div data-tutorial="dashboard-today" className="empty:hidden"><DashboardTodayCard dueCount={dueCount} plan={studyPlan} today={now} /></div>
+          <div data-tutorial="dashboard-today" className="empty:hidden"><DashboardTodayCard dueCount={dueCount} plan={studyPlan} today={now} daily={daily} /></div>
           <div data-tutorial="dashboard-focus" className="empty:hidden"><DashboardFocusCard items={focus} onPractice={practiceTopic} onGenerate={hasAIKey ? generateTopic : undefined} generatingTopic={generatingTopic} /></div>
           <DashboardCrunchCard />
           <div data-tutorial="dashboard-coach"><DashboardHeroCard /></div>

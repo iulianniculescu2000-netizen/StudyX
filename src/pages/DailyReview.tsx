@@ -24,7 +24,8 @@ import PageHeader from '../components/ui/PageHeader';
 import PageSkeleton from '../components/ui/PageSkeleton';
 import EmptyState from '../components/ui/EmptyState';
 import { cleanQuestionExplanation } from '../helpers/quizAi';
-import { buildDueItems, planDailySession, type DueItem } from '../lib/dueItems';
+import { buildDailyQueue, planTimeBox, minutesOf, type DailyItem } from '../lib/dailyQueue';
+import DailyCardFace from './DailyCardFace';
 
 export default function DailyReview() {
   const theme = useTheme();
@@ -36,9 +37,9 @@ export default function DailyReview() {
   const hasPlan = useOrganizareStore((state) => !!state.byProfile[profileId]?.summary);
 
   const [phase, setPhase] = useState<'ready' | 'session' | 'done'>('ready');
-  const dueItems = useMemo(() => buildDueItems(questionStats, quizzes), [questionStats, quizzes]);
+  const queue = useMemo(() => buildDailyQueue({ quizzes, stats: questionStats }), [questionStats, quizzes]);
   // Lista sesiunii se îngheață la „Începe”; altfel s-ar micșora după fiecare răspuns și indexul ar sări întrebări.
-  const [sessionItems, setSessionItems] = useState<DueItem[]>([]);
+  const [sessionItems, setSessionItems] = useState<DailyItem[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [selected, setSelected] = useState<string[]>([]);
   const [revealed, setRevealed] = useState(false);
@@ -47,10 +48,13 @@ export default function DailyReview() {
   const startedAtRef = useRef(0);
 
   // Sesiunea zilnică are plafon; restul rămân scadente și apar în sesiunea următoare.
-  const { today: todayItems, remaining: remainingDue } = useMemo(() => planDailySession(dueItems), [dueItems]);
+  const todayItems = queue.items;
+  const remainingDue = queue.remaining;
+  const quick = useMemo(() => planTimeBox(queue.items), [queue.items]);
   const items = phase === 'ready' ? todayItems : sessionItems;
   const current = items[currentIdx];
-  const isMultiple = current?.question.multipleCorrect ?? false;
+  const isCard = current?.kind === 'card';
+  const isMultiple = !isCard && (current?.question.multipleCorrect ?? false);
   const correctIds = useMemo(() => current?.question.options.filter(o => o.isCorrect).map(o => o.id) ?? [], [current]);
   const progress = items.length > 0 ? (currentIdx + (revealed ? 1 : 0)) / items.length : 0;
 
@@ -61,6 +65,31 @@ export default function DailyReview() {
     setResults(prev => [...prev, isCorrect]);
     recordAnswer(current.quizId, current.question.id, isCorrect);
   }, [correctIds, current, recordAnswer]);
+
+  const rateCard = useCallback((rating: 'hard' | 'good' | 'easy') => {
+    if (!current) return;
+    recordAnswer(current.quizId, current.question.id, rating !== 'hard', rating === 'easy' ? 'confident' : undefined, { flashcard: true });
+    setResults(prev => [...prev, rating !== 'hard']);
+    setRevealed(true);
+    if (currentIdx + 1 >= items.length) {
+      recordStudySession(Math.floor((Date.now() - startedAtRef.current) / 1000));
+      setPhase('done');
+    } else {
+      setCurrentIdx(i => i + 1);
+      setSelected([]);
+      setRevealed(false);
+    }
+  }, [current, currentIdx, items.length, recordAnswer, recordStudySession]);
+
+  const start = (list: DailyItem[]) => {
+    setSessionItems(list);
+    setCurrentIdx(0);
+    setSelected([]);
+    setRevealed(false);
+    setResults([]);
+    startedAtRef.current = Date.now();
+    setPhase('session');
+  };
 
   const handleSelect = (optId: string) => {
     if (revealed) return;
@@ -94,7 +123,7 @@ export default function DailyReview() {
     return (
       <div className="h-full overflow-y-auto">
         <div className="mx-auto w-full max-w-2xl px-4 pb-8 pt-6 sm:px-6">
-          <PageHeader title="Sesiune zilnică" subtitle="Repetare spațiată SM-2" tour={{ id: 'daily', label: 'Ghid pentru sesiunea zilnică' }} />
+          <PageHeader title="Sesiune zilnică" subtitle="Cardurile, grilele și greșelile de azi" tour={{ id: 'daily', label: 'Ghid pentru sesiunea zilnică' }} />
           {hasQuestions ? (
             <EmptyState
               icon={CalendarCheck}
@@ -123,48 +152,48 @@ export default function DailyReview() {
       <div className="h-full overflow-y-auto">
         <div className="mx-auto w-full max-w-2xl px-4 pb-8 pt-6 sm:px-6">
           <PageHeader
-            eyebrow="Repetare spațiată SM-2"
+            eyebrow="Azi de revăzut"
             title="Sesiune zilnică"
             tour={{ id: 'daily', label: 'Ghid pentru sesiunea zilnică' }}
-            subtitle={`${items.length} ${items.length === 1 ? 'întrebare' : 'întrebări'} de recapitulat azi`}
+            subtitle={`${items.length} ${items.length === 1 ? 'element' : 'elemente'} de revăzut azi`}
           />
 
           <div data-tutorial="daily-summary" className="mb-5 grid grid-cols-2 gap-3">
             <div className={`glass-panel rounded-[var(--r-lg)] p-4 ${calmMotion ? '' : 'fx-rise'}`} style={{ '--i': 1 } as React.CSSProperties}>
               <p className="text-2xl font-bold" style={{ color: theme.accentText }}>{items.length}</p>
-              <p className="mt-0.5 text-xs" style={{ color: theme.text3 }}>Întrebări de azi</p>
+              <p className="mt-0.5 text-xs" style={{ color: theme.text3 }}>{[queue.counts.card > 0 && `${queue.counts.card} carduri`, queue.counts.grila > 0 && `${queue.counts.grila} grile`, queue.counts.eroare > 0 && `${queue.counts.eroare} din erori`].filter(Boolean).join(' · ')}</p>
             </div>
             <div className={`glass-panel rounded-[var(--r-lg)] p-4 ${calmMotion ? '' : 'fx-rise'}`} style={{ '--i': 2 } as React.CSSProperties}>
               <p className="text-2xl font-bold" style={{ color: theme.accent2 }}>
-                {Math.ceil(items.length / 2)}
+                {minutesOf(queue.seconds)}
                 <span className="ml-0.5 text-sm font-medium">min</span>
               </p>
-              <p className="mt-0.5 text-xs" style={{ color: theme.text3 }}>Timp estimat (~30s/întrebare)</p>
+              <p className="mt-0.5 text-xs" style={{ color: theme.text3 }}>Timp estimat pentru toate</p>
             </div>
           </div>
 
           {remainingDue > 0 && (
             <p className="mb-5 text-center text-xs" style={{ color: theme.text3 }}>
-              Rămân {remainingDue} {remainingDue === 1 ? 'întrebare' : 'întrebări'} pentru mâine. Rămân scadente până le recapitulezi.
+              Rămân {remainingDue} {remainingDue === 1 ? 'element' : 'elemente'} pentru mâine. Rămân scadente până le revezi.
             </p>
           )}
 
           <motion.button
             data-tutorial="daily-start"
             {...pressLarge}
-            onClick={() => {
-              setSessionItems(todayItems);
-              setCurrentIdx(0);
-              setSelected([]);
-              setRevealed(false);
-              setResults([]);
-              startedAtRef.current = Date.now();
-              setPhase('session');
-            }}
+            onClick={() => start(quick.items)}
             className="mb-3 flex w-full items-center justify-center gap-2 rounded-[var(--r-lg)] py-4 font-semibold text-white"
             style={{ background: theme.accent, boxShadow: 'var(--elev-1)' }}>
-            <Sparkles size={16} />Începe sesiunea
+            <Sparkles size={16} />Începe, {minutesOf(quick.seconds)} min
           </motion.button>
+          {quick.items.length < todayItems.length && (
+            <button
+              onClick={() => start(todayItems)}
+              className="fine-chip press-feedback mb-3 w-full rounded-[var(--r-lg)] py-3 text-sm font-semibold"
+              style={{ color: theme.accentText }}>
+              Toată coada de azi ({todayItems.length})
+            </button>
+          )}
           <div className="text-center">
             <Link to="/" className="text-sm" style={{ color: theme.text3 }}>Înapoi la Panou</Link>
           </div>
@@ -288,12 +317,14 @@ export default function DailyReview() {
               <p className="text-xs font-medium mb-3 flex items-center gap-1.5 min-w-0" style={{ color: theme.text3 }}>
                 <BookOpen size={12} className="shrink-0" />
                 <span className="truncate">{current.quizTitle}</span>
+                <span className="shrink-0" style={{ color: theme.text3 }}>· {current.kind === 'card' ? 'card' : current.kind === 'eroare' ? 'din erori' : 'grilă'}</span>
               </p>
               <p className="text-lg font-semibold leading-snug" style={{ color: theme.text }}>
                 {current.question.text}
               </p>
             </div>
 
+            {isCard ? <DailyCardFace key={currentIdx} question={current.question} onRate={rateCard} /> : (<>
             {/* Options */}
             <div className="space-y-2.5 mb-4">
               {current.question.options.map((opt, optIndex) => {
@@ -380,6 +411,7 @@ export default function DailyReview() {
                 </motion.button>
               )}
             </AnimatePresence>
+            </>)}
           </motion.div>
         </AnimatePresence>
       </div>

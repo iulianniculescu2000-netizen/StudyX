@@ -54,7 +54,7 @@ Legendă status: ✅ Complet · ⚠️ Parțial / cosmetic · 🛠️ De aliniat
 
 | Funcție | Status | Locație |
 |---|---|---|
-| Daily Review (întrebări scadente) | ✅ | `src/pages/DailyReview.tsx` |
+| Azi de revăzut: coadă unică (carduri scadente, grile scadente, greșeli din caiet), prioritate după întârziere și acuratețe, plafon 60/zi, „Începe, 15 min” | ✅ | `src/pages/DailyReview.tsx`, `src/lib/dailyQueue.ts`; pe Panou în `DashboardTodayCard` |
 | Review Mode (întrebări slabe) | ✅ | `src/pages/ReviewMode.tsx` |
 | Algoritm scadențe (`getDueQuestions`, `getWeakQuestions`) | ✅ | `src/store/statsStore.ts` |
 | Studiu adaptiv | ✅ | `src/lib/adaptiveStudy.ts` |
