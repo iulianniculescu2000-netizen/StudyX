@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { Check, Copy, Download, FileImage, Maximize2 } from 'lucide-react';
+import { Check, Copy, Download, FileImage, Layers, ListChecks, Maximize2, StickyNote } from 'lucide-react';
+import { useToastStore } from '../../store/toastStore';
+import { saveSchemaFlashcards, saveSchemaNote, saveSchemaQuiz, type StudyOutcome } from '../../lib/ai/schemaStudyActions';
 import { useTheme } from '../../theme/ThemeContext';
 import { useAdaptiveMotion } from '../../hooks/useAdaptiveMotion';
 import { copyText, downloadPng, downloadSvg, readSvgSize } from './diagramExport';
@@ -18,6 +20,8 @@ interface DiagramFrameProps {
    * a button calls it with the diagram source. Not wired anywhere yet.
    */
   onCreateFlashcards?: (code: string) => void;
+  /** Opens the book at a step's page (the same "Deschide în carte" the chat's source chips use); without it pages stay plain text. */
+  onOpenPage?: (page: string) => void;
 }
 
 /** Theme colors the schema renderer reads as CSS variables (with fixed fallbacks for exports). */
@@ -37,7 +41,7 @@ function schemaVars(theme: ReturnType<typeof useTheme>): CSSProperties {
  * controls never sit on top of the drawing. Click the drawing, or the zoom
  * button, to open the pan/zoom viewer.
  */
-export default function DiagramFrame({ svg, code, onCreateFlashcards }: DiagramFrameProps) {
+export default function DiagramFrame({ svg, code, onCreateFlashcards, onOpenPage }: DiagramFrameProps) {
   const theme = useTheme();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -56,14 +60,14 @@ export default function DiagramFrame({ svg, code, onCreateFlashcards }: DiagramF
   // Hover/click/keyboard behaviour lives outside the (sanitized, handler-free) markup.
   useEffect(() => {
     const body = bodyRef.current;
-    return interactive && body ? attachSchemaInteraction(body) : undefined;
-  }, [interactive, safe]);
+    return interactive && body ? attachSchemaInteraction(body, { onOpenPage }) : undefined;
+  }, [interactive, safe, onOpenPage]);
 
   const viewerCleanup = useRef<(() => void) | null>(null);
   const viewerRef = useCallback((element: HTMLDivElement | null) => {
     viewerCleanup.current?.();
-    viewerCleanup.current = element && interactive ? attachSchemaInteraction(element) : null;
-  }, [interactive]);
+    viewerCleanup.current = element && interactive ? attachSchemaInteraction(element, { onOpenPage }) : null;
+  }, [interactive, onOpenPage]);
 
   const handleCopy = async () => {
     if (!code) return;
@@ -86,6 +90,13 @@ export default function DiagramFrame({ svg, code, onCreateFlashcards }: DiagramF
     }
   };
 
+  const addToast = useToastStore((state) => state.addToast);
+  const study = (action: (source: string) => StudyOutcome) => {
+    if (!code) return;
+    const outcome = action(code);
+    addToast(outcome.message, outcome.ok ? 'success' : 'warning');
+  };
+
   const button = 'fine-row inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-[11.5px] font-semibold transition-colors hover:bg-[var(--hover-fill)] disabled:opacity-50';
 
   const actions: ReactNode = (
@@ -95,6 +106,19 @@ export default function DiagramFrame({ svg, code, onCreateFlashcards }: DiagramF
           {copied ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
           <span className="hidden sm:inline">{copied ? 'Copiat' : 'Cod'}</span>
         </button>
+      )}
+      {code && (
+        <>
+          <button type="button" className={button} onClick={() => study(saveSchemaQuiz)} aria-label="Grile din schemă" title="Grile din schemă (fără AI)">
+            <ListChecks size={14} aria-hidden="true" /><span className="hidden sm:inline">Grile</span>
+          </button>
+          <button type="button" className={button} onClick={() => study(saveSchemaFlashcards)} aria-label="Flashcarduri din schemă" title="Flashcarduri din schemă (fără AI)">
+            <Layers size={14} aria-hidden="true" /><span className="hidden sm:inline">Carduri</span>
+          </button>
+          <button type="button" className={button} onClick={() => study(saveSchemaNote)} aria-label="Salvează schema în Notițe" title="Salvează în Notițe">
+            <StickyNote size={14} aria-hidden="true" /><span className="hidden sm:inline">Notițe</span>
+          </button>
+        </>
       )}
       <button type="button" className={button} onClick={() => void run('svg')} disabled={busy !== null} aria-label="Descarcă schema ca SVG" title="Descarcă SVG">
         <Download size={14} aria-hidden="true" /><span className="hidden sm:inline">SVG</span>

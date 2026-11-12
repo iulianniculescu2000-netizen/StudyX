@@ -1449,7 +1449,15 @@ button.press-feedback:not(:disabled):active {
 }
 @media (prefers-reduced-motion: reduce) {
   .sx-host .sx-node, .sx-host .sx-eg, .sx-pop { transition: none; animation: none; }
+  .sx-host .sx-edge, .sx-host .sx-pill, .sx-host .sx-head { animation: none; stroke-dasharray: none; }
+  .sx-host .sx-edge[data-dashed] { stroke-dasharray: 5 4; }
 }
+/* Modul lite / economisire de energie: schema apare direct în starea finală, fără intrare animată. */
+:root:is([data-performance="lite"], [data-power-save="true"]) .sx-host :is(.sx-node, .sx-edge, .sx-pill, .sx-head, .sx-eg), :root:is([data-performance="lite"], [data-power-save="true"]) .sx-pop {
+  animation: none;
+  transition: none;
+}
+:root:is([data-performance="lite"], [data-power-save="true"]) .sx-host .sx-edge:not([data-dashed]) { stroke-dasharray: none; }
 .ai-md-stage-content { transform-origin: center center; will-change: transform; user-select: none; }
 .ai-md-diagram-placeholder { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border: 1px dashed var(--md-line); border-radius: 12px; font-size: 12.5px; font-weight: 600; }
 .ai-md-dot { width: 7px; height: 7px; border-radius: 999px; opacity: 0.7; }

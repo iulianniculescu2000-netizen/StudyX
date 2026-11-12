@@ -35,6 +35,8 @@ export interface DiagramNode {
   tone?: NodeTone;
   /** Short explanation shown in a small popover on click. */
   note?: string;
+  /** Book page the step comes from, as written by the model: "350" or "350–351" (schema DSL `(p. 350)`). */
+  page?: string;
 }
 
 export interface DiagramEdge {
@@ -125,6 +127,7 @@ export function parseDiagram(source: string): ParsedDiagram | null {
   // arrive as `--&gt;`. Restore them; label text is re-escaped at render time.
   const rawLines = source.replace(/&gt;/g, '>').split('\n');
   let direction: DiagramDirection = 'TD';
+  let droppedGroups = false;
 
   const nodes = new Map<string, DiagramNode>();
   const edges: DiagramEdge[] = [];
@@ -148,8 +151,15 @@ export function parseDiagram(source: string): ParsedDiagram | null {
       continue;
     }
 
-    // Structural noise we intentionally ignore rather than fail on.
-    if (/^(subgraph|end|classDef|class|style|linkStyle|click|%%)/i.test(line)) continue;
+    // Structural noise we intentionally ignore rather than fail on. Keywords
+    // must be whole words: nodes called `style1` / `endocard` are real nodes.
+    // A `subgraph` header is skipped but its body is parsed as ordinary lines,
+    // so nodes and edges inside groups survive; only the grouping is lost.
+    if (/^subgraph(\s|$)/i.test(line)) {
+      droppedGroups = true;
+      continue;
+    }
+    if (/^end$/i.test(line) || /^(classDef|class|style|linkStyle|click)\s/i.test(line) || line.startsWith('%%')) continue;
 
     const first = readNode(line);
     if (!first) continue;
@@ -177,7 +187,12 @@ export function parseDiagram(source: string): ParsedDiagram | null {
   }
 
   if (nodes.size === 0 || edges.length === 0) return null;
-  return { direction, nodes: [...nodes.values()], edges };
+  return {
+    direction,
+    nodes: [...nodes.values()],
+    edges,
+    ...(droppedGroups ? { notice: 'Grupurile din schemă nu sunt afișate' } : {}),
+  };
 }
 
 // ── Layout ───────────────────────────────────────────────────────────────────
@@ -225,22 +240,60 @@ interface PlacedNode extends DiagramNode {
   y: number;
 }
 
-/** Longest-path layering, cycle-safe (a back edge never pushes a node deeper). */
-function computeLayers(nodes: DiagramNode[], edges: DiagramEdge[]) {
+/**
+ * Edges that close a loop (they point at a node still open on the DFS path).
+ * Layering and ordering ignore them, so a "repeat the ECG" arrow never inflates
+ * the depth of the steps it loops over; they are drawn dashed.
+ */
+export function findBackEdges(nodes: DiagramNode[], edges: DiagramEdge[]): Set<DiagramEdge> {
+  const out = new Map<string, DiagramEdge[]>();
+  const hasIncoming = new Set<string>();
+  for (const edge of edges) {
+    out.set(edge.from, [...(out.get(edge.from) ?? []), edge]);
+    if (edge.from !== edge.to) hasIncoming.add(edge.to);
+  }
+
+  const back = new Set<DiagramEdge>();
+  const state = new Map<string, 1 | 2>(); // 1 = on the path, 2 = done
+  const visit = (start: string) => {
+    const stack: Array<{ id: string; next: number }> = [{ id: start, next: 0 }];
+    state.set(start, 1);
+    while (stack.length) {
+      const top = stack[stack.length - 1];
+      const list = out.get(top.id) ?? [];
+      if (top.next >= list.length) {
+        state.set(top.id, 2);
+        stack.pop();
+        continue;
+      }
+      const edge = list[top.next];
+      top.next += 1;
+      const seen = state.get(edge.to);
+      if (seen === 1) back.add(edge);
+      else if (seen === undefined) {
+        state.set(edge.to, 1);
+        stack.push({ id: edge.to, next: 0 });
+      }
+    }
+  };
+
+  // Entry points first, so the loop is the edge that goes "back", not the first step.
+  for (const node of nodes) if (!hasIncoming.has(node.id) && !state.has(node.id)) visit(node.id);
+  for (const node of nodes) if (!state.has(node.id)) visit(node.id);
+  return back;
+}
+
+/** Longest-path layering over the acyclic part of the graph (`back` edges are ignored). */
+function computeLayers(nodes: DiagramNode[], edges: DiagramEdge[], back: Set<DiagramEdge>) {
   const depth = new Map<string, number>();
   nodes.forEach((node) => depth.set(node.id, 0));
 
-  const incoming = new Map<string, number>();
-  nodes.forEach((node) => incoming.set(node.id, 0));
-  edges.forEach((edge) => incoming.set(edge.to, (incoming.get(edge.to) ?? 0) + 1));
-
-  const maxPasses = Math.min(nodes.length, 24);
-  for (let pass = 0; pass < maxPasses; pass += 1) {
+  const forward = edges.filter((edge) => edge.from !== edge.to && !back.has(edge));
+  for (let pass = 0; pass < nodes.length; pass += 1) {
     let changed = false;
-    for (const edge of edges) {
-      if (edge.from === edge.to) continue;
+    for (const edge of forward) {
       const candidate = (depth.get(edge.from) ?? 0) + 1;
-      if (candidate > (depth.get(edge.to) ?? 0) && candidate < nodes.length) {
+      if (candidate > (depth.get(edge.to) ?? 0)) {
         depth.set(edge.to, candidate);
         changed = true;
       }
@@ -251,13 +304,82 @@ function computeLayers(nodes: DiagramNode[], edges: DiagramEdge[]) {
   return depth;
 }
 
+/**
+ * Orders the nodes inside every layer by the average position of their
+ * neighbours in the adjacent layer (barycenter), sweeping down then up a few
+ * times. Branches of the same parent stay together and crossings drop sharply.
+ */
+export function orderLayers<T extends { id: string }>(
+  layers: Map<number, T[]>,
+  levels: number[],
+  edges: DiagramEdge[],
+): void {
+  const parents = new Map<string, string[]>();
+  const children = new Map<string, string[]>();
+  for (const edge of edges) {
+    parents.set(edge.to, [...(parents.get(edge.to) ?? []), edge.from]);
+    children.set(edge.from, [...(children.get(edge.from) ?? []), edge.to]);
+  }
+
+  const position = new Map<string, number>();
+  const refresh = (level: number) => {
+    const bucket = layers.get(level)!;
+    bucket.forEach((node, index) => position.set(node.id, (index + 0.5) / bucket.length));
+  };
+  levels.forEach(refresh);
+
+  const sweep = (level: number, neighbours: Map<string, string[]>) => {
+    const bucket = layers.get(level)!;
+    const keyed = bucket.map((node, index) => {
+      const known = (neighbours.get(node.id) ?? []).filter((id) => position.has(id) && id !== node.id);
+      const own = position.get(node.id) ?? 0;
+      const value = known.length ? known.reduce((sum, id) => sum + (position.get(id) ?? 0), 0) / known.length : own;
+      return { node, value, index };
+    });
+    keyed.sort((a, b) => a.value - b.value || a.index - b.index);
+    layers.set(level, keyed.map((item) => item.node));
+    refresh(level);
+  };
+
+  for (let round = 0; round < 3; round += 1) {
+    for (let i = 1; i < levels.length; i += 1) sweep(levels[i], parents);
+    for (let i = levels.length - 2; i >= 0; i -= 1) sweep(levels[i], children);
+  }
+}
+
+let measureContext: OffscreenCanvasRenderingContext2D | null | undefined;
+const widthCache = new Map<string, number>();
+
+/** Rendered width of one line of node text; falls back to a per-character estimate off-browser. */
+function textWidth(text: string): number {
+  if (measureContext === undefined) {
+    try {
+      measureContext = typeof OffscreenCanvas === 'undefined' ? null : new OffscreenCanvas(1, 1).getContext('2d');
+      if (measureContext) measureContext.font = `700 ${FONT_SIZE}px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
+    } catch {
+      measureContext = null;
+    }
+  }
+  if (!measureContext) return text.length * CHAR_WIDTH;
+  const cached = widthCache.get(text);
+  if (cached !== undefined) return cached;
+  const width = measureContext.measureText(text).width;
+  if (widthCache.size > 500) widthCache.clear();
+  widthCache.set(text, width);
+  return width;
+}
+
+function longestLine(lines: string[]) {
+  return lines.reduce((max, line) => Math.max(max, textWidth(line)), 0);
+}
+
 function layout(diagram: ParsedDiagram) {
-  const depth = computeLayers(diagram.nodes, diagram.edges);
+  const back = findBackEdges(diagram.nodes, diagram.edges);
+  const depth = computeLayers(diagram.nodes, diagram.edges, back);
 
   const placed: PlacedNode[] = diagram.nodes.map((node) => {
     const lines = wrapLabel(node.label);
-    const longest = lines.reduce((max, line) => Math.max(max, line.length), 0);
-    const width = Math.max(MIN_W, Math.min(MAX_W, longest * CHAR_WIDTH + PAD_X * 2));
+    const width = Math.max(MIN_W, Math.min(MAX_W, longestLine(lines) + PAD_X * 2));
     const height = lines.length * LINE_HEIGHT + PAD_Y * 2;
     return { ...node, lines, width, height, x: 0, y: 0 };
   });
@@ -272,6 +394,7 @@ function layout(diagram: ParsedDiagram) {
   });
 
   const orderedLevels = [...layers.keys()].sort((a, b) => a - b);
+  orderLayers(layers, orderedLevels, diagram.edges.filter((edge) => edge.from !== edge.to && !back.has(edge)));
   const horizontal = diagram.direction === 'LR';
   const crossOf = (node: PlacedNode) => (horizontal ? node.height : node.width);
   const mainOf = (node: PlacedNode) => (horizontal ? node.width : node.height);
@@ -351,6 +474,7 @@ function layout(diagram: ParsedDiagram) {
     placed,
     byId,
     depth,
+    back,
     width: horizontal ? mainSize : crossSize,
     height: horizontal ? crossSize : mainSize,
     horizontal,
@@ -447,14 +571,48 @@ function nodeText(node: PlacedNode) {
     .join('');
 }
 
+/**
+ * What to do with a step's book page. `ok`: the page is among the sources given to the model (the popover can open
+ * it); `hide`: the page is not among them (probably invented), so nothing is drawn. Without a checker the page is
+ * only informative (`info`: text, no button).
+ */
+export type PageStatus = 'ok' | 'hide';
+export interface DiagramRenderOptions {
+  pageStatus?: (page: string) => PageStatus;
+}
+
+let pageChecker: DiagramRenderOptions['pageStatus'];
+
+/** Page of a node as it will be drawn, or null when it must not be shown. */
+function pageOf(node: DiagramNode): { page: string; state: 'ok' | 'info' } | null {
+  if (!node.page) return null;
+  if (!pageChecker) return { page: node.page, state: 'info' };
+  return pageChecker(node.page) === 'ok' ? { page: node.page, state: 'ok' } : null;
+}
+
+/** Small "p. 350" pill straddling the bottom edge of the card; only inline attributes so it survives SVG/PNG export. */
+function pagePill(node: PlacedNode, page: string) {
+  const text = `p. ${page}`;
+  const w = Math.round(text.length * 5.6 + 12);
+  const x = node.x + node.width - w - 8;
+  const y = node.y + node.height - 7;
+  return (
+    `<g class="sx-pg" aria-hidden="true"><rect x="${x}" y="${y}" width="${w}" height="14" rx="7" fill="var(--sx-surface, #ffffff)" stroke="rgba(128,128,128,0.45)" stroke-width="0.9"/>` +
+    `<text x="${x + w / 2}" y="${y + 7.5}" text-anchor="middle" dominant-baseline="middle" font-size="9.5" font-weight="700" fill="currentColor" fill-opacity="0.78">${escapeXml(text)}</text></g>`
+  );
+}
+
 function nodeGroup(node: PlacedNode, ctx: NodeContext) {
   const kind = kindOf(node);
-  const aria = `${kind ? `${kind}: ` : ''}${node.label.replace(/\n/g, ' ')}${node.note ? `. ${node.note}` : ''}`;
+  const shown = pageOf(node);
+  const pageAria = shown ? `. ${shown.page.includes('–') ? 'Paginile' : 'Pagina'} ${shown.page}` : '';
+  const aria = `${kind ? `${kind}: ` : ''}${node.label.replace(/\n/g, ' ')}${node.note ? `. ${node.note}` : ''}${pageAria}`;
   const note = node.note ? ` data-note="${escapeXml(node.note)}"` : '';
+  const pageAttrs = shown ? ` data-page="${escapeXml(shown.page)}" data-page-state="${shown.state}"` : '';
   const title = node.note ? `<title>${escapeXml(node.note)}</title>` : '';
   return (
-    `<g class="sx-node" data-id="${escapeXml(node.id)}" data-path="${escapeXml(ctx.path)}"${note} tabindex="0" role="button" aria-label="${escapeXml(aria)}" style="--d:${ctx.delayMs}ms">` +
-    `${title}${nodeCard(node, ctx.gradientId)}${nodeText(node)}</g>`
+    `<g class="sx-node" data-id="${escapeXml(node.id)}" data-path="${escapeXml(ctx.path)}"${note}${pageAttrs} tabindex="0" role="button" aria-label="${escapeXml(aria)}" style="--d:${ctx.delayMs}ms">` +
+    `${title}${nodeCard(node, ctx.gradientId)}${nodeText(node)}${shown ? pagePill(node, shown.page) : ''}</g>`
   );
 }
 
@@ -591,6 +749,147 @@ function edgeStroke(dashed: boolean | undefined) {
   return `fill="none" stroke="currentColor" stroke-opacity="0.42" stroke-width="1.6" stroke-linecap="round"${dash}`;
 }
 
+// ── Edge routing around nodes ────────────────────────────────────────────────
+//
+// A cubic between distant layers (a loop back to an earlier step, a branch that
+// rejoins later) can cut straight through the nodes in between. Such an edge is
+// redrawn as a rounded orthogonal route: out of its node, along a vertical
+// channel that no node occupies, then into its target.
+
+const ROUTE_PAD = 8;
+const ROUTE_TURN = 12;
+const ROUTE_RADIUS = 8;
+
+function curveHitsNode(curve: [Point, Point, Point, Point], nodes: PlacedNode[]) {
+  for (let i = 1; i < 20; i += 1) {
+    const p = pointOnCurve(curve, i / 20);
+    if (nodes.some((n) => p.x > n.x - 4 && p.x < n.x + n.width + 4 && p.y > n.y - 4 && p.y < n.y + n.height + 4)) return true;
+  }
+  return false;
+}
+
+/** Polyline with rounded corners; collinear and repeated points are dropped first. */
+export function roundedPath(points: Point[], radius = ROUTE_RADIUS): string {
+  const pts = points.filter((p, i) => i === 0 || p.x !== points[i - 1].x || p.y !== points[i - 1].y);
+  const clean = pts.filter((p, i) => {
+    if (i === 0 || i === pts.length - 1) return true;
+    const a = pts[i - 1];
+    const b = pts[i + 1];
+    return (p.x - a.x) * (b.y - p.y) - (p.y - a.y) * (b.x - p.x) !== 0;
+  });
+  const r = (n: number) => Math.round(n * 10) / 10;
+  let d = `M ${r(clean[0].x)} ${r(clean[0].y)}`;
+  for (let i = 1; i < clean.length - 1; i += 1) {
+    const prev = clean[i - 1];
+    const p = clean[i];
+    const next = clean[i + 1];
+    const inLen = Math.hypot(p.x - prev.x, p.y - prev.y);
+    const outLen = Math.hypot(next.x - p.x, next.y - p.y);
+    const k = Math.min(radius, inLen / 2, outLen / 2);
+    const a = { x: p.x - ((p.x - prev.x) / inLen) * k, y: p.y - ((p.y - prev.y) / inLen) * k };
+    const b = { x: p.x + ((next.x - p.x) / outLen) * k, y: p.y + ((next.y - p.y) / outLen) * k };
+    d += ` L ${r(a.x)} ${r(a.y)} Q ${r(p.x)} ${r(p.y)} ${r(b.x)} ${r(b.y)}`;
+  }
+  const last = clean[clean.length - 1];
+  return `${d} L ${r(last.x)} ${r(last.y)}`;
+}
+
+interface Route {
+  d: string;
+  /** Last segment, for the arrow head. */
+  head: [Point, Point];
+  labelAt: Point;
+  /** Extent on the cross axis (x when top-down, y when left-right); the route may run past the nodes, so the canvas grows to hold it. */
+  minCross: number;
+  maxCross: number;
+}
+
+const flip = (p: Point): Point => ({ x: p.y, y: p.x });
+const flipNode = (n: PlacedNode): PlacedNode => ({ ...n, x: n.y, y: n.x, width: n.height, height: n.width });
+
+/**
+ * A route through a channel clear of every other node, or null. Works on the
+ * cross axis of the layout: vertical channels when top-down, horizontal ones
+ * when left-right (the layout is transposed, routed, and transposed back).
+ */
+export function routeAround(from: PlacedNode, to: PlacedNode, start: Point, end: Point, all: PlacedNode[], horizontal = false): Route | null {
+  if (!horizontal) return routeTopDown(from, to, start, end, all);
+  const route = routeTopDown(flipNode(from), flipNode(to), flip(start), flip(end), all.map(flipNode), true);
+  if (!route) return null;
+  return { ...route, head: [flip(route.head[0]), flip(route.head[1])], labelAt: flip(route.labelAt) };
+}
+
+function routeTopDown(from: PlacedNode, to: PlacedNode, start: Point, end: Point, all: PlacedNode[], flipBack = false): Route | null {
+  const down = to.y >= from.y;
+  const centerY = (n: PlacedNode) => n.y + n.height / 2;
+  const row = (n: PlacedNode) => all.filter((o) => Math.abs(centerY(o) - centerY(n)) < 30);
+  const rowBottom = (n: PlacedNode) => Math.max(...row(n).map((o) => o.y + o.height));
+  const rowTop = (n: PlacedNode) => Math.min(...row(n).map((o) => o.y));
+
+  const turnStart = down ? rowBottom(from) + ROUTE_TURN : rowTop(from) - ROUTE_TURN;
+  const turnEnd = down ? rowTop(to) - ROUTE_TURN : rowBottom(to) + ROUTE_TURN;
+  if (down ? turnEnd < turnStart : turnEnd > turnStart) return null;
+
+  const yTop = Math.min(turnStart, turnEnd);
+  const yBottom = Math.max(turnStart, turnEnd);
+  const obstacles = all.filter((n) => n !== from && n !== to);
+
+  const candidates = [start.x, end.x];
+  for (const n of obstacles) candidates.push(n.x - ROUTE_PAD * 1.5, n.x + n.width + ROUTE_PAD * 1.5);
+  const free = (x: number) =>
+    !obstacles.some((n) => n.y < yBottom + ROUTE_PAD && n.y + n.height > yTop - ROUTE_PAD && x > n.x - ROUTE_PAD && x < n.x + n.width + ROUTE_PAD);
+
+  let best: number | null = null;
+  let bestCost = Infinity;
+  for (const x of candidates) {
+    if (!free(x)) continue;
+    const cost = Math.abs(x - start.x) + Math.abs(x - end.x);
+    if (cost < bestCost) {
+      best = x;
+      bestCost = cost;
+    }
+  }
+  if (best === null) return null;
+
+  const points: Point[] = [
+    start,
+    { x: start.x, y: turnStart },
+    { x: best, y: turnStart },
+    { x: best, y: turnEnd },
+    { x: end.x, y: turnEnd },
+    end,
+  ];
+  return {
+    d: roundedPath(flipBack ? points.map(flip) : points),
+    head: [{ x: end.x, y: turnEnd }, end],
+    labelAt: { x: start.x, y: (start.y + turnStart) / 2 },
+    minCross: Math.min(start.x, end.x, best),
+    maxCross: Math.max(start.x, end.x, best),
+  };
+}
+
+/** Pushes edge labels that would print on top of each other further along their curves. */
+export function spreadLabels<T extends { x: number; y: number; w: number; t: number | null; at(t: number): Point }>(labels: T[]): void {
+  for (let pass = 0; pass < 6; pass += 1) {
+    let moved = false;
+    for (let i = 0; i < labels.length; i += 1) {
+      for (let j = i + 1; j < labels.length; j += 1) {
+        const a = labels[i];
+        const b = labels[j];
+        if (b.t === null || b.t >= 0.85) continue;
+        if (Math.abs(a.x - b.x) < (a.w + b.w) / 2 + 2 && Math.abs(a.y - b.y) < 20) {
+          b.t = Math.min(0.85, b.t + 0.14);
+          const p = b.at(b.t);
+          b.x = p.x;
+          b.y = p.y;
+          moved = true;
+        }
+      }
+    }
+    if (!moved) break;
+  }
+}
+
 let svgSeq = 0;
 
 /** A hub is one node branching into simple leaves — a book's chapter list, typically. */
@@ -629,8 +928,13 @@ function detectHub(diagram: ParsedDiagram): HubShape | null {
 
   // Every node must take part, otherwise this is a richer graph than a hub.
   if (children.length + 1 !== diagram.nodes.length) return null;
-  // Branch labels (da/nu…) are lost in a bracketed list, so labelled fans stay graphs.
-  if (diagram.edges.some((edge) => edge.label)) return null;
+  // Branch labels (da/nu…) are lost in a bracketed list, so a fan whose labels
+  // tell the branches apart stays a graph. Labels are decorative only when every
+  // arc carries the same text (e.g. all "include"): then nothing is lost and
+  // adding or dropping one label doesn't flip the whole presentation. A fan with
+  // an extra step (a child that continues) is not a hub: it is a tree, a graph.
+  const labels = new Set(diagram.edges.map((edge) => edge.label ?? ''));
+  if (labels.size > 1) return null;
   return children.length >= HUB_MIN_CHILDREN ? { root, children } : null;
 }
 
@@ -646,11 +950,10 @@ interface Rendered {
 
 function measureNode(node: DiagramNode, maxChars: number, maxWidth: number): PlacedNode {
   const lines = wrapLabel(node.label, maxChars);
-  const longest = lines.reduce((max, line) => Math.max(max, line.length), 0);
   return {
     ...node,
     lines,
-    width: Math.max(MIN_W, Math.min(maxWidth, longest * CHAR_WIDTH + PAD_X * 2)),
+    width: Math.max(MIN_W, Math.min(maxWidth, longestLine(lines) + PAD_X * 2)),
     height: lines.length * LINE_HEIGHT + PAD_Y * 2,
     x: 0,
     y: 0,
@@ -721,26 +1024,59 @@ const NOTICE_BAND = 26;
 
 /** Plain-language summary of the steps, used as the SVG's accessible name. */
 export function describeDiagram(diagram: ParsedDiagram): string {
+  const flat = (text: string) => text.replace(/\s+/g, ' ').trim();
   const steps = diagram.nodes
     .slice(0, 24)
     .map((node, index) => {
       const kind = kindOf(node);
-      return `${index + 1}. ${kind ? `${kind}: ` : ''}${node.label.replace(/\s+/g, ' ')}`;
+      return `${index + 1}. ${kind ? `${kind}: ` : ''}${flat(node.label)}`;
     })
     .join('; ');
   const head = diagram.title ? `Schemă: ${diagram.title}.` : 'Schemă.';
-  return `${head} ${steps}`.slice(0, 900);
+
+  // Relations, grouped per source: "A duce la: B (da), C (nu)".
+  const byId = new Map(diagram.nodes.map((node) => [node.id, flat(node.label)]));
+  const targets = new Map<string, string[]>();
+  for (const edge of diagram.edges) {
+    const from = byId.get(edge.from);
+    const to = byId.get(edge.to);
+    if (!from || !to || edge.from === edge.to) continue;
+    targets.set(edge.from, [...(targets.get(edge.from) ?? []), edge.label ? `${to} (${flat(edge.label)})` : to]);
+  }
+  const links = [...targets.entries()].map(([id, list]) => `${byId.get(id)} duce la: ${list.join(', ')}`);
+
+  const LIMIT = 900;
+  const STEPS_BUDGET = 480; // steps first, but never starve the links
+  let stepsText = steps;
+  if (links.length && stepsText.length > STEPS_BUDGET) stepsText = `${stepsText.slice(0, STEPS_BUDGET - 1).trimEnd()}…`;
+  let out = `${head} ${stepsText}`;
+  let added = false;
+  for (const link of links) {
+    const next = `${out}${added ? '; ' : '. Legături: '}${link}`;
+    if (next.length > LIMIT - 1) {
+      out = `${out}…`;
+      break;
+    }
+    out = next;
+    added = true;
+  }
+  return out.slice(0, LIMIT);
 }
 
 /** Renders a parsed diagram to standalone inline SVG markup. */
-export function renderDiagramSvg(diagram: ParsedDiagram): string {
+export function renderDiagramSvg(diagram: ParsedDiagram, options: DiagramRenderOptions = {}): string {
   svgSeq += 1;
   const gradientId = `sx-g-${svgSeq}`;
   const paths = computePaths(diagram);
 
-  const hub = detectHub(diagram);
-  const body = hub ? renderHubSvg(hub, gradientId, paths) : renderGraph(diagram, gradientId, paths);
-  return wrapSvg(body, gradientId, diagram);
+  pageChecker = options.pageStatus;
+  try {
+    const hub = detectHub(diagram);
+    const body = hub ? renderHubSvg(hub, gradientId, paths) : renderGraph(diagram, gradientId, paths);
+    return wrapSvg(body, gradientId, diagram);
+  } finally {
+    pageChecker = undefined;
+  }
 }
 
 function renderGraph(diagram: ParsedDiagram, gradientId: string, paths: Map<string, string>): Rendered {
@@ -748,7 +1084,7 @@ function renderGraph(diagram: ParsedDiagram, gradientId: string, paths: Map<stri
   if (diagram.direction === 'LR' && computed.width > LR_REFLOW_WIDTH) {
     computed = layout({ ...diagram, direction: 'TD' });
   }
-  const { placed, byId, depth, width, height, horizontal } = computed;
+  const { placed, byId, depth, back, width, height, horizontal } = computed;
   const maxDepth = Math.max(0, ...depth.values());
   const stagger = staggerFor(maxDepth);
 
@@ -760,39 +1096,76 @@ function renderGraph(diagram: ParsedDiagram, gradientId: string, paths: Map<stri
     incoming.set(edge.to, [...(incoming.get(edge.to) ?? []), String(index)]);
   });
 
-  const edgeMarkup = diagram.edges
-    .map((edge, index) => {
-      const from = byId.get(edge.from);
-      const to = byId.get(edge.to);
-      if (!from || !to || from === to) return '';
-      const outSlots = outgoing.get(edge.from) ?? [];
-      const inSlots = incoming.get(edge.to) ?? [];
-      const [start, end] = anchors(from, to, horizontal, {
-        outIndex: Math.max(0, outSlots.indexOf(String(index))),
-        outCount: outSlots.length,
-        inIndex: Math.max(0, inSlots.indexOf(String(index))),
-        inCount: inSlots.length,
-      });
-      const curve = edgeCurve(start, end, horizontal);
-      const delay = (depth.get(edge.from) ?? 0) * stagger + 150;
-      const path = `<path class="sx-edge" pathLength="1" d="${edgePath(curve)}" ${edgeStroke(edge.dashed)}/>`;
-      const head = arrowHead(curve[2], end);
-      let label = '';
+  interface EdgeDraw {
+    edge: DiagramEdge;
+    index: number;
+    path: string;
+    head: string;
+    delay: number;
+    label: { x: number; y: number; w: number; t: number | null; at(t: number): Point } | null;
+  }
+  const draws: EdgeDraw[] = [];
+  const crossSize = horizontal ? height : width;
+  let routeMin = 0;
+  let routeMax = crossSize;
 
-      if (edge.label) {
-        // Anchored near the source (mermaid convention) so an edge that skips a
-        // layer never drops its label on top of an unrelated node.
-        // Alternate the distance for sibling branches so two labels leaving the
-        // same node are never printed side by side.
-        const anchor = pointOnCurve(curve, outSlots.indexOf(String(index)) % 2 === 0 ? 0.24 : 0.42);
-        const text = escapeXml(edge.label);
-        const boxWidth = edge.label.length * 6.3 + 14;
-        label =
-          `<g class="sx-pill"><rect x="${anchor.x - boxWidth / 2}" y="${anchor.y - 9}" width="${boxWidth}" height="18" rx="9" ` +
-          `fill="rgba(128,128,128,0.2)" stroke="rgba(128,128,128,0.35)" stroke-width="0.8"/>` +
-          `<text x="${anchor.x}" y="${anchor.y + 0.5}" text-anchor="middle" dominant-baseline="middle" font-size="11" font-weight="700" fill="currentColor" fill-opacity="0.92">${text}</text></g>`;
+  diagram.edges.forEach((edge, index) => {
+    const from = byId.get(edge.from);
+    const to = byId.get(edge.to);
+    if (!from || !to || from === to) return;
+    const outSlots = outgoing.get(edge.from) ?? [];
+    const inSlots = incoming.get(edge.to) ?? [];
+    const [start, end] = anchors(from, to, horizontal, {
+      outIndex: Math.max(0, outSlots.indexOf(String(index))),
+      outCount: outSlots.length,
+      inIndex: Math.max(0, inSlots.indexOf(String(index))),
+      inCount: inSlots.length,
+    });
+    const curve = edgeCurve(start, end, horizontal);
+    const others = placed.filter((n) => n !== from && n !== to);
+    const route = curveHitsNode(curve, others) ? routeAround(from, to, start, end, placed, horizontal) : null;
+
+    const dashed = edge.dashed || back.has(edge);
+    // pathLength="1" rescales dash units to the whole path, which would turn a dashed edge solid.
+    const lengthAttr = dashed ? '' : ' pathLength="1"';
+    if (route) {
+      routeMin = Math.min(routeMin, route.minCross - ROUTE_PAD);
+      routeMax = Math.max(routeMax, route.maxCross + ROUTE_PAD);
+    }
+    const d = route ? route.d : edgePath(curve);
+    const path = `<path class="sx-edge"${lengthAttr} d="${d}" ${edgeStroke(dashed)}/>`;
+    const head = route ? arrowHead(route.head[0], route.head[1]) : arrowHead(curve[2], end);
+
+    let label: EdgeDraw['label'] = null;
+    if (edge.label) {
+      // Anchored near the source (mermaid convention) so an edge that skips a
+      // layer never drops its label on top of an unrelated node. Siblings leaving
+      // the same node start at different distances; spreadLabels settles the rest.
+      const w = edge.label.length * 6.3 + 14;
+      if (route) {
+        label = { x: route.labelAt.x, y: route.labelAt.y, w, t: null, at: () => route.labelAt };
+      } else {
+        const t0 = outSlots.indexOf(String(index)) % 2 === 0 ? 0.24 : 0.42;
+        const p0 = pointOnCurve(curve, t0);
+        label = { x: p0.x, y: p0.y, w, t: t0, at: (t: number) => pointOnCurve(curve, t) };
       }
-      return `<g class="sx-eg" data-from="${escapeXml(edge.from)}" data-to="${escapeXml(edge.to)}" style="--d:${delay}ms">${path}${head}${label}</g>`;
+    }
+    draws.push({ edge, index, path, head, delay: (depth.get(edge.from) ?? 0) * stagger + 150, label });
+  });
+
+  spreadLabels(draws.flatMap((draw) => (draw.label ? [draw.label] : [])));
+
+  const edgeMarkup = draws
+    .map(({ edge, path, head, delay, label }) => {
+      let pill = '';
+      if (label && edge.label) {
+        const text = escapeXml(edge.label);
+        pill =
+          `<g class="sx-pill"><rect x="${label.x - label.w / 2}" y="${label.y - 9}" width="${label.w}" height="18" rx="9" ` +
+          `fill="rgba(128,128,128,0.2)" stroke="rgba(128,128,128,0.35)" stroke-width="0.8"/>` +
+          `<text x="${label.x}" y="${label.y + 0.5}" text-anchor="middle" dominant-baseline="middle" font-size="11" font-weight="700" fill="currentColor" fill-opacity="0.92">${text}</text></g>`;
+      }
+      return `<g class="sx-eg" data-from="${escapeXml(edge.from)}" data-to="${escapeXml(edge.to)}" style="--d:${delay}ms">${path}${head}${pill}</g>`;
     })
     .join('');
 
@@ -806,7 +1179,70 @@ function renderGraph(diagram: ParsedDiagram, gradientId: string, paths: Map<stri
     )
     .join('');
 
-  return { markup: `${edgeMarkup}${nodeMarkup}`, width, height };
+  // A route that left the node band needs room on the cross axis: shift everything and grow the canvas.
+  const shift = Math.max(0, -routeMin);
+  const grown = Math.max(crossSize, routeMax) + shift;
+  const body = `${edgeMarkup}${nodeMarkup}`;
+  const move = horizontal ? `0 ${shift}` : `${shift} 0`;
+  return {
+    markup: shift > 0 ? `<g transform="translate(${move})">${body}</g>` : body,
+    width: horizontal ? width : grown,
+    height: horizontal ? grown : height,
+  };
+}
+
+// ── Legend ───────────────────────────────────────────────────────────────────
+//
+// Colors carry meaning (urgency, treatment, investigation...), so a schema that
+// uses at least two of them gets a small key under it. Purely decorative for
+// assistive tech: describeDiagram already names each step's kind.
+
+const LEGEND_ROW = 18;
+
+interface LegendItem {
+  kind: string;
+  color: string;
+  w: number;
+}
+
+function legendItems(diagram: ParsedDiagram): LegendItem[] {
+  const seen = new Map<string, string>();
+  for (const node of diagram.nodes) {
+    const kind = kindOf(node);
+    if (kind && !seen.has(kind)) seen.set(kind, colorOf(node));
+  }
+  if (seen.size < 2) return [];
+  return [...seen].map(([kind, color]) => ({ kind, color, w: Math.round(kind.length * 6.2 + 34) }));
+}
+
+function renderLegend(items: LegendItem[], boxWidth: number, top: number): { markup: string; height: number } {
+  if (!items.length) return { markup: '', height: 0 };
+  const rows: LegendItem[][] = [[]];
+  let used = 0;
+  for (const item of items) {
+    if (used + item.w > boxWidth - MARGIN * 2 && rows[rows.length - 1].length) {
+      rows.push([]);
+      used = 0;
+    }
+    rows[rows.length - 1].push(item);
+    used += item.w;
+  }
+  const cells = rows.map((row, r) => {
+    const rowW = row.reduce((sum, item) => sum + item.w, 0);
+    let x = (boxWidth - rowW) / 2;
+    const cy = top + 10 + r * LEGEND_ROW;
+    return row
+      .map((item) => {
+        const cell =
+          `<rect x="${x + 6}" y="${cy - 4}" width="8" height="8" rx="2.5" fill="${mix(item.color, 15)}" stroke="${mix(item.color, 70)}" stroke-width="1.2"/>` +
+          `<text x="${x + 20}" y="${cy + 0.5}" dominant-baseline="middle" font-size="10.5" font-weight="600" fill="currentColor" fill-opacity="0.68">${escapeXml(item.kind)}</text>`;
+        x += item.w;
+        return cell;
+      })
+      .join('');
+  });
+  const height = rows.length * LEGEND_ROW + 6;
+  return { markup: `<g class="sx-legend" aria-hidden="true">${cells.join('')}</g>`, height };
 }
 
 /** Shared chrome: zoom wrapper, scroll box, title/notice, and fit-vs-scroll sizing. */
@@ -817,12 +1253,16 @@ function wrapSvg(body: Rendered, gradientId: string, diagram: ParsedDiagram): st
 
   const titleWidth = titleText ? titleText.length * 8 + MARGIN * 2 : 0;
   const noticeWidth = diagram.notice ? diagram.notice.length * 6.4 + MARGIN * 2 : 0;
-  const boxWidth = Math.round(Math.max(body.width, Math.min(titleWidth, 640), Math.min(noticeWidth, 640)));
-  const boxHeight = Math.round(body.height + titleBand + noticeBand);
+  const items = legendItems(diagram);
+  const legendWidth = items.reduce((sum, item) => sum + item.w, 0) + MARGIN * 2;
+  const boxWidth = Math.round(Math.max(body.width, Math.min(titleWidth, 640), Math.min(noticeWidth, 640), Math.min(legendWidth, 640)));
+  const legend = renderLegend(items, boxWidth, titleBand + body.height + 4);
+  const boxHeight = Math.round(body.height + titleBand + legend.height + noticeBand);
   const shift = Math.round((boxWidth - body.width) / 2);
 
+  // Centered on the canvas, like the notice below: stays put when routes widen it.
   const title = titleText
-    ? `<text class="sx-title" x="${MARGIN}" y="${MARGIN + 8}" font-size="14" font-weight="800" fill="currentColor">${escapeXml(titleText)}</text>`
+    ? `<text class="sx-title" x="${boxWidth / 2}" y="${MARGIN + 8}" text-anchor="middle" font-size="14" font-weight="800" fill="currentColor">${escapeXml(titleText)}</text>`
     : '';
   const notice = diagram.notice
     ? `<text class="sx-notice" x="${boxWidth / 2}" y="${boxHeight - 12}" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" fill-opacity="0.6">${escapeXml(diagram.notice)}</text>`
@@ -843,6 +1283,7 @@ function wrapSvg(body: Rendered, gradientId: string, diagram: ParsedDiagram): st
     `<defs><linearGradient id="${gradientId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0.2"/><stop offset="0.55" stop-color="#fff" stop-opacity="0.03"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>`,
     title,
     `<g transform="translate(${shift} ${titleBand})">${body.markup}</g>`,
+    legend.markup,
     notice,
     '</svg>',
     '</div>',
@@ -855,12 +1296,12 @@ function wrapSvg(body: Rendered, gradientId: string, diagram: ParsedDiagram): st
  * `lang` only matters for the compact schema DSL: a ```schema fence is parsed as
  * DSL unless it actually holds mermaid, and nothing else is reinterpreted.
  */
-export function renderDiagramBlock(source: string, lang = ''): string | null {
+export function renderDiagramBlock(source: string, lang = '', options: DiagramRenderOptions = {}): string | null {
   try {
     const parsed = isSchemaFence(lang, source) ? parseSchema(source) : parseDiagram(source);
     if (!parsed) return null;
     if (parsed.nodes.length > 40 || parsed.edges.length > 60) return null;
-    return renderDiagramSvg(parsed);
+    return renderDiagramSvg(parsed, options);
   } catch {
     return null;
   }

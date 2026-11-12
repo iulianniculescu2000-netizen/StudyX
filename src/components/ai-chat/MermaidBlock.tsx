@@ -1,11 +1,13 @@
 import { useContext, useEffect, useMemo, useState } from 'react';
+import type { Ref } from 'react';
 import { Copy, Check } from 'lucide-react';
 import { useTheme } from '../../theme/ThemeContext';
 import { renderDiagramBlock } from './diagram';
 import DiagramFrame from './DiagramFrame';
 import { copyText, extractSvg } from './diagramExport';
 import { isMermaidSource } from './markdown';
-import { DiagramActionsContext } from './markdownContext';
+import { CitationsContext, DiagramActionsContext } from './markdownContext';
+import { openSchemaPage, pageStatusFor } from './schemaPages';
 import { peekRendered, renderMermaid } from './mermaidRuntime';
 import { currentDiagramSvg } from './diagramOutcome';
 
@@ -18,10 +20,27 @@ interface MermaidBlockProps {
 
 type Outcome = { key: string; svg: string } | { key: string; failed: true };
 
-function Placeholder({ label }: { label: string }) {
+/** True while the element is (nearly) on screen; always true without IntersectionObserver. */
+function useInView(): [(el: HTMLElement | null) => void, boolean] {
+  const supported = typeof IntersectionObserver !== 'undefined';
+  const [el, setEl] = useState<HTMLElement | null>(null);
+  const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    if (!supported || !el) return undefined;
+    const observer = new IntersectionObserver((entries) => {
+      setSeen(entries.some((entry) => entry.isIntersecting));
+    }, { rootMargin: '300px' });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [el, supported]);
+  return [setEl, supported ? seen : true];
+}
+
+function Placeholder({ label, innerRef }: { label: string; innerRef?: Ref<HTMLDivElement> }) {
   const theme = useTheme();
   return (
     <div
+      ref={innerRef}
       className="ai-md-diagram-placeholder"
       role="status"
       aria-live="polite"
@@ -70,34 +89,42 @@ export function DiagramError({ code }: { code: string }) {
 export default function MermaidBlock({ code, lang, incomplete }: MermaidBlockProps) {
   const theme = useTheme();
   const { onCreateFlashcards } = useContext(DiagramActionsContext);
+  const citations = useContext(CitationsContext);
+  // Step pages are checked against the sources the model was given; with none, they stay informative (no button).
+  const pageOptions = useMemo(() => (citations.length > 0 ? { pageStatus: pageStatusFor(citations) } : {}), [citations]);
+  const onOpenPage = useMemo(
+    () => (citations.length > 0 ? (page: string) => { openSchemaPage(citations, page); } : undefined),
+    [citations],
+  );
   const key = `${theme.id}\u0000${code}`;
   const useMermaid = isMermaidSource(lang, code);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [watch, inView] = useInView();
   const cached = useMermaid ? peekRendered(theme.id, code) : undefined;
 
   useEffect(() => {
     if (incomplete || !useMermaid || peekRendered(theme.id, code)) return undefined;
     let cancelled = false;
-    renderMermaid(code, theme)
+    renderMermaid(code, theme, inView ? 'visible' : 'idle')
       .then((svg) => { if (!cancelled) setOutcome({ key, svg }); })
       .catch(() => { if (!cancelled) setOutcome({ key, failed: true }); });
     return () => { cancelled = true; };
     // `theme` identity is stable per theme id; `key` already encodes id + code.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, incomplete, useMermaid]);
+  }, [key, incomplete, useMermaid, inView]);
 
   const failedHere = outcome?.key === key && 'failed' in outcome;
   const fallbackSvg = useMemo(() => {
     if (incomplete || (useMermaid && !failedHere)) return null;
-    const html = renderDiagramBlock(code, lang);
+    const html = renderDiagramBlock(code, lang, pageOptions);
     return html ? extractSvg(html) : null;
-  }, [code, lang, incomplete, useMermaid, failedHere]);
+  }, [code, lang, incomplete, useMermaid, failedHere, pageOptions]);
 
   if (incomplete) return <Placeholder label="Se desenează schema…" />;
 
   const svg = currentDiagramSvg(key, cached, outcome);
   if (svg) return <DiagramFrame svg={svg} code={code} onCreateFlashcards={onCreateFlashcards} />;
-  if (fallbackSvg) return <DiagramFrame svg={fallbackSvg} code={code} onCreateFlashcards={onCreateFlashcards} />;
+  if (fallbackSvg) return <DiagramFrame svg={fallbackSvg} code={code} onCreateFlashcards={onCreateFlashcards} onOpenPage={onOpenPage} />;
   if (failedHere || !useMermaid) return <DiagramError code={code} />;
-  return <Placeholder label="Se desenează schema…" />;
+  return <Placeholder label="Se desenează schema…" innerRef={watch} />;
 }

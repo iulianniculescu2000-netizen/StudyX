@@ -87,6 +87,25 @@ describe('renderMermaid', () => {
   });
 });
 
+describe('cache and configuration', () => {
+  it('evicts the least recently used entry, not the oldest inserted', async () => {
+    await renderMermaid('graph TD\nA-->B', THEMES.light);
+    for (let i = 0; i < 119; i++) await renderMermaid(`graph TD\nN${i}-->M`, THEMES.light);
+    expect(peekRendered(THEMES.light.id, 'graph TD\nA-->B')).toBeDefined(); // touched: now most recent
+    await renderMermaid('graph TD\nextra-->M', THEMES.light);
+    expect(peekRendered(THEMES.light.id, 'graph TD\nA-->B')).toBeDefined();
+    expect(peekRendered(THEMES.light.id, 'graph TD\nN0-->M')).toBeUndefined();
+  });
+
+  it('re-initialises mermaid only when the effective config changes', async () => {
+    await renderMermaid('graph TD\nA-->B', THEMES.light);
+    await renderMermaid('graph TD\nC-->D', THEMES.light);
+    expect(mermaid.initialize).toHaveBeenCalledTimes(1);
+    await renderMermaid('graph TD\nA-->B', THEMES.dark);
+    expect(mermaid.initialize).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe('sanitizeSvg', () => {
   it('strips scripts, handlers, foreignObject and external links', () => {
     const dirty = [
@@ -110,5 +129,34 @@ describe('sanitizeSvg', () => {
     const clean = sanitizeSvg('<svg><style>@import url(https://evil.example/x.css); .a{fill:red;background:url(https://evil.example/i.png)}</style><text>t</text></svg>');
     expect(clean).toContain('.a{fill:red');
     expect(clean).not.toMatch(/evil\.example|@import/);
+  });
+});
+
+describe('render priority', () => {
+  it('draws visible diagrams before idle ones, one at a time', async () => {
+    const order: string[] = [];
+    let active = 0;
+    let maxActive = 0;
+    mermaid.render.mockImplementation(async (_id: string, code: string) => {
+      active += 1; maxActive = Math.max(maxActive, active);
+      await Promise.resolve();
+      order.push(code);
+      active -= 1;
+      return { svg: '<svg viewBox="0 0 10 10"><text>x</text></svg>' };
+    });
+    const t = THEMES.light;
+    const first = renderMermaid('graph TD\nA-->B', t, 'visible');
+    const idle = renderMermaid('graph TD\nC-->D', t, 'idle');
+    const vis = renderMermaid('graph TD\nE-->F', t, 'visible');
+    const promoted = renderMermaid('graph TD\nC-->D', t, 'visible');
+    expect(promoted).toBe(idle);
+    await Promise.all([first, idle, vis]);
+    expect(order).toEqual(['graph TD\nA-->B', 'graph TD\nC-->D', 'graph TD\nE-->F']);
+    expect(maxActive).toBe(1);
+  });
+
+  it('idle jobs run when nothing visible waits', async () => {
+    const svg = await renderMermaid('graph TD\nX-->Y', THEMES.light, 'idle');
+    expect(svg).toContain('<svg');
   });
 });

@@ -141,27 +141,88 @@ export function buildMermaidConfig(theme: MermaidTheme): MermaidConfig {
 
 // ── Cache + serial rendering ────────────────────────────────────────────────
 
-const CACHE_LIMIT = 60;
+/** Real LRU: a Map keeps insertion order, hits are re-inserted at the end. */
+const CACHE_LIMIT = 120;
+const CACHE_MAX_CHARS = 6_000_000;
 const cache = new Map<string, string>();
+let cacheChars = 0;
+
+function cacheGet(key: string): string | undefined {
+  const hit = cache.get(key);
+  if (hit !== undefined) {
+    cache.delete(key);
+    cache.set(key, hit);
+  }
+  return hit;
+}
+
+function cacheSet(key: string, svg: string): void {
+  const old = cache.get(key);
+  if (old !== undefined) {
+    cacheChars -= old.length;
+    cache.delete(key);
+  }
+  cache.set(key, svg);
+  cacheChars += svg.length;
+  while (cache.size > 1 && (cache.size > CACHE_LIMIT || cacheChars > CACHE_MAX_CHARS)) {
+    const oldest = cache.keys().next().value as string;
+    cacheChars -= cache.get(oldest)?.length ?? 0;
+    cache.delete(oldest);
+  }
+}
 
 export function cacheKey(themeId: string, code: string): string {
   return `${themeId}\u0000${code}`;
 }
 
 export function peekRendered(themeId: string, code: string): string | undefined {
-  return cache.get(cacheKey(themeId, code));
+  return cacheGet(cacheKey(themeId, code));
 }
 
-let queue: Promise<unknown> = Promise.resolve();
 let configuredFor = '';
 let idSeq = 0;
+
+export type RenderPriority = 'visible' | 'idle';
+
+interface Job {
+  key: string;
+  priority: RenderPriority;
+  run: () => Promise<string>;
+  promise: Promise<string>;
+  resolve: (svg: string) => void;
+  reject: (error: unknown) => void;
+}
+
+/** Waiting jobs; mermaid.render stays strictly one at a time (global config). */
+let pending: Job[] = [];
+let pumping = false;
+
+async function pump(): Promise<void> {
+  if (pumping) return;
+  pumping = true;
+  try {
+    while (pending.length) {
+      // Visible diagrams first (FIFO inside a priority), off-screen ones when nothing else waits.
+      const index = pending.findIndex((job) => job.priority === 'visible');
+      const [job] = pending.splice(index === -1 ? 0 : index, 1);
+      try {
+        job.resolve(await job.run());
+      } catch (error) {
+        job.reject(error);
+      }
+    }
+  } finally {
+    pumping = false;
+  }
+}
 
 /** Test hook: forget everything (cache, config marker). */
 export function resetMermaidRuntime(): void {
   cache.clear();
+  cacheChars = 0;
   configuredFor = '';
   loader = null;
-  queue = Promise.resolve();
+  pending = [];
 }
 
 export class MermaidSyntaxError extends Error {}
@@ -179,19 +240,30 @@ export function fitMindmapRoots(code: string): string {
  * Renders mermaid source to a sanitized SVG string for the given theme.
  * Rejects with MermaidSyntaxError when the diagram does not parse.
  */
-export function renderMermaid(code: string, theme: MermaidTheme): Promise<string> {
+export function renderMermaid(code: string, theme: MermaidTheme, priority: RenderPriority = 'visible'): Promise<string> {
   const key = cacheKey(theme.id, code);
-  const hit = cache.get(key);
+  const hit = cacheGet(key);
   if (hit) return Promise.resolve(hit);
 
-  const task = queue.then(async () => {
-    const again = cache.get(key);
+  // Same diagram already waiting: share it, and promote it if it became visible.
+  const waiting = pending.find((job) => job.key === key);
+  if (waiting) {
+    if (priority === 'visible') waiting.priority = 'visible';
+    return waiting.promise;
+  }
+
+  const run = async () => {
+    const again = cacheGet(key);
     if (again) return again;
     const mermaid = await loadMermaid();
     const fittedCode = fitMindmapRoots(code);
-    if (configuredFor !== theme.id) {
-      mermaid.initialize(buildMermaidConfig(theme));
-      configuredFor = theme.id;
+    // Re-initialise only when the effective config changed (themes that map to
+    // the same variables share it), not on every theme id switch.
+    const config = buildMermaidConfig(theme);
+    const signature = JSON.stringify(config);
+    if (configuredFor !== signature) {
+      mermaid.initialize(config);
+      configuredFor = signature;
     }
     const ok = await mermaid.parse(fittedCode, { suppressErrors: true });
     if (!ok) throw new MermaidSyntaxError('parse');
@@ -202,15 +274,19 @@ export function renderMermaid(code: string, theme: MermaidTheme): Promise<string
       const { svg } = await mermaid.render(id, fittedCode);
       const clean = sanitizeSvg(svg);
       if (!clean.includes('<svg')) throw new MermaidSyntaxError('empty');
-      if (cache.size >= CACHE_LIMIT) cache.delete(cache.keys().next().value as string);
-      cache.set(key, clean);
+      cacheSet(key, clean);
       return clean;
     } finally {
       // mermaid parks scratch / error nodes in <body> when a render throws.
       document.getElementById(id)?.remove();
       document.getElementById(`d${id}`)?.remove();
     }
-  });
-  queue = task.catch(() => undefined);
-  return task;
+  };
+
+  let resolve!: (svg: string) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<string>((res, rej) => { resolve = res; reject = rej; });
+  pending.push({ key, priority, run, promise, resolve, reject });
+  void pump();
+  return promise;
 }
