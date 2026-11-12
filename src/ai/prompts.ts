@@ -40,6 +40,18 @@ export const GROUNDING_RULES =
  *  - clinical vignettes are the exception (~5–8%), not the rule;
  *  - numeric thresholds and named criteria (KDIGO, DUKE) appear constantly.
  */
+/**
+ * Mecanismele de distractori măsurate pe 1200 de grile reale 2021–2025 (proiectul „Grile rezidentiat”):
+ * ~62% adevăruri mutate la altă entitate, ~37% o modificare, ~1% inventate; 71% diferă de adevăr printr-un singur element.
+ */
+export const RESIDENCY_DISTRACTOR_CRAFT =
+  'MECANISM DISTRACTORI (ca la examenul real): preferă (1) o afirmație adevărată, dar despre entitatea vecină (alt tip, alt stadiu, alt rând de tabel), ' +
+  '(2) elementul vecin din aceeași listă sau clasificare, (3) inversarea UNUI singur cuvânt-cheie (crește↔scade, precoce↔tardiv, contraindicat↔indicat) lăsând restul literal. ' +
+  'Un distractor diferă de adevăr printr-un singur element (un cuvânt, o cifră, o entitate); nu inventa fapte. ' +
+  'Evită: opțiuni vagi („frecvent utilizat”), perechi opuse simetrice construite didactic, cheia cu glosă între paranteze în timp ce celelalte sunt seci, ' +
+  'toate opțiunile cu aceeași formă verbală sau aceeași lungime. Variază: una scurtă, una cu cifră, una cu negație. ' +
+  'Păstrează calificatorul sursei („în practica generală”, „acum”) în cheie și în distractori.';
+
 export const RESIDENCY_STYLE_RULES =
   'STIL DE GRILĂ (calibrat pe subiectele oficiale de rezidențiat și pe culegerile românești):\n' +
   '- enunț scurt, de o singură frază, care se termină de regulă cu ":" și este completat de opțiuni ' +
@@ -168,7 +180,8 @@ export function buildQuestionPrompt(
   const distractorInstruction =
     'DISTRACTORI: plauzibili clinic și construiți din confuzii reale (entități apropiate, praguri vecine, inversarea cauzei cu efectul), nu răspunsuri absurde. ' +
     'Fără indicii de formă: răspunsul corect nu e mai lung sau mai detaliat decât celelalte și nu stă mereu pe aceeași poziție; ' +
-    'evită „toate de mai sus”, „niciuna” și cuvintele absolute („întotdeauna”, „niciodată”) când nu sunt ele însele adevărul.';
+    'evită „toate de mai sus”, „niciuna” și cuvintele absolute („întotdeauna”, „niciodată”) când nu sunt ele însele adevărul.' +
+    (examStyle === 'residency' ? ` ${RESIDENCY_DISTRACTOR_CRAFT}` : '');
 
   const commonQualityRules = 'distractorii plauzibili din aceeași categorie, fără a menționa numele fișierului sau documentului, fără formulări meta de tip "conform cursului", fără opțiuni mai lungi de 18 cuvinte.';
 

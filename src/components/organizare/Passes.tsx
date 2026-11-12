@@ -4,6 +4,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { PASS_HINTS, PASS_NAMES, activePhase, currentIndex, overdueTopics, statusOf } from '../../lib/organizare/engine';
 import { dayRange, dayYear, fold, pageRange } from '../../lib/organizare/format';
 import { BOOK_NAME } from '../../lib/organizare/actions';
+import { describeExamWeight, examWeightOf } from '../../lib/organizare/examWeights';
 import type { Status, Topic } from '../../lib/organizare/types';
 import SegmentedTabs from '../fx/SegmentedTabs';
 import TopicActions from './TopicActions';
@@ -68,6 +69,7 @@ function TopicRow({ topic, ph, now, late, expanded, onToggle, flash }: { topic: 
             <dt style={{ color: theme.text3 }}>În PDF-ul tău</dt><dd>{topic.pdf ? `pag. ${topic.pdf}` : 'nu e inclus'}</dd>
             {topic.file && (<><dt style={{ color: theme.text3 }}>Fișier</dt><dd className="break-words">{topic.file.replace(/^Carti\/Kumar\/Kumar - capitole\//, 'Kumar - capitole/')}</dd></>)}
             <dt style={{ color: theme.text3 }}>Grile</dt><dd>{topic.quizzes || 'nu există în planner'}</dd>
+            <dt style={{ color: theme.text3 }}>La examen</dt><dd>{describeExamWeight(examWeightOf(topic))}</dd>
             <dt style={{ color: theme.text3 }}>Perioadă</dt><dd>{dayYear(from)} – {dayYear(to)}</dd>
             {topic.resources && (<><dt style={{ color: theme.text3 }}>Resurse</dt><dd>{topic.resources.replace(/^Video: /, '')}</dd></>)}
           </dl>
