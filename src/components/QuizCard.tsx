@@ -24,7 +24,7 @@ const ScoreRing = ({ score, theme }: { score: number; theme: import('../theme/th
   const r = 13;
   const circ = 2 * Math.PI * r;
   const offset = circ * (1 - score / 100);
-  const color = score >= 90 ? theme.success : score >= 70 ? '#FFD60A' : score >= 50 ? theme.warning : theme.danger;
+  const color = score >= 90 ? theme.success : score >= 70 ? (theme.isDark ? '#FFD60A' : '#8A6A00') : score >= 50 ? theme.warning : theme.danger;
   return (
     <div className="relative w-9 h-9 flex-shrink-0">
       <svg className="w-full h-full -rotate-90" viewBox="0 0 32 32">

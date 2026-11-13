@@ -13,7 +13,6 @@ import {
   Clock,
   Copy,
   CreditCard,
-  Download,
   FileText,
   GraduationCap,
   Layers,
@@ -23,6 +22,7 @@ import {
   Search,
   Timer,
   Trophy,
+  FileJson, GalleryVerticalEnd,
 } from 'lucide-react';
 import QuizImage from '../components/QuizImage';
 import { useAIStore } from '../store/aiStore';
@@ -603,9 +603,9 @@ export default function QuizDetail() {
             {[
               { label: 'Editează', icon: Pencil, action: () => navigate(`/create?edit=${quiz.id}`), color: theme.accentText },
               { label: 'Copiază', icon: Copy, action: handleDuplicate, color: theme.text2 },
-              { label: 'JSON', icon: Download, action: exportQuiz, color: theme.text2 },
+              { label: 'JSON', icon: FileJson, action: exportQuiz, color: theme.text2 },
               { label: 'PDF', icon: FileText, action: exportPDF, color: theme.text2 },
-              { label: 'Anki', icon: Download, action: exportAnki, color: theme.text2 },
+              { label: 'Anki', icon: GalleryVerticalEnd, action: exportAnki, color: theme.text2 },
               {
                 label: quiz.archived ? 'Restaurează' : 'Arhivează',
                 icon: quiz.archived ? ArchiveRestore : Archive,
@@ -618,7 +618,7 @@ export default function QuizDetail() {
                 onClick={button.action}
                 className="glass-panel fx-lift press-feedback focus-ring flex flex-col items-center gap-1.5 py-3 rounded-2xl"
               >
-                <span className="flex h-9 w-9 items-center justify-center rounded-[var(--r-sm)]" style={{ background: 'var(--accent-soft)' }}>
+                <span className="flex h-9 w-9 items-center justify-center rounded-[var(--r-sm)]" style={{ background: button.color === theme.accentText ? 'var(--accent-soft)' : 'var(--fill-subtle)' }}>
                   <button.icon size={16} style={{ color: button.color }} />
                 </span>
                 <span className="text-[10px] font-black uppercase tracking-tighter opacity-60" style={{ color: theme.text }}>
