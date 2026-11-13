@@ -93,7 +93,7 @@ export function ActionDock({
       className="sticky bottom-3 z-20 mt-4 pb-1"
     >
       <div
-        className={`glass-panel rounded-[var(--r-lg)] border ${revealed && !examMode ? 'px-3 py-2' : layout.denseLayout ? 'px-3 py-3' : 'px-4 py-4'}`}
+        className={`glass-panel @container rounded-[var(--r-lg)] border ${revealed && !examMode ? 'px-3 py-2' : layout.denseLayout ? 'px-3 py-3' : 'px-4 py-4'}`}
         style={{ background: 'var(--surface)', boxShadow: 'var(--hairline-ring), var(--elev-3)' }}
       >
         {mobile && !examMode && answerStreak > 1 && (
@@ -122,7 +122,7 @@ export function ActionDock({
             <div className={`flex items-center gap-2 ${mobile ? 'w-full flex-col' : 'shrink-0'}`}>
               {!revealed && (
                 <div
-                  className={`rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] ${mobile ? 'w-full text-center' : ''}`}
+                  className={`rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] ${mobile ? 'w-full text-center' : timedMode ? '' : 'hidden @min-[680px]:block'}`}
                   style={{ background: theme.surface2, borderColor: theme.border, color: timedMode ? timerTone : theme.text3 }}
                 >
                   {timedMode ? `Timer ${questionTimer}s` : `Întrebarea ${currentIdx + 1}/${total}`}

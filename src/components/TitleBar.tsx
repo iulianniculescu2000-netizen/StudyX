@@ -68,7 +68,10 @@ const PAGE_TITLES: Record<string, string> = {
   '/rezidentiat/organizare': 'Organizare',
   '/rezidentiat/flashcarduri': 'Flashcarduri Rezidențiat',
   '/vault': 'Biblioteca AI',
-  '/daily-review': 'Recapitulare zilnică',
+  '/daily-review': 'Sesiune zilnică',
+  '/erori': 'Caiet de erori',
+  '/simulare': 'Simulare de examen',
+  '/aproape-examen': 'Aproape de examen',
   '/gamification': 'Realizări',
   '/analytics': 'Perspective AI',
 };
