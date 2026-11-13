@@ -9,7 +9,8 @@ import { motion } from 'framer-motion';
 import ProgressBar from '../components/fx/ProgressBar';
 import { lazy, Suspense, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Trophy, Flame, Target, Clock, BookOpen, TrendingUp, Brain, Sparkles, Loader2, RefreshCw, Award, ArrowRight, BarChart3, MessageCircleQuestion } from 'lucide-react';
+import { Trophy, Flame, Target, Clock, BookOpen, TrendingUp, Brain, Sparkles, Loader2, RefreshCw, Award, ArrowRight, BarChart3, MessageCircleQuestion, CalendarDays, Activity, ListChecks } from 'lucide-react';
+import IconChip from '../components/sidebar/IconChip';
 import { useTheme } from '../theme/ThemeContext';
 import { useQuizStore } from '../store/quizStore';
 import { useStatsStore, accuracyByQuiz, countWeakStats, existingStatKeys } from '../store/statsStore';
@@ -367,21 +368,18 @@ export default function Stats() {
             {/* KPI Grid */}
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
               {[
-                { label: 'Sesiuni Totale', value: sessions.length, icon: <BookOpen size={18} />, color: theme.accentText },
-                { label: 'Acuratețe Medie', value: `${accuracy}%`, icon: <Target size={18} />, color: theme.success },
-                { label: 'Scor Maxim', value: `${bestScore}%`, icon: <Trophy size={18} />, color: theme.warning },
-                { label: 'Serie curentă', value: plural(liveStreak, 'zi', 'zile'), icon: <Flame size={18} />, color: theme.warning },
-                { label: 'Cea mai lungă serie', value: plural(streak.longestStreak, 'zi', 'zile'), icon: <TrendingUp size={18} />, color: theme.accent2 },
-                { label: 'Timp Studiu', value: studyTimeLabel, icon: <Clock size={18} />, color: theme.text2 },
+                { label: 'Sesiuni totale', value: sessions.length, icon: <BookOpen size={17} />, color: theme.accentText },
+                { label: 'Acuratețe medie', value: `${accuracy}%`, icon: <Target size={17} />, color: theme.success },
+                { label: 'Scor maxim', value: `${bestScore}%`, icon: <Trophy size={17} />, color: theme.warning },
+                { label: 'Serie curentă', value: plural(liveStreak, 'zi', 'zile'), icon: <Flame size={17} />, color: theme.warning },
+                { label: 'Cea mai lungă serie', value: plural(streak.longestStreak, 'zi', 'zile'), icon: <TrendingUp size={17} />, color: theme.accent2 },
+                { label: 'Timp studiu', value: studyTimeLabel, icon: <Clock size={17} />, color: theme.accentText },
               ].map((stat, i) => (
                 <div key={stat.label}
-                  className={`glass-panel rounded-[var(--r-lg)] p-4 relative ${calmMotion ? '' : 'fx-rise'}`}
+                  className={`group glass-panel rounded-[var(--r-lg)] p-4 relative ${calmMotion ? '' : 'fx-rise'}`}
                   style={{ '--i': i + 3 } as CSSProperties}>
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="w-8 h-8 rounded-[var(--r-sm)] flex items-center justify-center flex-shrink-0"
-                      style={{ background: `${stat.color}15`, color: stat.color }}>
-                      {stat.icon}
-                    </div>
+                    <span aria-hidden="true" className="flex"><IconChip icon={stat.icon} hue={stat.color} active={false} size={34} /></span>
                     <span className="text-[10px] font-bold uppercase tracking-wider opacity-60" style={{ color: theme.text }}>{stat.label}</span>
                   </div>
                   <div className="metric-value" style={{ color: theme.text }}>{stat.value}</div>
@@ -414,7 +412,10 @@ export default function Stats() {
 
             {/* Heatmap calendar */}
             <StatsCard index={5} data-tutorial="stats-activity">
-              <h2 className="font-semibold mb-4" style={{ color: theme.text }}>Activitate (90 zile)</h2>
+              <h2 className="font-semibold mb-4 flex items-center gap-2" style={{ color: theme.text }}>
+                <CalendarDays size={16} style={{ color: theme.accentText }} aria-hidden="true" />
+                Activitate (90 zile)
+              </h2>
               <div className="flex gap-1 overflow-x-auto pb-1">
                 {heatmapWeeks.map((week, wi) => (
                   <div key={wi} className="flex flex-col gap-1">
@@ -448,7 +449,10 @@ export default function Stats() {
 
             {/* Activity chart */}
             <StatsCard index={6}>
-              <h2 className="font-semibold mb-4" style={{ color: theme.text }}>Activitate (ultimele 14 zile)</h2>
+              <h2 className="font-semibold mb-4 flex items-center gap-2" style={{ color: theme.text }}>
+                <BarChart3 size={16} style={{ color: theme.accentText }} aria-hidden="true" />
+                Activitate (ultimele 14 zile)
+              </h2>
               <Suspense fallback={<ChartSkeleton />}>
                 <ActivityBarChart data={last14Days} theme={theme} tooltip={<CustomTooltip theme={theme} />} />
               </Suspense>
@@ -457,7 +461,10 @@ export default function Stats() {
             {/* Accuracy trend */}
             {last14Days.some(d => d.acuratete > 0) && (
               <StatsCard index={7}>
-                <h2 className="font-semibold mb-4" style={{ color: theme.text }}>Tendință acuratețe (%)</h2>
+                <h2 className="font-semibold mb-4 flex items-center gap-2" style={{ color: theme.text }}>
+                  <Activity size={16} style={{ color: theme.success }} aria-hidden="true" />
+                  Tendință acuratețe (%)
+                </h2>
                 <Suspense fallback={<ChartSkeleton height={160} />}>
                   <AccuracyTrendChart data={last14Days.filter(d => d.acuratete > 0)} theme={theme} tooltip={<CustomTooltip theme={theme} />} />
                 </Suspense>
@@ -467,7 +474,10 @@ export default function Stats() {
             {/* Per quiz accuracy */}
             {quizAccuracyData.length > 0 && (
               <StatsCard index={8}>
-                <h2 className="font-semibold mb-4" style={{ color: theme.text }}>Acuratețe per grilă</h2>
+                <h2 className="font-semibold mb-4 flex items-center gap-2" style={{ color: theme.text }}>
+                  <ListChecks size={16} style={{ color: theme.accentText }} aria-hidden="true" />
+                  Acuratețe per grilă
+                </h2>
                 <div className="space-y-3">
                   {quizAccuracyData.map(q => (
                     <div key={q.name} className="flex items-center gap-3">
@@ -517,7 +527,7 @@ export default function Stats() {
               </h2>
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { label: 'Acuratețe recentă', value: readiness.recentAcc === null ? '-' : `${readiness.recentAcc}%`, hint: 'ultimele 10 sesiuni', color: theme.text },
+                  { label: 'Acuratețe recentă', value: readiness.recentAcc === null ? '—' : `${readiness.recentAcc}%`, hint: 'ultimele 10 sesiuni', color: theme.text },
                   { label: 'Întrebări slabe', value: String(readiness.weakCount), hint: 'greșite recent', color: readiness.weakCount > 5 ? theme.danger : theme.success },
                   { label: 'Restante', value: String(readiness.dueCount), hint: 'de recapitulat', color: readiness.dueCount > 0 ? theme.warning : theme.success },
                 ].map((item) => (
