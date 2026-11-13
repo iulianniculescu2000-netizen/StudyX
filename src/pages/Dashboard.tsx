@@ -1,7 +1,7 @@
 import { formatStudyTime } from '../lib/formatStudyTime';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, Plus } from 'lucide-react';
+import { BookOpen, Clock, Flame, Plus, Target } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
 import { useUserStore } from '../store/userStore';
 import { useQuizStore } from '../store/quizStore';
@@ -64,7 +64,12 @@ function DashboardActions({ compact }: { compact: boolean }) {
           <Plus size={18} strokeWidth={3} /> Creează grilă
         </MagneticButton>
       </span>
-      <div data-tutorial="btn-import"><ImportQuizButton /></div>
+      <div data-tutorial="btn-import">
+        <ImportQuizButton trigger={{
+          className: `press-feedback focus-ring glass-panel flex items-center gap-2.5 rounded-[var(--r-lg)] ${compact ? 'px-6 py-3.5' : 'px-8 py-4'} text-xs font-bold uppercase tracking-wider`,
+          style: { color: theme.text },
+        }} />
+      </div>
       <MagneticButton
         to="/quizzes"
         className={`press-feedback glass-panel flex items-center gap-2.5 rounded-[var(--r-lg)] ${compact ? 'px-6 py-3.5' : 'px-8 py-4'} text-xs font-bold uppercase tracking-wider`}
@@ -115,6 +120,7 @@ function RecentQuizzesSection({
             icon={BookOpen}
             title="Începe călătoria ta medicală"
             body="Cel mai rapid mod: fă o poză grilelor sau aruncă un PDF/Word — ți le recunosc automat."
+            dense
             primary={{ label: 'Creează prima grilă', to: '/create' }}
             secondary={{ label: 'Tur rapid', onClick: onStartTutorial }}
           />
@@ -220,12 +226,12 @@ export default function Dashboard() {
 
   const greeting = hour < 12 ? 'Bună dimineața' : hour < 18 ? 'Bună ziua' : 'Bună seara';
   const stats: DashboardStat[] = [
-    { label: 'Grile', numeric: ownQuizCount, display: String(animatedQuizzes), suffix: '', color: theme.accentText, delta: trends.quizzes, hint: residencyQuizCount > 0 ? `+ ${residencyQuizCount} ${residencyQuizCount === 1 ? 'set' : 'seturi'} în Rezidențiat` : undefined },
+    { label: 'Grile', numeric: ownQuizCount, display: String(animatedQuizzes), suffix: '', color: theme.accentText, icon: BookOpen, delta: trends.quizzes, hint: residencyQuizCount > 0 ? `+ ${residencyQuizCount} ${residencyQuizCount === 1 ? 'set' : 'seturi'} în Rezidențiat` : undefined },
     // A streak has no meaningful week-over-week percentage — the number itself
     // already says everything, so it carries no badge.
-    { label: 'Serie', numeric: liveStreak, display: `${animatedStreak} ${animatedStreak === 1 ? 'zi' : 'zile'}`, suffix: '', color: theme.warning },
-    { label: 'Acuratețe', numeric: accuracy, display: hasAnswers ? `${animatedAccuracy}%` : '-', suffix: '%', color: theme.success, delta: trends.accuracy, deltaUnit: 'pp' },
-    { label: 'Timp studiu', numeric: totalStudyTime / 3600, display: formatStudyTime(totalStudyTime), suffix: 'h', color: theme.accent2, delta: trends.studyTime },
+    { label: 'Serie', numeric: liveStreak, display: `${animatedStreak} ${animatedStreak === 1 ? 'zi' : 'zile'}`, suffix: '', color: theme.warning, icon: Flame },
+    { label: 'Acuratețe', numeric: accuracy, display: hasAnswers ? `${animatedAccuracy}%` : '—', suffix: '%', color: theme.success, icon: Target, delta: trends.accuracy, deltaUnit: 'pp' },
+    { label: 'Timp studiu', numeric: totalStudyTime / 3600, display: formatStudyTime(totalStudyTime), suffix: 'h', color: theme.accent2, icon: Clock, delta: trends.studyTime },
   ];
 
   if (!_hasHydrated) {

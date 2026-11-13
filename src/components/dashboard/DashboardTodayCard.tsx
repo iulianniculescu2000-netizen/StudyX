@@ -7,6 +7,8 @@ import { daysUntil } from '../../lib/organizare';
 import { localDateStr } from '../../lib/studyPlan';
 import type { PlanSummary } from '../../lib/organizare/types';
 import SectionLabel from '../ui/SectionLabel';
+import GlassIconStack from '../depth/GlassIconStack';
+import ProgressBar from '../fx/ProgressBar';
 import { plural } from '../../lib/plural';
 
 
@@ -57,12 +59,7 @@ export default function DashboardTodayCard({ dueCount, plan, today, daily }: Das
       }}>
         {dueCount > 0 && (
           <div className="grid grid-cols-[40px_minmax(0,1fr)] items-center gap-x-3 gap-y-3 px-4 py-5 sm:grid-cols-[40px_minmax(0,1fr)_auto] sm:px-5">
-            <div
-              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[var(--r-sm)]"
-              style={{ background: `${theme.accent}18`, color: theme.accentText }}
-            >
-              <RefreshCw size={18} aria-hidden="true" />
-            </div>
+            <GlassIconStack icon={<RefreshCw size={18} />} color={theme.accent} />
             <div className="min-w-0">
               <div className="text-lg font-semibold leading-snug tracking-tight tabular-nums sm:text-xl" style={{ color: theme.text }}>
                 {daily ? `${plural(dueCount, 'element', 'elemente')} de revăzut` : `${plural(dueCount, 'întrebare', 'întrebări')} de recapitulat`}
@@ -79,18 +76,30 @@ export default function DashboardTodayCard({ dueCount, plan, today, daily }: Das
             className="grid grid-cols-[40px_minmax(0,1fr)] items-center gap-x-3 gap-y-3 px-4 py-3.5 sm:grid-cols-[40px_minmax(0,1fr)_auto] sm:px-5"
             style={{ borderTop: dueCount > 0 ? '1px solid var(--hairline)' : undefined }}
           >
-            <div
-              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[var(--r-sm)]"
-              style={{ background: dueCount > 0 ? theme.fillSubtle : `${theme.accent}18`, color: dueCount > 0 ? theme.text3 : theme.accentText }}
-            >
-              <CalendarRange size={18} aria-hidden="true" />
-            </div>
+            {dueCount > 0 ? (
+              <div
+                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[var(--r-sm)]"
+                style={{ background: theme.fillSubtle, color: theme.text3 }}
+              >
+                <CalendarRange size={18} aria-hidden="true" />
+              </div>
+            ) : (
+              <GlassIconStack icon={<CalendarRange size={18} />} color={theme.accent} />
+            )}
             <div className="min-w-0">
               <div className="text-[11.5px] font-medium" style={{ color: theme.text3 }}>
                 {examPassed ? 'Organizare' : inPass ? `Organizare · trecerea ${plan.phase} din 4` : 'Organizare · simulări'}
               </div>
               <div className="break-words text-[15px] font-semibold leading-snug" style={{ color: theme.text }}>{planTitle}</div>
               <div className="mt-0.5 break-words text-[12px] leading-relaxed" style={{ color: theme.text3 }}>{planMeta}</div>
+              {inPass && !examPassed && plan.total > 0 && (
+                <ProgressBar
+                  percent={(plan.done / plan.total) * 100}
+                  color={theme.accent}
+                  label={`Trecerea ${plan.phase}: ${plan.done} din ${plan.total} topicuri gata`}
+                  className="mt-2 max-w-[240px]"
+                />
+              )}
             </div>
             <Link to="/rezidentiat/organizare" className={`${dueCount > 0 ? secondary : primary} col-start-2 text-center sm:col-start-auto`}
               style={dueCount > 0 ? { color: theme.accentText } : { background: theme.accent }}>Deschide planul</Link>

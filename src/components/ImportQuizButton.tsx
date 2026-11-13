@@ -19,9 +19,11 @@ interface Props {
   onClose?: () => void;
   /** Fără butonul „Import grile”: se vede doar fereastra. */
   hideTrigger?: boolean;
+  /** Alt aspect pentru butonul „Import grile” (ex. rândul de acțiuni din Panou); implicit rămâne pastila mică. */
+  trigger?: { className: string; style?: React.CSSProperties };
 }
 
-export default function ImportQuizButton({ targetFolderId, open, onClose, hideTrigger = false }: Props) {
+export default function ImportQuizButton({ targetFolderId, open, onClose, hideTrigger = false, trigger }: Props) {
   const theme = useTheme();
   const { addQuiz } = useQuizStore();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -125,8 +127,8 @@ export default function ImportQuizButton({ targetFolderId, open, onClose, hideTr
       {!hideTrigger && <motion.button
         onClick={() => setModalOpen(true)}
         whileTap={calmMotion ? undefined : { scale: 0.97 }}
-        className="press-feedback focus-ring flex items-center gap-2 px-4 py-2.5 rounded-[var(--r-md)] text-sm font-semibold transition-opacity hover:opacity-80"
-        style={{ background: 'var(--accent-soft)', color: theme.accentText }}
+        className={trigger?.className ?? 'press-feedback focus-ring flex items-center gap-2 px-4 py-2.5 rounded-[var(--r-md)] text-sm font-semibold transition-opacity hover:opacity-80'}
+        style={trigger ? trigger.style : { background: 'var(--accent-soft)', color: theme.accentText }}
       >
         <Upload size={15} />
         Import grile

@@ -15,10 +15,12 @@ export interface EmptyStateProps {
   secondary?: EmptyStateAction;
   /** Work in progress (e.g. the first document being read): the icon spins and the block is announced politely. */
   busy?: boolean;
+  /** Card mai scund, pentru locuri unde starea goală stă lângă alt conținut (ex. Panou). */
+  dense?: boolean;
 }
 
 /** Starea „nimic aici încă”: pictogramă, titlu, explicație și cel mult două acțiuni (link sau buton). */
-export default function EmptyState({ icon: Icon, title, body, primary, secondary, busy = false }: EmptyStateProps) {
+export default function EmptyState({ icon: Icon, title, body, primary, secondary, busy = false, dense = false }: EmptyStateProps) {
   const theme = useTheme();
   const { calmMotion } = useAdaptiveMotion();
 
@@ -39,7 +41,7 @@ export default function EmptyState({ icon: Icon, title, body, primary, secondary
 
   return (
     <div
-      className={`glass-panel relative overflow-hidden rounded-[var(--r-lg)] px-6 py-14 text-center sm:py-16 ${calmMotion ? '' : 'fx-rise'}`}
+      className={`glass-panel relative overflow-hidden rounded-[var(--r-lg)] px-6 text-center ${dense ? 'py-9 sm:py-10' : 'py-14 sm:py-16'} ${calmMotion ? '' : 'fx-rise'}`}
       {...(busy ? { role: 'status', 'aria-live': 'polite' as const } : {})}
     >
       {/* Halou fin în culoarea temei, în spatele ilustrației */}

@@ -1,4 +1,6 @@
 import { memo } from 'react';
+import type { LucideIcon } from 'lucide-react';
+import IconChip from '../sidebar/IconChip';
 import { motion } from 'framer-motion';
 import { useTheme } from '../../theme/ThemeContext';
 import { useAdaptiveMotion } from '../../hooks/useAdaptiveMotion';
@@ -11,6 +13,8 @@ export type DashboardStat = {
   display?: string;
   suffix: string;
   color: string;
+  /** Pictograma din plăcuța colorată de lângă cifră (aceeași piesă ca în bara laterală). */
+  icon?: LucideIcon;
   delta?: number | null;
   deltaUnit?: '%' | 'pp';
   /** Mică precizare sub cifră (ex. „+4215 în Rezidențiat”). */
@@ -40,14 +44,17 @@ const DashboardStatStrip = memo(function DashboardStatStrip({ stats }: { stats: 
           initial={calmMotion ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={calmMotion ? { duration: 0 } : { delay: Math.min(index, 8) * staggerStep, duration: dur.base, ease: ease.emphasized }}
-          className={`flex items-start justify-between gap-3 px-5 py-4 border-[var(--hairline)] ${index % 2 === 1 ? 'border-l' : ''} ${index >= 2 ? 'border-t md:border-t-0' : ''} ${index === 2 ? 'md:border-l' : ''}`}
+          className={`group flex items-start justify-between gap-3 px-5 py-4 border-[var(--hairline)] ${index % 2 === 1 ? 'border-l' : ''} ${index >= 2 ? 'border-t md:border-t-0' : ''} ${index === 2 ? 'md:border-l' : ''}`}
         >
-          <div>
+          <div className="flex min-w-0 items-center gap-3">
+            {stat.icon && <span aria-hidden="true" className="flex"><IconChip icon={<stat.icon size={16} strokeWidth={2.2} />} hue={stat.color} active={false} size={34} /></span>}
+            <div className="min-w-0">
             <div className="secondary-label mb-1 font-black tracking-widest" style={{ color: theme.text3 }}>{stat.label}</div>
             <div className="text-2xl font-black tracking-tighter tabular-nums" style={{ color: theme.text }}>
               {stat.display ?? `${stat.numeric}${stat.suffix}`}
             </div>
             {stat.hint && <div className="mt-0.5 text-[11px]" style={{ color: theme.text3 }}>{stat.hint}</div>}
+            </div>
           </div>
           {typeof stat.delta === 'number' && stat.delta !== 0 && (
             <div
