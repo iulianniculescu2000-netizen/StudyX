@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { BarChart3, Crosshair, Flame, Medal, Star, Zap, type LucideIcon } from 'lucide-react';
 import ProgressRing from '../fx/ProgressRing';
+import IconChip from '../sidebar/IconChip';
 import SectionLabel from '../ui/SectionLabel';
 import { useCountUp } from '../../hooks/useCountUp';
 import type { LevelInfo } from '../../lib/gamificationProgress';
@@ -25,6 +26,8 @@ interface AIGamificationStatsProps {
 interface TileProps {
   index: number;
   icon: LucideIcon;
+  /** Culoarea plăcuței: aceleași nuanțe ca pe Panou și în Statistici. */
+  hue: string;
   label: string;
   /** `null` renders as an em dash (no data), never as 0. */
   value: number | null;
@@ -35,22 +38,16 @@ interface TileProps {
   format?: (value: number) => string;
 }
 
-function Tile({ index, icon: Icon, label, value, unit, note, ring, ringLabel, format }: TileProps) {
+function Tile({ index, icon: Icon, hue, label, value, unit, note, ring, ringLabel, format }: TileProps) {
   const theme = useTheme();
   const shown = useCountUp(value ?? 0);
   return (
     <div
-      className="glass-panel fx-lift fx-spot fx-rise rounded-2xl p-4"
+      className="group glass-panel fx-lift fx-spot fx-rise rounded-2xl p-4"
       style={{ '--i': index } as CSSProperties}
     >
       <div className="flex items-center gap-2.5">
-        <span
-          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[var(--r-sm)]"
-          style={{ background: 'var(--accent-soft)', color: theme.accent }}
-          aria-hidden="true"
-        >
-          <Icon className="h-4 w-4" />
-        </span>
+        <span aria-hidden="true" className="flex"><IconChip icon={<Icon className="h-4 w-4" />} hue={hue} active={false} size={34} /></span>
         <span className="min-w-0 text-balance break-words text-[12px] font-medium leading-tight" style={{ color: theme.text3 }}>{label}</span>
       </div>
       <div className="mt-3 flex items-end justify-between gap-2">
@@ -72,6 +69,7 @@ function Tile({ index, icon: Icon, label, value, unit, note, ring, ringLabel, fo
 }
 
 export default function AIGamificationStats({ stats }: AIGamificationStatsProps) {
+  const theme = useTheme();
   const { level } = stats;
   const steps = level.toNext === 1 ? 'încă 1 pas' : `încă ${level.toNext} pași`;
   const streakUnit = stats.streak === 1 ? 'zi' : 'zile';
@@ -83,6 +81,7 @@ export default function AIGamificationStats({ stats }: AIGamificationStatsProps)
         <Tile
           index={1}
           icon={Zap}
+          hue={theme.accentText}
           label="Puncte"
           value={stats.points}
           format={(n) => n.toLocaleString('ro-RO')}
@@ -90,16 +89,18 @@ export default function AIGamificationStats({ stats }: AIGamificationStatsProps)
         <Tile
           index={2}
           icon={Star}
+          hue={theme.accent2}
           label="Nivel"
           value={level.level}
           note={steps}
           ring={level.progress}
           ringLabel={`Nivel ${level.level}, ${level.progress}% până la nivelul următor`}
         />
-        <Tile index={3} icon={Flame} label="Serie" value={stats.streak} unit={streakUnit} />
+        <Tile index={3} icon={Flame} hue={theme.warning} label="Serie" value={stats.streak} unit={streakUnit} />
         <Tile
           index={4}
           icon={Medal}
+          hue={theme.warning}
           label="Realizări"
           value={stats.achievementsDone}
           unit={`/${stats.achievementsTotal}`}
@@ -107,12 +108,13 @@ export default function AIGamificationStats({ stats }: AIGamificationStatsProps)
         <Tile
           index={5}
           icon={Crosshair}
+          hue={theme.success}
           label="Acuratețe"
           value={stats.accuracy}
           unit="%"
           note="Toate răspunsurile, tot istoricul"
         />
-        <Tile index={6} icon={BarChart3} label="Întrebări în 7 zile" value={stats.weeklyQuestions} />
+        <Tile index={6} icon={BarChart3} hue={theme.accentText} label="Întrebări în 7 zile" value={stats.weeklyQuestions} />
       </div>
     </section>
   );

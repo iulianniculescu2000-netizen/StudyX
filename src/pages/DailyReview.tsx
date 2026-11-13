@@ -10,7 +10,8 @@ import ProgressBar from '../components/fx/ProgressBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Brain, ChevronRight, Check, X, RotateCcw, Home, Sparkles, Trophy, LogOut, BookOpen, Lightbulb, Flag, CalendarCheck, Library } from 'lucide-react';
+import { Brain, ChevronRight, Check, X, RotateCcw, Home, Sparkles, Trophy, LogOut, BookOpen, Lightbulb, Flag, CalendarCheck, Library, Clock, ListChecks } from 'lucide-react';
+import IconChip from '../components/sidebar/IconChip';
 import { useTheme } from '../theme/ThemeContext';
 import { useAdaptiveMotion } from '../hooks/useAdaptiveMotion';
 import { useStoresHydrated } from '../hooks/useStoresHydrated';
@@ -159,16 +160,22 @@ export default function DailyReview() {
           />
 
           <div data-tutorial="daily-summary" className="mb-5 grid grid-cols-2 gap-3">
-            <div className={`glass-panel rounded-[var(--r-lg)] p-4 ${calmMotion ? '' : 'fx-rise'}`} style={{ '--i': 1 } as React.CSSProperties}>
+            <div className={`group glass-panel flex items-center gap-3 rounded-[var(--r-lg)] p-4 ${calmMotion ? '' : 'fx-rise'}`} style={{ '--i': 1 } as React.CSSProperties}>
+              <span aria-hidden="true" className="flex"><IconChip icon={<ListChecks size={17} />} hue={theme.accentText} active={false} size={36} /></span>
+              <div className="min-w-0">
               <p className="text-2xl font-bold" style={{ color: theme.accentText }}>{items.length}</p>
               <p className="mt-0.5 text-xs" style={{ color: theme.text3 }}>{[queue.counts.card > 0 && `${queue.counts.card} carduri`, queue.counts.grila > 0 && `${queue.counts.grila} grile`, queue.counts.eroare > 0 && `${queue.counts.eroare} din erori`].filter(Boolean).join(' · ')}</p>
+              </div>
             </div>
-            <div className={`glass-panel rounded-[var(--r-lg)] p-4 ${calmMotion ? '' : 'fx-rise'}`} style={{ '--i': 2 } as React.CSSProperties}>
+            <div className={`group glass-panel flex items-center gap-3 rounded-[var(--r-lg)] p-4 ${calmMotion ? '' : 'fx-rise'}`} style={{ '--i': 2 } as React.CSSProperties}>
+              <span aria-hidden="true" className="flex"><IconChip icon={<Clock size={17} />} hue={theme.accent2} active={false} size={36} /></span>
+              <div className="min-w-0">
               <p className="text-2xl font-bold" style={{ color: theme.accent2 }}>
                 {minutesOf(queue.seconds)}
                 <span className="ml-0.5 text-sm font-medium">min</span>
               </p>
               <p className="mt-0.5 text-xs" style={{ color: theme.text3 }}>Timp estimat pentru toate</p>
+              </div>
             </div>
           </div>
 
