@@ -130,9 +130,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       prevThemeRef.current !== resolved &&
       'startViewTransition' in document
     ) {
-      (document as unknown as { startViewTransition: (cb: () => void) => void }).startViewTransition(() => {
+      const transition = (document as unknown as { startViewTransition: (cb: () => void) => { ready?: Promise<void> } | undefined }).startViewTransition(() => {
         applyTheme();
       });
+      // O tranziție întreruptă (fereastră redimensionată sau ascunsă) respinge `ready`; tema e deja aplicată, deci nu e o eroare.
+      transition?.ready?.catch(() => undefined);
     } else {
       // Fallback instantaneu pentru viteza maxima
       applyTheme();

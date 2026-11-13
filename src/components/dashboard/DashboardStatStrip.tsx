@@ -44,10 +44,11 @@ const DashboardStatStrip = memo(function DashboardStatStrip({ stats }: { stats: 
           initial={calmMotion ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={calmMotion ? { duration: 0 } : { delay: Math.min(index, 8) * staggerStep, duration: dur.base, ease: ease.emphasized }}
-          className={`group flex items-start justify-between gap-3 px-5 py-4 border-[var(--hairline)] ${index % 2 === 1 ? 'border-l' : ''} ${index >= 2 ? 'border-t md:border-t-0' : ''} ${index === 2 ? 'md:border-l' : ''}`}
+          className={`group @container flex items-start justify-between gap-3 px-5 py-4 border-[var(--hairline)] ${index % 2 === 1 ? 'border-l' : ''} ${index >= 2 ? 'border-t md:border-t-0' : ''} ${index === 2 ? 'md:border-l' : ''}`}
         >
           <div className="flex min-w-0 items-center gap-3">
-            {stat.icon && <span aria-hidden="true" className="flex"><IconChip icon={<stat.icon size={16} strokeWidth={2.2} />} hue={stat.color} active={false} size={34} /></span>}
+            {/* Plăcuța apare doar când celula are loc și pentru ea, și pentru insigna de tendință (pe telefon rămâne doar cifra). */}
+            {stat.icon && <span aria-hidden="true" className="hidden @min-[175px]:flex"><IconChip icon={<stat.icon size={16} strokeWidth={2.2} />} hue={stat.color} active={false} size={34} /></span>}
             <div className="min-w-0">
             <div className="secondary-label mb-1 font-black tracking-widest" style={{ color: theme.text3 }}>{stat.label}</div>
             <div className="text-2xl font-black tracking-tighter tabular-nums" style={{ color: theme.text }}>
