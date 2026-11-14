@@ -81,5 +81,33 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('app:request-close', listener);
     return () => ipcRenderer.removeListener('app:request-close', listener);
   },
+  // GitHub Copilot (token stays strictly inside Electron main process)
+  copilotStatus: (options) => ipcRenderer.invoke('copilot:status', options || {}),
+  copilotStream: async (payload, onDelta) => {
+    const requestId = payload && typeof payload.requestId === 'string' ? payload.requestId : '';
+    const hasCallback = Boolean(requestId && typeof onDelta === 'function');
+    const listener = (_event, data) => {
+      if (!data || data.requestId !== requestId) return;
+      if (data.type === 'delta' && typeof data.deltaContent === 'string') {
+        try {
+          onDelta(data.deltaContent);
+        } catch {
+          // ignore callback failure
+        }
+      }
+    };
+    if (hasCallback) {
+      ipcRenderer.on('copilot:stream-event', listener);
+    }
+    try {
+      return await ipcRenderer.invoke('copilot:stream', payload);
+    } finally {
+      if (hasCallback) {
+        ipcRenderer.removeListener('copilot:stream-event', listener);
+      }
+    }
+  },
+  copilotAbort: (requestId) => ipcRenderer.invoke('copilot:abort', requestId),
+  copilotDisconnect: () => ipcRenderer.invoke('copilot:disconnect'),
   isElectron: true,
 });

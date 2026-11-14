@@ -15,7 +15,7 @@ export async function explainWrongAnswer(
       role: 'user',
       content: buildWrongAnswerPrompt(questionText, userAnswer, correctAnswer),
     },
-  ], 0.3);
+  ], 0.3, { task: 'explanation' });
 }
 
 // ── New smart AI functions ──────────────────────────────────────────────────────
@@ -38,7 +38,7 @@ export async function explainAnswerInline(
       role: 'user',
       content: buildInlineExplanationPrompt(questionText, options),
     },
-  ], onChunk, 0.3, signal);
+  ], onChunk, 0.3, signal, false, { task: 'explanation' });
 }
 
 /**
@@ -64,7 +64,7 @@ export async function generateStudyRecommendation(
 ⏱ Plan: o singură propoziție scurtă cu durata totală (maxim 14 cuvinte)
 💡 Sfat: o singură propoziție scurtă (maxim 14 cuvinte)`,
     },
-  ], 0.5);
+  ], 0.5, { task: 'analysis' });
 }
 
 /**
@@ -153,5 +153,5 @@ Corectitudine: dacă faci un acronim, fiecare literă corespunde unui element re
       role: 'user',
       content: `Am nevoie de o mnemonică pentru a reține că răspunsul corect este "${correctAnswer}" pentru întrebarea: "${questionText}"`,
     },
-  ], 0.85);
+  ], 0.85, { task: 'mnemonic' });
 }

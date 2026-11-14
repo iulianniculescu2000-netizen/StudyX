@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import { localDateStr } from '../lib/studyPlan';
 import type { RateWindow } from '../lib/ai/rateHeaders';
 
-export type UsageProvider = 'groq' | 'google' | 'mistral';
+export type UsageProvider = 'groq' | 'google' | 'mistral' | 'copilot';
 
 export interface DayUsage {
   tokens: number;

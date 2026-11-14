@@ -7,7 +7,7 @@
  * "second opinion" worthless. Keys never leave groqRequest; nothing here reads or returns them.
  */
 import { z } from 'zod';
-import { useAIStore, getConfiguredProviderModels, type AIProvider } from '../../store/aiStore';
+import { useAIStore, getConfiguredProviderModels, type AIProvider, type CloudProvider } from '../../store/aiStore';
 import { useAIUsageStore } from '../../store/aiUsageStore';
 import { providerName } from './providerCatalog';
 import { VERIFIER_MATERIAL_RULE } from '../../ai/promptKit';
@@ -33,6 +33,7 @@ export interface CrossCheckResult {
 }
 
 export interface ModelRef { provider: AIProvider; model: string }
+export interface CloudModelRef { provider: CloudProvider; model: string }
 
 export interface VerifierSource { label: string; text: string }
 
@@ -69,13 +70,13 @@ export function isLikelyLimited(window: RateWindow | undefined, now = Date.now()
  * The verifier is a configured provider DIFFERENT from the producer. Providers that just reported
  * an exhausted limit are skipped when another one is available. Null when no other provider has a key.
  */
-export function pickVerifier(
+export function pickVerifier<T extends ModelRef = CloudModelRef>(
   producer: ModelRef | null | undefined,
-  configured: ModelRef[],
+  configured: T[],
   windows: Partial<Record<AIProvider, RateWindow>> = {},
   now = Date.now(),
-): ModelRef | null {
-  const others = configured.filter((entry) => !producer || entry.provider !== producer.provider);
+): T | null {
+  const others = configured.filter((entry) => entry.provider !== 'copilot' && (!producer || entry.provider !== producer.provider));
   if (others.length === 0) return null;
   return others.find((entry) => !isLikelyLimited(windows[entry.provider], now)) ?? others[0];
 }

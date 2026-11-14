@@ -5,7 +5,7 @@ import { sleepMs } from './retry';
  * funcțiile care trimit două cereri la rând (agentul „Vezi în carte”, grile + explicații) primeau „Rate limit exceeded” și
  * treceau degeaba pe alt furnizor. Cererile se așază în coadă, fiecare la cel puțin `gap` după cea dinaintea ei.
  */
-const MIN_GAP_MS: Record<string, number> = { mistral: 1100 };
+const MIN_GAP_MS: Record<string, number> = { mistral: 1100, copilot: 400 };
 
 const nextFreeAt = new Map<string, number>();
 

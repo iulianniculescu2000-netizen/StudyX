@@ -9,7 +9,8 @@ import { STREAM_USAGE_UNSUPPORTED } from './capabilities';
 import { extractApiErrorMessage, isRequestSpecificError } from './errors';
 import { groqGovernor } from './governors';
 import { sanitizeKey } from './keys';
-import { buildProviderChain, getProviderConfig, markServed, trackProviderOutcome } from './providers';
+import { buildProviderChain, getProviderConfig, isCopilotEligibleTask, markServed, trackProviderOutcome } from './providers';
+import { callCopilotBridge } from './copilotBridge';
 import { paceProvider } from './providerPacing';
 import { isModelSpecificFailure, isOversizedRequest, noteModelFailure } from './quotaGuard';
 import { TASK_MAX_TOKENS, buildKnowledgeQuery, estimateMessagesTokens } from './requestConfig';
@@ -47,9 +48,21 @@ export async function groqStream(
     ?? (streamTask === 'chat' ? STREAM_CHAT_MAX_TOKENS : TASK_MAX_TOKENS[streamTask] ?? STREAM_CHAT_MAX_TOKENS);
   return groqGovernor.run(streamTask, async () => {
     const state = useAIStore.getState();
+    const primaryProvider = state.provider;
     const primaryKey = sanitizeKey(state.apiKey);
-    if (!primaryKey) {
-      throw new Error(getProviderConfig(state.provider).keyHint);
+    const effectiveKeys: Partial<Record<ProviderId, string>> = {
+      ...state.providerKeys,
+      ...(primaryProvider !== 'copilot' && primaryKey ? { [primaryProvider]: primaryKey } : {}),
+    };
+    const chain = buildProviderChain(primaryProvider, state.model, effectiveKeys, {
+      task: streamTask,
+      copilotConnected: state.copilotConnected,
+    });
+    if (chain.length === 0) {
+      if (primaryProvider === 'copilot' && !isCopilotEligibleTask(streamTask)) {
+        throw new Error('Această funcție AI folosește un provider cu cheie API (Groq, Gemini sau Mistral). Adaugă o cheie în Setări AI.');
+      }
+      throw new Error(getProviderConfig(primaryProvider).keyHint);
     }
     const kb = skipLibraryContext ? '' : await state.getKnowledgeContext(buildKnowledgeQuery(messages), 4500);
     const finalMessages: GroqMessage[] = kb
@@ -68,9 +81,6 @@ export async function groqStream(
     // Try each provider in the chain for the INITIAL connection only — once bytes
     // start streaming to the UI we commit to that provider (switching mid-stream
     // would mean discarding partial output the user already sees).
-    const primaryProvider = state.provider;
-    const effectiveKeys: Partial<Record<ProviderId, string>> = { ...state.providerKeys, ...(primaryKey ? { [primaryProvider]: primaryKey } : {}) };
-    const chain = buildProviderChain(primaryProvider, state.model, effectiveKeys);
     let res: Response | null = null;
     let usedProvider: ProviderId | null = null;
     let streamUsageTokens = 0;
@@ -90,6 +100,47 @@ export async function groqStream(
       const linkMaxTokens = streamMaxTokens;
       const linkMessages = finalMessages;
       const linkTemperature = temperature;
+      if (link.provider === 'copilot') {
+        let startedStreaming = false;
+        let full = '';
+        try {
+          await paceProvider('copilot', abortSignal);
+          const copilotRes = await callCopilotBridge(linkMessages, linkTemperature, abortSignal, (delta) => {
+            if (!startedStreaming) {
+              startedStreaming = true;
+              markServed('copilot', link.model);
+              options.onServed?.({ provider: 'copilot', model: link.model });
+            }
+            full += delta;
+            onChunk(delta);
+          });
+          const servedModel = copilotRes.servedModel || link.model;
+          markServed('copilot', servedModel);
+          options.onServed?.({ provider: 'copilot', model: servedModel });
+          trackProviderOutcome('copilot', primaryProvider, cfg.name, !(isRequestSpecificError(lastError) || isOversizedRequest(lastError)), lastError);
+          cleanupAbort();
+          options.onFinish?.(copilotRes.finishReason ?? null);
+          return full || copilotRes.content;
+        } catch (copilotErr) {
+          if (abortSignal?.aborted || (copilotErr instanceof Error && copilotErr.name === 'AbortError') || startedStreaming) {
+            cleanupAbort();
+            throw copilotErr;
+          }
+          lastError = copilotErr instanceof Error ? copilotErr.message : String(copilotErr);
+          providerName = cfg.name;
+          noteModelFailure(link.provider, link.model, lastError);
+          const nextLink = chain[ci + 1];
+          logDiagnosticEvent({
+            area: 'ai',
+            level: 'warning',
+            title: nextLink ? 'Trec pe alt provider AI' : 'Stream AI oprit',
+            detail: nextLink
+              ? `${cfg.name} indisponibil (${lastError}). Continui automat pe ${getProviderConfig(nextLink.provider).name}.`
+              : lastError,
+          });
+          continue;
+        }
+      }
       // A fresh wait per provider: a stalled first one must not leave the next with an already-expired signal.
       let timedOut = false;
       const startTimer = setTimeout(() => { timedOut = true; controller.abort(new DOMException('timeout', 'TimeoutError')); }, 60_000);
@@ -173,7 +224,7 @@ export async function groqStream(
 
     if (!res) {
       cleanupAbort();
-      throw new Error(`Eroare ${providerName} API: ${lastError}`);
+      throw new Error(providerName === 'GitHub Copilot' ? `Eroare GitHub Copilot: ${lastError}` : `Eroare ${providerName} API: ${lastError}`);
     }
     if (!res.body) {
       cleanupAbort();

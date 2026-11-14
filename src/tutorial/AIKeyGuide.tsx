@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Check, ExternalLink, KeyRound, Loader2 } from 'lucide-react';
 import GlassIconStack from '../components/depth/GlassIconStack';
 import { useTheme } from '../theme/ThemeContext';
-import { useAIStore, type AIProvider } from '../store/aiStore';
+import { useAIStore, type CloudProvider } from '../store/aiStore';
 import { PROVIDER_CATALOG } from '../lib/ai/providerCatalog';
 import { keyGuideIntro } from './keyGuideText';
 import { useTourContext } from './useTourContext';
@@ -18,7 +18,7 @@ type Status = { kind: 'idle' } | { kind: 'testing' } | { kind: 'error'; message:
 export default function AIKeyGuide({ onSaved }: { onSaved?: () => void }) {
   const theme = useTheme();
   const { aiProviders, aiKeyCount } = useTourContext();
-  const [choice, setChoice] = useState<AIProvider | null>(null);
+  const [choice, setChoice] = useState<CloudProvider | null>(null);
   const [draft, setDraft] = useState('');
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const [done, setDone] = useState<string | null>(null);
@@ -44,11 +44,15 @@ export default function AIKeyGuide({ onSaved }: { onSaved?: () => void }) {
       }
       const ai = useAIStore.getState();
       const previous = ai.provider;
-      // Through the store's own setters, so the per-provider model and key bookkeeping stays in step.
-      ai.setProvider(provider);
-      useAIStore.getState().setApiKey(key);
-      // A key added on top of existing ones must not change which provider answers first.
-      if (aiKeyCount > 0 && previous !== provider) useAIStore.getState().setProvider(previous);
+      if (previous === 'copilot') {
+        ai.setProviderApiKey(provider, key);
+      } else {
+        // Through the store's own setters, so the per-provider model and key bookkeeping stays in step.
+        ai.setProvider(provider);
+        useAIStore.getState().setApiKey(key);
+        // A key added on top of existing ones must not change which provider answers first.
+        if (aiKeyCount > 0 && previous !== provider) useAIStore.getState().setProvider(previous);
+      }
       setDraft('');
       setStatus({ kind: 'idle' });
       setDone(`${entry.name} funcționează. Cheia e salvată.`);

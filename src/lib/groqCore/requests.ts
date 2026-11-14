@@ -10,7 +10,8 @@ import { JSON_MODE_UNSUPPORTED } from './capabilities';
 import { NonRetryableError, extractApiErrorMessage, isRequestSpecificError } from './errors';
 import { backgroundGovernor, generationGovernor, groqGovernor } from './governors';
 import { sanitizeKey } from './keys';
-import { buildProviderChain, getProviderConfig, markServed, trackProviderOutcome } from './providers';
+import { buildProviderChain, getProviderConfig, isCopilotEligibleTask, markServed, trackProviderOutcome } from './providers';
+import { callCopilotBridge } from './copilotBridge';
 import { paceProvider } from './providerPacing';
 import { isDailyQuotaError, isModelCoolingDown, isModelSpecificFailure, isOversizedRequest, noteModelFailure } from './quotaGuard';
 import { lightModelFor, logPromptBreakdown } from '../ai/tokenBudget';
@@ -93,7 +94,7 @@ async function attemptOnProvider(
           await sleepMs(delayMs, abortSignal);
           continue;
         }
-        if (response.status === 404 && link.provider && link.key) markModelRetired(link.provider, link.model, link.key);
+        if (response.status === 404 && link.provider && link.provider !== 'copilot' && link.key) markModelRetired(link.provider, link.model, link.key);
         if (NON_RETRYABLE_STATUSES.has(response.status)) throw Object.assign(new NonRetryableError(msg), { status: response.status });
         throw Object.assign(new Error(msg), { status: response.status });
       }
@@ -170,10 +171,10 @@ export async function groqRequest({
     const state = useAIStore.getState();
     const primaryProvider = state.provider;
     const primaryKey = sanitizeKey(state.apiKey);
-    if (!primaryKey) {
-      throw new Error(getProviderConfig(primaryProvider).keyHint);
-    }
-    const effectiveKeys: Partial<Record<ProviderId, string>> = { ...state.providerKeys, ...(primaryKey ? { [primaryProvider]: primaryKey } : {}) };
+    const effectiveKeys: Partial<Record<ProviderId, string>> = {
+      ...state.providerKeys,
+      ...(primaryProvider !== 'copilot' && primaryKey ? { [primaryProvider]: primaryKey } : {}),
+    };
 
     const kb = skipLibraryContext ? '' : await state.getKnowledgeContext(buildKnowledgeQuery(messages), 6000);
     const finalMessages: GroqMessage[] = kb
@@ -195,11 +196,23 @@ export async function groqRequest({
     if (abortSignal?.aborted) throw new Error('Request aborted before start');
     logPromptBreakdown(`request:${task}`, finalMessages);
 
-    let chain = buildProviderChain(primaryProvider, state.model, effectiveKeys);
+    let chain = buildProviderChain(primaryProvider, state.model, effectiveKeys, {
+      task,
+      copilotConnected: state.copilotConnected,
+    });
     if (only) {
       const onlyKey = sanitizeKey(state.providerKeys[only.provider] ?? (only.provider === primaryProvider ? primaryKey : ''));
       if (!onlyKey) throw new Error(getProviderConfig(only.provider).keyHint);
       chain = [{ provider: only.provider, key: onlyKey, model: only.model }];
+    }
+
+    if (chain.length === 0) {
+      if (primaryProvider === 'copilot' && !isCopilotEligibleTask(task)) {
+        throw new Error(
+          'Această funcție AI folosește un provider cu cheie API (Groq, Gemini sau Mistral). Adaugă o cheie în Setări AI pentru generarea de grile și verificare.',
+        );
+      }
+      throw new Error(getProviderConfig(primaryProvider).keyHint);
     }
 
     if (light && !only) {
@@ -226,6 +239,17 @@ export async function groqRequest({
         messagesCount: messages.length,
       });
       try {
+        if (link.provider === 'copilot') {
+          await paceProvider('copilot', abortSignal);
+          const copilotRes = await callCopilotBridge(finalMessages, finalTemperature, abortSignal);
+          const servedModel = copilotRes.servedModel || link.model;
+          if (!only) {
+            trackProviderOutcome(link.provider, primaryProvider, cfg.name, !(isRequestSpecificError(lastError) || isOversizedRequest(lastError)), lastError);
+            markServed(link.provider, servedModel);
+          }
+          onServed?.({ provider: link.provider, model: servedModel });
+          return copilotRes.content;
+        }
         const result = await attemptOnProvider(cfg, link, finalMessages, finalTemperature, finalMaxTokens, task, !!next, abortSignal, jsonMode);
         if (!only) {
           trackProviderOutcome(link.provider, primaryProvider, cfg.name, !(isRequestSpecificError(lastError) || isOversizedRequest(lastError)), lastError);
@@ -249,7 +273,7 @@ export async function groqRequest({
         // for this SAME provider before giving up on it and moving to the next
         // provider in the chain. A dead model would otherwise fail every future
         // request forever, indistinguishable from the whole provider being down.
-        if (!only && isModelUnavailableError(lastError)) {
+        if (!only && link.provider !== 'copilot' && isModelUnavailableError(lastError)) {
           const altModel = nextCandidateModel(link.provider, link.model, (candidate) => isModelCoolingDown(link.provider, candidate));
           if (altModel) {
             try {

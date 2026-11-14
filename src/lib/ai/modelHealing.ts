@@ -130,7 +130,7 @@ export async function checkModelAvailability(): Promise<void> {
   }
 }
 
-export function providerDisplayName(provider: ProviderId): string {
+export function providerDisplayName(provider: AIProvider): string {
   return PROVIDER_NAMES[provider];
 }
 

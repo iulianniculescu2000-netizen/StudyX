@@ -49,6 +49,58 @@ declare global {
       storageDeleteProfile?: (profileId: string) => Promise<boolean>;
       onAppClose: (cb: () => void) => () => void;
       notify: (opts: { title: string; body?: string }) => Promise<boolean>;
+      copilotStatus?: (options?: { connect?: boolean }) => Promise<{
+        state: 'disconnected' | 'connected' | 'quota_exhausted' | 'error';
+        isAuthenticated: boolean;
+        login?: string | null;
+        authType?: string | null;
+        host?: string | null;
+        lastModel?: string | null;
+        statusMessage?: string | null;
+        quota?: {
+          isUnlimitedEntitlement?: boolean;
+          entitlementRequests?: number;
+          usedRequests?: number;
+          remainingPercentage?: number;
+          resetDate?: string;
+        } | null;
+      }>;
+      copilotStream?: (
+        payload: {
+          requestId: string;
+          messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
+          systemPrompt?: string;
+          temperature?: number;
+        },
+        onDelta?: (delta: string) => void,
+      ) => Promise<{
+        ok: boolean;
+        content?: string;
+        model?: string;
+        modelDisplayName?: string;
+        usage?: {
+          model?: string;
+          modelDisplayName?: string;
+          inputTokens?: number;
+          outputTokens?: number;
+          finishReason?: string;
+          quota?: {
+            isUnlimitedEntitlement?: boolean;
+            entitlementRequests?: number;
+            usedRequests?: number;
+            remainingPercentage?: number;
+            resetDate?: string;
+          } | null;
+        } | null;
+        errorCode?: 'aborted' | 'quota_exhausted' | 'auth_required' | 'error';
+        error?: string;
+      }>;
+      copilotAbort?: (requestId: string) => Promise<{ ok: boolean }>;
+      copilotDisconnect?: () => Promise<{
+        state: 'disconnected' | 'connected' | 'quota_exhausted' | 'error';
+        isAuthenticated: boolean;
+        statusMessage?: string | null;
+      }>;
     };
   }
 }

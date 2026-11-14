@@ -6,6 +6,7 @@ const fsp = require('fs').promises;
 const { fork } = require('child_process');
 const { registerUpdaterIPC } = require('./updater.cjs');
 const { registerOrganizareIPC } = require('./organizare.cjs');
+const { registerCopilotIPC, stopCopilotEngine } = require('./copilot.cjs');
 const { compareVersion } = require('./lib/versions.cjs');
 const { shouldClearStorageOnFirstRun, inspectUserData } = require('./lib/firstRun.cjs');
 const { isSafeStorageId } = require('./lib/validate.cjs');
@@ -1156,6 +1157,10 @@ function createWindow() {
   screen.on('display-removed', () => ensureWindowFitsDisplay(mainWindow));
 
   registerUpdaterIPC(mainWindow, { prepareForQuit });
+  registerCopilotIPC(ipcMain, {
+    getMainWindow: () => mainWindow,
+    getUserDataPath: () => app.getPath('userData'),
+  });
 }
 
 function scheduleDailyReminder() {
@@ -1271,6 +1276,11 @@ if (!gotTheLock) {
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 app.on('before-quit', async () => {
+  try {
+    await stopCopilotEngine();
+  } catch (error) {
+    console.warn('[StudyX] Failed to stop Copilot engine:', error.message);
+  }
   try {
     if (ocrWorkerPromise) {
       const worker = await ocrWorkerPromise;

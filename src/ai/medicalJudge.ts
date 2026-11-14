@@ -26,7 +26,7 @@ import type { Question } from '../types';
 import { getLastServedModel, groqRequest } from '../lib/groq';
 import { getConfiguredProviderModels, useAIStore } from '../store/aiStore';
 import { useAIUsageStore } from '../store/aiUsageStore';
-import { pickVerifier, type ModelRef } from '../lib/ai/crossCheck';
+import { pickVerifier, type CloudModelRef } from '../lib/ai/crossCheck';
 import { validateJson } from './validator';
 import { VERIFIER_MATERIAL_RULE } from './promptKit';
 
@@ -96,7 +96,7 @@ function buildJudgePrompt(questions: Question[], groundingText: string | undefin
  * Un furnizor cu cheie, diferit de cel care a servit ultima cerere (generarea). Null când nu se știe cine a generat
  * sau când nu există a doua cheie: atunci verificarea merge pe lanțul obișnuit.
  */
-export function pickJudgeModel(): ModelRef | null {
+export function pickJudgeModel(): CloudModelRef | null {
   try {
     const producer = getLastServedModel();
     if (!producer) return null;

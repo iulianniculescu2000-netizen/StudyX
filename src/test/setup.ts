@@ -69,6 +69,10 @@ Object.defineProperty(window, 'electronAPI', {
     updaterInstallDownloaded: () => Promise.resolve(),
     updaterCheckForUpdates: () => Promise.resolve({ hasUpdate: false }),
     updaterGetVersion: () => Promise.resolve('1.0.1'),
+    copilotStatus: () => Promise.resolve({ state: 'disconnected', isAuthenticated: false }),
+    copilotStream: () => Promise.resolve({ ok: false, errorCode: 'auth_required', error: 'Mock Copilot neconectat' }),
+    copilotAbort: () => Promise.resolve({ ok: false }),
+    copilotDisconnect: () => Promise.resolve({ state: 'disconnected', isAuthenticated: false }),
   },
 });
 

@@ -3,9 +3,21 @@ import { useToastStore } from '../../store/toastStore';
 import { sanitizeKey } from './keys';
 import { isModelCoolingDown } from './quotaGuard';
 import { candidateModels } from '../ai/modelHealing';
+import type { AIRequestTask } from '../../ai/types';
 import type { CloudProviderId, ProviderId } from './types';
 
+export function isCopilotEligibleTask(task?: AIRequestTask): boolean {
+  return task === 'chat' || task === 'explanation';
+}
+
 export function getProviderConfig(provider: ReturnType<typeof useAIStore.getState>['provider']) {
+  if (provider === 'copilot') {
+    return {
+      name: 'GitHub Copilot',
+      endpoint: '',
+      keyHint: 'Conectează GitHub Copilot în Setări AI sau configurează o cheie API (Groq, Gemini, Mistral).',
+    };
+  }
   if (provider === 'google') {
     return {
       name: 'Google Gemini',
@@ -42,7 +54,7 @@ export const FALLBACK_MODEL: Record<CloudProviderId, string> = {
 };
 
 /** Cloud providers in fallback order. */
-export const PROVIDER_ORDER: ProviderId[] = ['groq', 'google', 'mistral'];
+export const PROVIDER_ORDER: CloudProviderId[] = ['groq', 'google', 'mistral'];
 
 /**
  * How long we keep starting requests on a fallback provider after switching away
@@ -68,20 +80,34 @@ export function buildProviderChain(
   primaryProvider: ProviderId,
   primaryModel: string,
   providerKeys: Partial<Record<ProviderId, string>>,
+  options?: { task?: AIRequestTask; copilotConnected?: boolean },
 ): Array<{ provider: ProviderId; key: string; model: string; endpoint?: string }> {
   if (stickyFallback && stickyFallback.until <= Date.now()) stickyFallback = null;
 
-  const startProvider =
+  const includeCopilot =
+    primaryProvider === 'copilot' &&
+    Boolean(options?.copilotConnected) &&
+    isCopilotEligibleTask(options?.task);
+
+  const stickyCloud: CloudProviderId | null =
     stickyFallback &&
     stickyFallback.primary === primaryProvider &&
+    stickyFallback.provider !== 'copilot' &&
     sanitizeKey(providerKeys[stickyFallback.provider] ?? '')
       ? stickyFallback.provider
-      : primaryProvider;
+      : null;
 
-  const modelFor = (p: ProviderId) => (p === primaryProvider ? primaryModel : FALLBACK_MODEL[p]);
-  const ordered = [startProvider, ...PROVIDER_ORDER.filter((p) => p !== startProvider)];
+  const primaryCloud: CloudProviderId =
+    primaryProvider === 'copilot' ? PROVIDER_ORDER[0] : primaryProvider;
+  const startProvider: CloudProviderId = stickyCloud ?? primaryCloud;
+
+  const modelFor = (p: CloudProviderId) => (p === primaryProvider && primaryModel ? primaryModel : FALLBACK_MODEL[p]);
+  const ordered: CloudProviderId[] = [startProvider, ...PROVIDER_ORDER.filter((p) => p !== startProvider)];
 
   const chain: Array<{ provider: ProviderId; key: string; model: string; endpoint?: string }> = [];
+  if (includeCopilot && !stickyCloud) {
+    chain.push({ provider: 'copilot', key: '', model: 'copilot-auto' });
+  }
   for (const p of ordered) {
     const k = sanitizeKey(providerKeys[p] ?? '');
     if (!k) continue;
@@ -105,6 +131,9 @@ export function buildProviderChain(
 export function shortProviderReason(error: string | undefined): string {
   const text = (error ?? '').trim();
   if (!text) return '';
+  if (/copilot.*(?:cota|cotă|quota)|(?:cota|cotă|quota).*copilot|quota_exhausted/i.test(text)) {
+    return 'cota GitHub Copilot a fost atinsă';
+  }
   if (/rate limit|429|quota|resource[ _]exhausted|too many requests/i.test(text)) return 'limita gratuită a cheii a fost atinsă';
   if (/(?:^|\D)(?:401|403)(?:\D|$)|api key|unauthorized|forbidden|invalid.*key/i.test(text)) return 'cheia API nu este acceptată';
   if (/(?:^|\D)404(?:\D|$)|model.*(?:not found|unavailable)|decommission/i.test(text)) return 'modelul ales nu mai există';
@@ -133,8 +162,8 @@ export function trackProviderOutcome(provider: ProviderId, primaryProvider: Prov
 }
 
 /** Provider/model that served the latest successful request or stream (in memory): lets the chat tag an answer with its producer. */
-let lastServed: { provider: CloudProviderId; model: string } | null = null;
-export function getLastServedModel(): { provider: CloudProviderId; model: string } | null {
+let lastServed: { provider: ProviderId; model: string } | null = null;
+export function getLastServedModel(): { provider: ProviderId; model: string } | null {
   return lastServed;
 }
 export function markServed(provider: ProviderId, model: string): void {

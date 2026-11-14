@@ -16,11 +16,11 @@ export function supportsVision(provider: string): boolean {
   return provider === 'groq';
 }
 
-/** Cloud providers. */
-export type ProviderId = 'groq' | 'google' | 'mistral';
+/** Cloud API-key providers. */
+export type CloudProviderId = 'groq' | 'google' | 'mistral';
 
-/** Providers with an API key and a fixed endpoint. */
-export type CloudProviderId = ProviderId;
+/** All providers capable of serving chat/explanation requests. */
+export type ProviderId = CloudProviderId | 'copilot';
 
 /** Options shared by groqRequest / groqChat / groqStream / requestStructured. */
 export interface LocalCallOptions {

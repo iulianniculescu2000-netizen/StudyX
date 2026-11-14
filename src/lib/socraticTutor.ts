@@ -72,6 +72,7 @@ export async function nextSocraticStep(
 ): Promise<SocraticStep> {
   const { groqChat } = await import('./groq');
   const reply = (await groqChat(buildSocraticMessages(entry, turns), 0.4, {
+    task: 'analysis',
     skipLibraryContext: true,
     maxTokens: 400,
     abortSignal: signal,

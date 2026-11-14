@@ -12,10 +12,12 @@ const PROVIDER_LABELS: Record<string, string> = {
   groq: 'Groq',
   google: 'Gemini',
   mistral: 'Mistral',
+  copilot: 'Copilot',
 };
 
 /** „openai/gpt-oss-120b” → „gpt-oss-120b”; „mistral-small-latest” → „mistral-small”. */
 export function shortModelName(model: string): string {
+  if (model === 'copilot-auto' || model === 'GitHub Copilot') return '';
   const base = model.includes('/') ? model.slice(model.lastIndexOf('/') + 1) : model;
   return base.replace(/-latest$/, '');
 }

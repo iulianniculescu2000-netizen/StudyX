@@ -60,6 +60,7 @@
       "node_modules/pdf-parse/**/*",
       "node_modules/pdfjs-dist/**/*",
       "node_modules/tesseract.js/**/*",
+      "node_modules/@github/copilot-sdk-win32-x64/**/*",
       "public/icon.ico",
       "public/icon.png"
     ],
@@ -128,7 +129,10 @@
       "!SABLON{,/**}",
       "!*.docx",
       "!*.png",
-      "!.env*"
+      "!.env*",
+      "!node_modules/@github/copilot-sdk-win32-x64/tgrep/**",
+      "!node_modules/@github/copilot-sdk-win32-x64/ripgrep/**",
+      "!node_modules/@github/copilot-sdk-win32-x64/plugins/**"
     ],
     "publish": [
       {
@@ -152,6 +156,7 @@
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@github/copilot-sdk": "^1.0.34",
     "@tanstack/react-virtual": "^3.14.16",
     "@types/canvas-confetti": "^1.9.0",
     "canvas-confetti": "^1.9.4",

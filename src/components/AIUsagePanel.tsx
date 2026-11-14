@@ -9,8 +9,9 @@ const NAMES: Record<UsageProvider, string> = {
   groq: 'Groq',
   google: 'Google Gemini',
   mistral: 'Mistral AI',
+  copilot: 'GitHub Copilot',
 };
-const ORDER: UsageProvider[] = ['groq', 'google', 'mistral'];
+const ORDER: UsageProvider[] = ['groq', 'google', 'mistral', 'copilot'];
 const DAYS_SHOWN = 7;
 
 /** 950 → "950", 12 400 → "12,4k", 1 250 000 → "1,25M". */
@@ -37,6 +38,7 @@ function lastDays(count: number): string[] {
 export default function AIUsagePanel() {
   const theme = useTheme();
   const providerKeys = useAIStore((state) => state.providerKeys);
+  const copilotConnected = useAIStore((state) => state.copilotConnected);
   const days = useAIUsageStore((state) => state.days);
   const windows = useAIUsageStore((state) => state.windows);
 
@@ -44,7 +46,9 @@ export default function AIUsagePanel() {
   // Read once when the panel opens; the age of a limit reading only needs to be roughly right.
   const [openedAt] = useState(() => Date.now());
   const today = localDateStr();
-  const providers = ORDER.filter((id) => (providerKeys[id] ?? '').trim().length > 0 || days[today]?.[id]);
+  const providers = ORDER.filter((id) =>
+    (id === 'copilot' ? copilotConnected : (providerKeys[id] ?? '').trim().length > 0) || days[today]?.[id]
+  );
 
   if (providers.length === 0) return null;
 

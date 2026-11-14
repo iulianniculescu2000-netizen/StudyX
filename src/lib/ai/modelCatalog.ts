@@ -2,9 +2,9 @@
  * Date pure despre modele (fără rețea, fără store): numele afișate, lista de alegere și rezervele cunoscute.
  * Le folosesc și interfața (Setări AI), și vindecarea modelelor, și mesajele de eroare, fără dependențe circulare.
  */
-import type { AIModel, AIProvider } from '../../store/aiStore';
+import type { AIModel, AIProvider, CloudProvider } from '../../store/aiStore';
 
-export type ProviderId = AIProvider;
+export type ProviderId = CloudProvider;
 
 export interface ModelOption {
   id: AIModel;
@@ -50,12 +50,14 @@ export const MODEL_CANDIDATES: Record<ProviderId, AIModel[]> = {
 
 const EXTRA_NAMES: Record<string, string> = {
   'gemini-3.1-flash-lite': 'Gemini 3.1 Flash-Lite',
+  'copilot-auto': 'GitHub Copilot (Auto)',
 };
 
-export const PROVIDER_NAMES: Record<ProviderId, string> = {
+export const PROVIDER_NAMES: Record<AIProvider, string> = {
   groq: 'Groq',
   google: 'Google Gemini',
   mistral: 'Mistral AI',
+  copilot: 'GitHub Copilot',
 };
 
 /** Nume scurt de afișat pentru un model; un ID necunoscut (descoperit la furnizor) rămâne așa cum e. */

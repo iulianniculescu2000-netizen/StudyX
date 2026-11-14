@@ -1,3 +1,4 @@
+import type { AIProvider } from '../../store/aiStore';
 import { ZOOM_ATTR, isDiagramLanguage, renderDiagramBlock } from './diagram';
 import { structureRawText } from './structure';
 
@@ -60,7 +61,7 @@ export type ChatMessage = {
    */
   hadImage?: boolean;
   /** Provider/model that actually wrote this answer (set after streaming), so a verifier can be a different one. */
-  producer?: { provider: 'groq' | 'google' | 'mistral'; model: string };
+  producer?: { provider: AIProvider; model: string };
   /** Răspunsul a venit de la AI-ul local (model mic): chatul arată o notă discretă. */
   localAnswer?: boolean;
   /** Răspunsul local avea probleme grave și a fost refăcut o dată pe cloud („completat cu cloud”). */

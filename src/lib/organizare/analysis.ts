@@ -71,6 +71,7 @@ export async function analyzeProgress(
       0.4,
       signal,
       true,
+      { task: 'analysis' },
     );
     return text;
   } catch (error) {

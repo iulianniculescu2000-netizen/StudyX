@@ -6,7 +6,7 @@ import {
   Loader2, Gift, ChevronDown, ArrowUpRight, Brain, RefreshCw, Sparkles
 } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
-import { useAIStore, type AIProvider } from '../store/aiStore';
+import { useAIStore, type CloudProvider } from '../store/aiStore';
 import { useUserStore } from '../store/userStore';
 import { clearStudyPatterns, getProfileSummaryText } from '../ai/UserProfile';
 import { refreshAllProviderModels, type ProviderModelCheck } from '../lib/ai/modelHealing';
@@ -17,6 +17,7 @@ import { PROVIDER_CATALOG } from '../lib/ai/providerCatalog';
 import { friendlyAIError } from '../lib/ai/friendlyError';
 import { MODEL_OPTIONS } from '../lib/ai/modelCatalog';
 import { isModelSelectable } from '../lib/ai/providerStatus';
+import CopilotStatusSection from './ai-settings/CopilotStatusSection';
 import ProviderStatusCard from './ai-settings/ProviderStatusCard';
 import { useProviderStatus } from './ai-settings/useProviderStatus';
 import { useAdaptiveMotion } from '../hooks/useAdaptiveMotion';
@@ -24,7 +25,7 @@ import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useScrollLock } from '../hooks/useScrollLock';
 
 // Names, key hints and signup links come from the shared catalog (the tour's key guide uses it too).
-const PROVIDER_DESC: Record<AIProvider, string> = {
+const PROVIDER_DESC: Record<CloudProvider, string> = {
   groq: 'Rapid pentru chat și generare de grile',
   google: 'Context mare și raționament puternic pentru explicații',
   mistral: 'Gratuit, fără card · ~1 miliard de tokeni/lună',
@@ -38,7 +39,7 @@ const MODELS = MODEL_OPTIONS;
 
 // Step-by-step guide for getting a FREE API key, per provider. Shown inline so
 // users (especially on the free Google tier) know exactly where to go.
-const KEY_GUIDE: Record<AIProvider, { intro: string; steps: string[] }> = {
+const KEY_GUIDE: Record<CloudProvider, { intro: string; steps: string[] }> = {
   google: {
     intro: 'Gratuit, fără card bancar. Durează ~1 minut.',
     steps: [
@@ -82,15 +83,21 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
   const titleId = useId();
   const checkTitleId = useId();
   const {
-    apiKey, provider, model, hasKey, setApiKey, setProvider, setModel,
-    providerKeys
+    apiKey, provider, model, setApiKey, setProvider, setModel, setProviderModel,
+    providerKeys, providerModels, setProviderApiKey, copilotConnected, refreshCopilotStatus,
   } = useAIStore();
 
-  const hasAnyProviderKey = Object.values(providerKeys).some((k) => (k ?? '').trim().length > 0);
+  const hasAnyProviderKey = Object.entries(providerKeys).some(([p, k]) => p !== 'copilot' && (k ?? '').trim().length > 0);
+  const [selectedCloudProvider, setSelectedCloudProvider] = useState<CloudProvider>(provider === 'copilot' ? 'groq' : provider);
+  const activeCloudProvider: CloudProvider = provider === 'copilot' ? selectedCloudProvider : provider;
+  const activeCloudKey = provider === 'copilot' ? (providerKeys[activeCloudProvider] ?? '') : apiKey;
+  const activeCloudModel = provider === 'copilot'
+    ? (providerModels[activeCloudProvider] ?? MODELS[activeCloudProvider][0].id)
+    : model;
 
-  const [draft, setDraft] = useState(apiKey);
+  const [draft, setDraft] = useState(activeCloudKey);
   const [showKey, setShowKey] = useState(false);
-  const [showGuide, setShowGuide] = useState(!hasKey);
+  const [showGuide, setShowGuide] = useState(!hasAnyProviderKey);
   const [saved, setSaved] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [verifyResult, setVerifyResult] = useState<{ ok: boolean; error?: string; warning?: string } | null>(null);
@@ -115,8 +122,13 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
       setRefreshingModel(false);
     }
   };
-  const handleAddKey = (target: AIProvider) => {
-    setProvider(target);
+  const handleAddKey = (target: CloudProvider) => {
+    if (provider === 'copilot') {
+      setSelectedCloudProvider(target);
+    } else {
+      setProvider(target);
+      setSelectedCloudProvider(target);
+    }
     setSaved(false);
     setVerifyResult(null);
     setShowGuide(true);
@@ -129,8 +141,20 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (open) setDraft(apiKey);
-  }, [open, apiKey]);
+    if (provider !== 'copilot') {
+      setSelectedCloudProvider(provider);
+    }
+  }, [provider]);
+
+  useEffect(() => {
+    if (open) setDraft(activeCloudKey);
+  }, [open, activeCloudKey]);
+
+  useEffect(() => {
+    if (open && copilotConnected) {
+      void refreshCopilotStatus();
+    }
+  }, [open, copilotConnected, refreshCopilotStatus]);
 
   useEffect(() => {
     if (!open || !activeProfileId) return;
@@ -149,17 +173,17 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
     }
   }, []);
 
-  const activeProvider = PROVIDERS.find((entry) => entry.id === provider) ?? PROVIDERS[0];
-  const modelOptions = MODELS[provider] ?? MODELS.groq;
+  const activeProvider = PROVIDERS.find((entry) => entry.id === activeCloudProvider) ?? PROVIDERS[0];
+  const modelOptions = MODELS[activeCloudProvider] ?? MODELS.groq;
   // A key's provider is unambiguous ONLY when it has a distinctive prefix
   // (gsk_ = Groq) — Google and Mistral keys are both opaque
   // tokens with no recognizable prefix, so guessing between them isn't
   // possible from format alone. Returning null here for anything else lets
-  // handleSave's `?? provider` fallback keep whatever the user already has
+  // handleSave's `?? activeCloudProvider` fallback keep whatever the user already has
   // selected, instead of forcing a guess. This used to default to 'google'
   // unconditionally, which silently rerouted a pasted NVIDIA key onto Google
   // and burned a real API call on a 400 — never repeat that.
-  const detectProviderFromKey = (k: string): AIProvider | null => {
+  const detectProviderFromKey = (k: string): CloudProvider | null => {
     const trimmed = k.trim();
     if (trimmed.startsWith('gsk_') && trimmed.length > 20) return 'groq';
     return null;
@@ -171,7 +195,7 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
   const keyInvalid = trimmedDraft.length > 0 && trimmedDraft.length < 20;
   // Only fires for a CONFIDENTLY-detected prefix that belongs to a different
   // provider than the one selected — never a false alarm for Google/Mistral.
-  const keyForOtherProvider = detectedProvider !== null && detectedProvider !== provider;
+  const keyForOtherProvider = detectedProvider !== null && detectedProvider !== activeCloudProvider;
 
   const handleSave = async () => {
     const trimmed = draft.trim();
@@ -182,11 +206,19 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
 
     // Auto-switch to the provider the key actually belongs to, so pasting a
     // ready-made key just works without first changing the selector.
-    const targetProvider = detectProviderFromKey(trimmed) ?? provider;
-    if (trimmed && targetProvider !== provider) {
-      setProvider(targetProvider);
+    const targetProvider = detectProviderFromKey(trimmed) ?? activeCloudProvider;
+    if (provider === 'copilot') {
+      if (trimmed && targetProvider !== selectedCloudProvider) {
+        setSelectedCloudProvider(targetProvider);
+      }
+      setProviderApiKey(targetProvider, trimmed);
+    } else {
+      if (trimmed && targetProvider !== provider) {
+        setProvider(targetProvider);
+        setSelectedCloudProvider(targetProvider);
+      }
+      setApiKey(trimmed);
     }
-    setApiKey(trimmed);
     setSaved(true);
     if (savedTimerRef.current) {
       clearTimeout(savedTimerRef.current);
@@ -257,6 +289,8 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
 
               {/* Body */}
               <div className="flex-1 overflow-y-auto p-6 pt-5 custom-scrollbar" style={{ minHeight: 0 }}>
+                <CopilotStatusSection />
+
                 {/* API Key */}
                 <div className="mb-6">
                   <label className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.1em] mb-2.5 opacity-60" style={{ color: theme.text }}>
@@ -288,10 +322,10 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
                   {showGuide && (
                     <div className="mt-3 rounded-[var(--r-md)] p-4" style={{ background: `${theme.accent}0C`, border: `1px solid ${theme.accent}25` }}>
                       <p className="mb-3 text-[11px] font-bold" style={{ color: theme.accentText }}>
-                        {KEY_GUIDE[provider].intro}
+                        {KEY_GUIDE[activeCloudProvider].intro}
                       </p>
                       <ol className="space-y-2">
-                        {KEY_GUIDE[provider].steps.map((step, i) => (
+                        {KEY_GUIDE[activeCloudProvider].steps.map((step, i) => (
                           <li key={i} className="flex items-start gap-2.5 text-[12px] leading-5" style={{ color: theme.text2 }}>
                             <span
                               className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-black text-white"
@@ -356,17 +390,34 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
                 </div>
 
                 <div className="mb-6">
-                  <label className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.1em] mb-2.5 opacity-60" style={{ color: theme.text }}>
-                    <Cpu size={12} /> Provider AI
-                  </label>
+                  <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+                    <label className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.1em] opacity-60" style={{ color: theme.text }}>
+                      <Cpu size={12} /> {provider === 'copilot' ? 'Provider cheie API (grile, verificare și rezervă)' : 'Provider AI'}
+                    </label>
+                    {provider === 'copilot' && (
+                      <button
+                        type="button"
+                        onClick={() => setProvider(activeCloudProvider)}
+                        className="text-[11px] font-bold hover:opacity-80 transition-opacity"
+                        style={{ color: theme.accentText }}
+                      >
+                        Folosește {activeProvider.name} și pentru Chat
+                      </button>
+                    )}
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     {PROVIDERS.map((entry) => {
-                      const active = provider === entry.id;
+                      const active = activeCloudProvider === entry.id;
                       return (
                         <button
                           key={entry.id}
                           onClick={() => {
-                            setProvider(entry.id);
+                            if (provider === 'copilot') {
+                              setSelectedCloudProvider(entry.id);
+                            } else {
+                              setProvider(entry.id);
+                              setSelectedCloudProvider(entry.id);
+                            }
                             setSaved(false);
                             setVerifyResult(null);
                           }}
@@ -393,7 +444,7 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
                 <div className="mb-8">
                   <div className="mb-2.5 flex items-center justify-between gap-3">
                     <label className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.1em] opacity-60" style={{ color: theme.text }}>
-                      <Cpu size={12} /> Model AI
+                      <Cpu size={12} /> Model AI ({activeProvider.name})
                     </label>
                     <motion.button
                       whileTap={calmMotion ? undefined : { scale: 0.97 }}
@@ -410,17 +461,24 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
                   </div>
                   <div className="space-y-2">
                     {modelOptions.map((m) => {
-                      const st = providerStatus.statusOf(provider, m.id);
+                      const st = providerStatus.statusOf(activeCloudProvider, m.id);
                       const selectable = isModelSelectable(st);
+                      const isModelSelected = activeCloudModel === m.id;
                       return (
                         <button
                           key={m.id}
                           disabled={!selectable}
-                          onClick={() => setModel(m.id)}
+                          onClick={() => {
+                            if (provider === 'copilot') {
+                              setProviderModel(activeCloudProvider, m.id);
+                            } else {
+                              setModel(m.id);
+                            }
+                          }}
                           className="w-full flex items-center gap-3 px-4 py-3 rounded-[var(--r-md)] text-left transition-colors disabled:cursor-not-allowed focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
                           style={{
-                            background: model === m.id ? `${theme.accent}14` : theme.surface2,
-                            border: `1px solid ${model === m.id ? theme.accent + '50' : theme.border}`,
+                            background: isModelSelected ? `${theme.accent}14` : theme.surface2,
+                            border: `1px solid ${isModelSelected ? theme.accent + '50' : theme.border}`,
                             opacity: selectable ? 1 : 0.55,
                           }}>
                           <div className="flex-1">
@@ -429,7 +487,7 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
                               {selectable ? `${m.desc} · ${m.speed}` : 'indisponibil pentru cheia ta'}
                             </p>
                           </div>
-                          {model === m.id && <div className="elev-1 w-6 h-6 rounded-full flex items-center justify-center" style={{ background: theme.accent }}><Check size={12} color="white" strokeWidth={4} /></div>}
+                          {isModelSelected && <div className="elev-1 w-6 h-6 rounded-full flex items-center justify-center" style={{ background: theme.accent }}><Check size={12} color="white" strokeWidth={4} /></div>}
                         </button>
                       );
                     })}

@@ -1,4 +1,4 @@
-import type { useAIStore } from '../../store/aiStore';
+import type { CloudProvider } from '../../store/aiStore';
 import { nextCandidateModel } from '../ai/modelHealing';
 import { extractApiErrorMessage } from './errors';
 import { sanitizeKey } from './keys';
@@ -11,7 +11,7 @@ import { getProviderConfig } from './providers';
  * is expired/invalid and generation will silently fall back to local templates.
  */
 export async function validateApiKey(
-  provider: ReturnType<typeof useAIStore.getState>['provider'],
+  provider: CloudProvider,
   key: string,
 ): Promise<{ ok: boolean; error?: string; warning?: string }> {
   const cleanKey = sanitizeKey(key);

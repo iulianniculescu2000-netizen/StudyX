@@ -44,9 +44,32 @@ export type AIModel =
   // model name — Mistral keeps them pointed at their current model, so this
   // shouldn't go stale the way the NVIDIA pick did within 2 weeks.
   | 'mistral-small-latest'
-  | 'mistral-large-latest';
+  | 'mistral-large-latest'
+  | 'copilot-auto';
 
-export type AIProvider = 'groq' | 'google' | 'mistral';
+export type CloudProvider = 'groq' | 'google' | 'mistral';
+export type AIProvider = CloudProvider | 'copilot';
+
+export type CopilotConnectionState = 'disconnected' | 'connected' | 'quota_exhausted' | 'error';
+
+export interface CopilotQuotaSnapshot {
+  isUnlimitedEntitlement?: boolean;
+  entitlementRequests?: number;
+  usedRequests?: number;
+  remainingPercentage?: number;
+  resetDate?: string;
+}
+
+export interface CopilotStatusInfo {
+  state: CopilotConnectionState;
+  isAuthenticated: boolean;
+  login?: string | null;
+  authType?: string | null;
+  host?: string | null;
+  lastModel?: string | null;
+  statusMessage?: string | null;
+  quota?: CopilotQuotaSnapshot | null;
+}
 
 export type AIKnowledgeSourceType = 'txt' | 'pdf' | 'docx' | 'image';
 export type AIKnowledgeSourceStatus = 'indexing' | 'ready' | 'error';
@@ -187,6 +210,8 @@ export interface AIState {
   provider: AIProvider;
   model: AIModel;
   hasKey: boolean;
+  copilotConnected: boolean;
+  copilotStatusInfo: CopilotStatusInfo;
   isHydrated: boolean;
   knowledgeSources: AIKnowledgeSource[];
   libraryFolders: AILibraryFolder[];
@@ -202,8 +227,14 @@ export interface AIState {
 export interface AIActions {
   setError: (error: string | null) => void;
   setApiKey: (apiKey: string) => void;
+  setProviderApiKey: (provider: CloudProvider, apiKey: string) => void;
   setProvider: (provider: AIProvider) => void;
   setModel: (model: AIModel) => void;
+  setCopilotStatusInfo: (info: CopilotStatusInfo) => void;
+  refreshCopilotStatus: (options?: { connect?: boolean }) => Promise<CopilotStatusInfo>;
+  disconnectCopilot: () => Promise<void>;
+  hasAvailableProvider: () => boolean;
+  getActiveApiKey: () => string;
   /** Sets the model for ANY provider, not just the active one — used by the multi-provider model check. Keeps `model` in sync only if that provider happens to be active right now. */
   setProviderModel: (provider: AIProvider, model: AIModel) => void;
   addKnowledgeSource: (
@@ -253,10 +284,23 @@ const PROVIDER_MODELS: Record<AIProvider, AIModel[]> = {
   groq: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'],
   google: ['gemini-3.8-flash', 'gemini-4-argon', 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-pro-preview'],
   mistral: ['mistral-small-latest', 'mistral-large-latest'],
+  copilot: ['copilot-auto'],
+};
+
+const DEFAULT_COPILOT_STATUS: CopilotStatusInfo = {
+  state: 'disconnected',
+  isAuthenticated: false,
+  login: null,
+  authType: null,
+  host: null,
+  lastModel: null,
+  statusMessage: 'Neconectat',
+  quota: null,
 };
 
 /** AI local pregătit de folosit: activat, cu adresă locală validă și model ales. Fără el, `hasKey` ține cont doar de cheile cloud. */
 function isValidProviderKey(provider: AIProvider, apiKey: string) {
+  if (provider === 'copilot') return false;
   const trimmed = apiKey.trim();
   if (!trimmed) return false;
   // Groq keys are reliably prefixed with "gsk_".
@@ -267,9 +311,20 @@ function isValidProviderKey(provider: AIProvider, apiKey: string) {
   return trimmed.length >= 20 && !trimmed.startsWith('gsk_');
 }
 
+function computeHasKey(provider: AIProvider, apiKey: string, copilotConnected: boolean): boolean {
+  if (provider === 'copilot') return copilotConnected;
+  return isValidProviderKey(provider, apiKey);
+}
+
+function findFallbackCloudProvider(providerKeys: Partial<Record<AIProvider, string>>): CloudProvider {
+  const order: CloudProvider[] = ['groq', 'google', 'mistral'];
+  return order.find((p) => (providerKeys[p] ?? '').trim().length > 0) ?? 'groq';
+}
+
 function getDefaultModelForProvider(provider: AIProvider): AIModel {
   if (provider === 'google') return 'gemini-3.8-flash';
   if (provider === 'mistral') return 'mistral-small-latest';
+  if (provider === 'copilot') return 'copilot-auto';
   // groq
   return DEFAULT_MODEL;
 }
@@ -284,8 +339,9 @@ function normalizeProviderModel(provider: AIProvider, model: AIModel | string | 
 /** Providers that have a saved key, each with the model that would run on it (the active one uses `model`). */
 export function getConfiguredProviderModels(
   state: Pick<AIState, 'providerKeys' | 'providerModels' | 'provider' | 'model' | 'apiKey'>,
-): Array<{ provider: AIProvider; model: string }> {
-  const order: AIProvider[] = ['groq', 'google', 'mistral'];
+): Array<{ provider: CloudProvider; model: string }> {
+  // IMPORTANT: judecătorul medical și „Verifică cu alt model” nu includ niciodată `copilot`, ca să nu consume cota.
+  const order: CloudProvider[] = ['groq', 'google', 'mistral'];
   return order
     .filter((p) => Boolean((state.providerKeys[p] ?? (p === state.provider ? state.apiKey : '') ?? '').trim()))
     .map((p) => ({
@@ -305,6 +361,8 @@ const createDefaultState = (): AIState => ({
   provider: 'groq',
   model: DEFAULT_MODEL,
   hasKey: false,
+  copilotConnected: false,
+  copilotStatusInfo: { ...DEFAULT_COPILOT_STATUS },
   isHydrated: false,
   knowledgeSources: [],
   libraryFolders: [],
@@ -545,11 +603,27 @@ export const useAIStore = create<AIState & AIActions>()(
         setApiKey: (apiKey) => {
           const trimmed = apiKey.trim();
           const provider = get().provider;
+          if (provider === 'copilot') return;
           set((state) => ({
             apiKey: trimmed,
             providerKeys: { ...state.providerKeys, [provider]: trimmed },
-            hasKey: isValidProviderKey(provider, trimmed),
+            hasKey: computeHasKey(provider, trimmed, state.copilotConnected),
           }), false, 'ai/setApiKey');
+        },
+
+        setProviderApiKey: (targetProvider, apiKey) => {
+          const trimmed = apiKey.trim();
+          set((state) => {
+            const nextKeys = { ...state.providerKeys, [targetProvider]: trimmed };
+            const isActive = state.provider === targetProvider;
+            return {
+              providerKeys: nextKeys,
+              ...(isActive ? {
+                apiKey: trimmed,
+                hasKey: computeHasKey(targetProvider, trimmed, state.copilotConnected),
+              } : {}),
+            };
+          }, false, 'ai/setProviderApiKey');
         },
 
         setProvider: (provider) => {
@@ -559,13 +633,124 @@ export const useAIStore = create<AIState & AIActions>()(
           const nextModel = normalizeProviderModel(provider, get().providerModels[provider] ?? getDefaultModelForProvider(provider));
           // Load the key already saved for this provider so the user doesn't
           // have to re-enter it every time they switch Groq↔Google.
-          const nextKey = get().providerKeys[provider] ?? '';
+          const nextKey = provider === 'copilot' ? '' : (get().providerKeys[provider] ?? '');
+          const copilotConnected = get().copilotConnected;
           set({
             provider,
             model: nextModel,
             apiKey: nextKey,
-            hasKey: isValidProviderKey(provider, nextKey),
+            hasKey: computeHasKey(provider, nextKey, copilotConnected),
           }, false, 'ai/setProvider');
+        },
+
+        setCopilotStatusInfo: (info) => set((state) => {
+          const copilotConnected = info.isAuthenticated && (info.state === 'connected' || info.state === 'quota_exhausted');
+          return {
+            copilotStatusInfo: info,
+            copilotConnected: info.state === 'connected',
+            hasKey: computeHasKey(state.provider, state.apiKey, copilotConnected && info.state === 'connected'),
+          };
+        }, false, 'ai/setCopilotStatusInfo'),
+
+        refreshCopilotStatus: async (options) => {
+          const bridge = typeof window !== 'undefined' ? window.electronAPI?.copilotStatus : undefined;
+          if (!bridge) {
+            const fallback: CopilotStatusInfo = {
+              state: 'disconnected',
+              isAuthenticated: false,
+              statusMessage: 'GitHub Copilot este disponibil doar în aplicația desktop StudyX.',
+            };
+            get().setCopilotStatusInfo(fallback);
+            return fallback;
+          }
+          try {
+            const result = await bridge(options);
+            const info: CopilotStatusInfo = {
+              state: result.state,
+              isAuthenticated: Boolean(result.isAuthenticated),
+              login: result.login ?? null,
+              authType: result.authType ?? null,
+              host: result.host ?? null,
+              lastModel: result.lastModel ?? null,
+              statusMessage: result.statusMessage ?? null,
+              quota: result.quota ?? null,
+            };
+            const connected = info.state === 'connected' && info.isAuthenticated;
+            set((state) => {
+              const shouldSwitchAway = state.provider === 'copilot' && info.state === 'disconnected';
+              if (shouldSwitchAway) {
+                const nextProvider = findFallbackCloudProvider(state.providerKeys);
+                const nextKey = state.providerKeys[nextProvider] ?? '';
+                return {
+                  copilotStatusInfo: info,
+                  copilotConnected: false,
+                  provider: nextProvider,
+                  model: normalizeProviderModel(nextProvider, state.providerModels[nextProvider] ?? getDefaultModelForProvider(nextProvider)),
+                  apiKey: nextKey,
+                  hasKey: computeHasKey(nextProvider, nextKey, false),
+                };
+              }
+              return {
+                copilotStatusInfo: info,
+                copilotConnected: connected,
+                hasKey: computeHasKey(state.provider, state.apiKey, connected),
+              };
+            }, false, 'ai/refreshCopilotStatus');
+            return info;
+          } catch (err) {
+            const info: CopilotStatusInfo = {
+              state: 'error',
+              isAuthenticated: false,
+              statusMessage: err instanceof Error ? err.message : 'Eroare la verificarea GitHub Copilot.',
+            };
+            get().setCopilotStatusInfo(info);
+            return info;
+          }
+        },
+
+        disconnectCopilot: async () => {
+          const bridge = typeof window !== 'undefined' ? window.electronAPI?.copilotDisconnect : undefined;
+          if (bridge) {
+            try {
+              await bridge();
+            } catch {
+              // ignore IPC disconnect failure, still reset UI state
+            }
+          }
+          set((state) => {
+            const disconnectedInfo: CopilotStatusInfo = {
+              ...DEFAULT_COPILOT_STATUS,
+              statusMessage: 'Deconectat în StudyX',
+            };
+            if (state.provider === 'copilot') {
+              const nextProvider = findFallbackCloudProvider(state.providerKeys);
+              const nextKey = state.providerKeys[nextProvider] ?? '';
+              return {
+                copilotConnected: false,
+                copilotStatusInfo: disconnectedInfo,
+                provider: nextProvider,
+                model: normalizeProviderModel(nextProvider, state.providerModels[nextProvider] ?? getDefaultModelForProvider(nextProvider)),
+                apiKey: nextKey,
+                hasKey: computeHasKey(nextProvider, nextKey, false),
+              };
+            }
+            return {
+              copilotConnected: false,
+              copilotStatusInfo: disconnectedInfo,
+            };
+          }, false, 'ai/disconnectCopilot');
+        },
+
+        hasAvailableProvider: () => {
+          const state = get();
+          if (state.copilotConnected) return true;
+          return (['groq', 'google', 'mistral'] as CloudProvider[]).some((p) => (state.providerKeys[p] ?? '').trim().length > 0);
+        },
+
+        getActiveApiKey: () => {
+          const state = get();
+          if (state.provider === 'copilot') return state.copilotConnected ? 'copilot-session' : '';
+          return (state.apiKey || state.providerKeys[state.provider] || '').trim();
         },
 
         setModel: (model) => set((state) => ({
@@ -1013,6 +1198,7 @@ export const useAIStore = create<AIState & AIActions>()(
           provider: state.provider,
           model: state.model,
           hasKey: state.hasKey,
+          copilotConnected: state.copilotConnected,
           cache: state.cache,
           studyMemory: state.studyMemory,
           booksOnly: state.booksOnly,
@@ -1062,8 +1248,12 @@ export const useAIStore = create<AIState & AIActions>()(
             }
           }
           state.providerKeys = migratedKeys;
-          state.apiKey = migratedKeys[state.provider] ?? '';
-          state.hasKey = isValidProviderKey(state.provider, state.apiKey);
+          state.copilotConnected = state.copilotConnected === true;
+          state.copilotStatusInfo = state.copilotConnected
+            ? { ...DEFAULT_COPILOT_STATUS, state: 'connected', isAuthenticated: true, statusMessage: 'Conectat' }
+            : { ...DEFAULT_COPILOT_STATUS };
+          state.apiKey = state.provider === 'copilot' ? '' : (migratedKeys[state.provider] ?? '');
+          state.hasKey = computeHasKey(state.provider, state.apiKey, state.copilotConnected);
           state.isHydrated = true;
           state.libraryFolders = (state.libraryFolders ?? []).map((folder) => ({
             ...folder,

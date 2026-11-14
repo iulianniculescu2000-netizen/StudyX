@@ -158,6 +158,7 @@ export default function AIChatDrawer() {
   const booksOnly = useAIStore((state) => state.booksOnly);
   const setBooksOnly = useAIStore((state) => state.setBooksOnly);
   const providerKeys = useAIStore((state) => state.providerKeys);
+  const copilotConnected = useAIStore((state) => state.copilotConnected);
   const recordAIInteraction = useAIStore((state) => state.recordAIInteraction);
   const memoryContext = useAIStore((state) => (
     activeProfileId ? state.getAIMemoryContext(activeProfileId) : ''
@@ -1140,8 +1141,9 @@ export default function AIChatDrawer() {
     if (loading) return;
     const assertSameProfile = profileGuard();
     const prev = messages[index - 1];
-    if (!hasKey) {
-      addToast('Pentru a genera un set ai nevoie de o cheie AI în Setări.', 'warning');
+    const hasCloudKey = Object.entries(providerKeys).some(([p, key]) => p !== 'copilot' && (key ?? '').trim().length > 0);
+    if (!hasCloudKey) {
+      addToast('Generarea de grile folosește o cheie API (Groq, Gemini sau Mistral). Adaugă una în Setări AI.', 'warning');
       return;
     }
     setLoading(true);
@@ -1414,7 +1416,10 @@ export default function AIChatDrawer() {
         <div className={`text-center ${compact ? 'py-6' : 'py-8'}`}>
           <FreeKeysNotice
             theme={theme}
-            configuredCount={Object.values(providerKeys).filter((key) => (key ?? '').trim().length > 0).length}
+            configuredCount={
+              Object.entries(providerKeys).filter(([p, key]) => p !== 'copilot' && (key ?? '').trim().length > 0).length +
+              (copilotConnected ? 1 : 0)
+            }
             onNavigate={closeChat}
           />
           <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="mb-5 flex h-12 items-center justify-center" style={{ color: theme.accent }}>
