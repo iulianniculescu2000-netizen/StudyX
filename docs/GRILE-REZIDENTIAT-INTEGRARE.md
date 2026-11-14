@@ -14,7 +14,8 @@ Doar pentru **firul de Rezidențiat** (stilul `residency`); firul de facultate (
 | Litera cheii la CS după profilul real (11/20/30/25/15), exact pe lot | **adăugat**: `rebalanceKeyLetters` în `src/lib/ai/examForm.ts` |
 | Controale de formă („semne de generat”: trimiteri la sursă, opțiuni-paragraf, glosă doar la cheie, antiteze, lungime uniformă) | **adăugat**: `findFormIssues` / `polishGeneratedQuestions`, rulate pe ambele căi de generare înaintea verificatorului |
 | Construcția din text (enunț = titlul unității, chei literale, subset din listă, distractori de pe pagină) | **adăugat**: `RESIDENCY_GROUNDED_BUILD_RULES`, doar cu context |
-| Verificator care nu vede cheia, plauzibilitatea distractorilor, poarta de citire pe imaginea paginii | nefăcut (vezi mai jos) |
+| Verificator care nu vede cheia | **adăugat**: `blindVerify` în `src/ai/medicalJudge.ts`, după judecător, pe alt furnizor când există a doua cheie; doar la Rezidențiat; scoate grila al cărei răspuns diferă de cheie, deschis la erori. Testat cu modele simulate, nu cu chei reale |
+| Plauzibilitatea distractorilor, poarta de citire pe imaginea paginii | nefăcut |
 | Ponderi pe capitole pentru o simulare de 200 de grile; pagini fierbinți la alegerea paginilor de generat | nefăcut: nu există încă un constructor de simulare în Rezidențiat |
 
 ## Textele cărților (Kumar, Lawrence, Sinopsis)
@@ -29,6 +30,6 @@ Doar pentru **firul de Rezidențiat** (stilul `residency`); firul de facultate (
 - Reordonarea nu atinge grilele cu opțiuni care depind de ordine („ambele”, „toate”, „B și C”).
 
 ## Pași următori (decizia proprietarului)
-1. Verificator „orb” (rezolvă grila fără cheie, pe alt furnizor) la grilele din carte: un apel în plus pe lot, deci cost de cotă.
+1. Încercarea verificatorului orb cu chei reale: costă un apel în plus pe lot, iar rata de dezacord a unui model-rezolvitor nu e măsurată.
 2. Constructor de simulare Rezidențiat cu ponderile pe specialități (Cardiologie ~21 din 200, Ortopedie ~9 etc.).
 3. Metrici noi în `scoreExamConformance` (mediana enunțului în cuvinte, dispersia lungimii opțiunilor, cheia vs distractori); cer recalibrarea pragurilor testelor existente.

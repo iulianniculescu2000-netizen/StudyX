@@ -292,7 +292,7 @@ export class QuestionGenerator {
       // Pe un subiect fix contextul poate fi irelevant (RAG întoarce „cele mai apropiate” fragmente): acolo nu judecăm cheia după el.
       { sourceText: request.subject ? undefined : context.summary },
     ).questions;
-    const judged = await verifyQuestionsMedically(sanitized, context.summary);
+    const judged = await verifyQuestionsMedically(sanitized, context.summary, { blind: (request.examStyle ?? DEFAULT_EXAM_STYLE) === 'residency' });
 
     return {
       questions: judged.questions,
@@ -396,7 +396,7 @@ async function generateQuestionsFromTopicOnce(
   // judge's drops below — that's an intentional safety filter, this is a
   // shortfall against what was actually asked for.
   const malformedDroppedCount = Math.max(0, count - sanitized.length);
-  const judged = await verifyQuestionsMedically(sanitized, undefined);
+  const judged = await verifyQuestionsMedically(sanitized, undefined, { blind: examStyle === 'residency' });
 
   if (judged.questions.length === 0 && import.meta.env.DEV) {
     // Dev-only diagnostic: pinpoint WHERE the batch got dropped to zero —

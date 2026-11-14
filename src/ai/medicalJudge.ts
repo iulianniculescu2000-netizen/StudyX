@@ -112,9 +112,19 @@ export function pickJudgeModel(): CloudModelRef | null {
  * empty for freeform-topic generation) the generator itself used, so the judge
  * checks against the same ground truth rather than an unrelated one.
  */
+export interface JudgeOptions {
+  /**
+   * Verificatorul „orb”: după judecător, același lot e rezolvat de un model care NU vede cheia; grila al cărei răspuns diferă
+   * de cheie e scoasă (cum cere proiectul Grile rezidențiat: o grilă intră doar dacă un verificator fără cheie ajunge singur
+   * la același răspuns). Un apel în plus pe lot, pe alt furnizor când există a doua cheie. Oprit implicit.
+   */
+  blind?: boolean;
+}
+
 export async function verifyQuestionsMedically(
   questions: Question[],
   groundingText: string | undefined,
+  options: JudgeOptions = {},
 ): Promise<MedicalJudgeResult> {
   const passthrough: MedicalJudgeResult = { questions, flaggedCount: 0, flaggedReasons: [] };
   if (questions.length === 0) return passthrough;
@@ -124,8 +134,8 @@ export async function verifyQuestionsMedically(
   if (questions.length > MAX_QUESTIONS_PER_CALL) {
     const mid = Math.ceil(questions.length / 2);
     const [first, second] = await Promise.all([
-      verifyQuestionsMedically(questions.slice(0, mid), groundingText),
-      verifyQuestionsMedically(questions.slice(mid), groundingText),
+      verifyQuestionsMedically(questions.slice(0, mid), groundingText, options),
+      verifyQuestionsMedically(questions.slice(mid), groundingText, options),
     ]);
     return {
       questions: [...first.questions, ...second.questions],
@@ -183,5 +193,106 @@ export async function verifyQuestionsMedically(
   // single generated question being wrong.
   if (kept.length === 0 && questions.length > 1) return passthrough;
 
-  return { questions: kept, flaggedCount: questions.length - kept.length, flaggedReasons, checked: true };
+  const judged: MedicalJudgeResult = { questions: kept, flaggedCount: questions.length - kept.length, flaggedReasons, checked: true };
+  if (!options.blind) return judged;
+
+  const blind = await blindVerify(kept, groundingText);
+  return {
+    questions: blind.questions,
+    flaggedCount: judged.flaggedCount + blind.flaggedCount,
+    flaggedReasons: [...judged.flaggedReasons, ...blind.flaggedReasons],
+    checked: true,
+  };
+}
+
+interface BlindAnswer {
+  i: number;
+  picks: string[];
+}
+
+interface BlindResponse {
+  answers?: BlindAnswer[];
+}
+
+export function buildBlindPrompt(questions: Question[], groundingText: string | undefined): string {
+  const body = questions
+    .map((q, index) => `[${index}] Enunț: ${q.text}\nVariante:\n${q.options.map((o, i) => `${letterFor(i)}) ${o.text}`).join('\n')}`)
+    .join('\n\n');
+  return [
+    'Ești rezident care rezolvă grile de Rezidențiat. Nu ți se spune care variante sunt corecte: le alegi TU, singur, din cunoștințe și din sursă.',
+    VERIFIER_MATERIAL_RULE,
+    'La fiecare grilă pot fi corecte una sau mai multe variante (între una și patru). La enunțurile negative („NU”, „FALS”, „incorectă”, „cu excepția”) alegi afirmația falsă.',
+    groundingText
+      ? `Sursa din care au fost făcute grilele (referința principală, dacă e relevantă):\n"""\n${groundingText.slice(0, MAX_GROUNDING_CHARS)}\n"""`
+      : 'Nu ai o sursă atașată: rezolvă din cunoștințe medicale general acceptate și stabile.',
+    '',
+    body,
+    '',
+    `Răspunde STRICT cu JSON, fără text în plus, cu exact ${questions.length} intrări în "answers", literele alese cu minusculă:`,
+    '{"answers":[{"i":0,"picks":["a"]},{"i":1,"picks":["b","d"]}]}',
+  ].join('\n');
+}
+
+function sameSet(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((x) => b.includes(x));
+}
+
+/**
+ * Rezolvă lotul fără cheie și scoate grilele la care răspunsul diferă. Deschis la erori: fără răspuns, cu un răspuns
+ * necitibil sau fără intrare pentru o grilă, grilele rămân; nu golește niciodată tot lotul.
+ */
+export async function blindVerify(questions: Question[], groundingText: string | undefined): Promise<MedicalJudgeResult> {
+  const passthrough: MedicalJudgeResult = { questions, flaggedCount: 0, flaggedReasons: [] };
+  if (questions.length === 0 || questions.length > MAX_QUESTIONS_PER_CALL) return passthrough;
+
+  const other = pickJudgeModel();
+  const ask = async (attempt: number): Promise<BlindResponse | null> => {
+    const request = {
+      task: 'analysis' as const,
+      messages: [{ role: 'user' as const, content: buildBlindPrompt(questions, groundingText) }],
+      temperature: 0,
+      maxTokens: judgeMaxTokens(questions.length, attempt),
+      skipLibraryContext: true,
+    };
+    const raw = other
+      ? await groqRequest({ ...request, only: other }).catch(() => groqRequest(request))
+      : await groqRequest(request);
+    const parsed = validateJson<BlindResponse>(raw);
+    return parsed.ok && Array.isArray(parsed.value?.answers) ? parsed.value : null;
+  };
+
+  let response: BlindResponse | null;
+  try {
+    response = (await ask(0)) ?? (await ask(1));
+  } catch {
+    return passthrough;
+  }
+  if (!response?.answers) return passthrough;
+
+  const picksByIndex = new Map<number, string[]>();
+  for (const answer of response.answers) {
+    if (answer && typeof answer.i === 'number' && Array.isArray(answer.picks)) {
+      picksByIndex.set(answer.i, answer.picks.map((p) => String(p).trim().toLowerCase().slice(0, 1)).filter(Boolean).sort());
+    }
+  }
+
+  const kept: Question[] = [];
+  const reasons: string[] = [];
+  questions.forEach((question, index) => {
+    const picks = picksByIndex.get(index);
+    if (!picks || picks.length === 0) {
+      kept.push(question);
+      return;
+    }
+    const key = question.options.flatMap((o, i) => (o.isCorrect ? [letterFor(i)] : [])).sort();
+    if (sameSet(picks, key)) {
+      kept.push(question);
+      return;
+    }
+    reasons.push(`Verificatorul independent a ales altceva decât cheia la „${question.text.slice(0, 60)}”.`);
+  });
+
+  // Dacă ar pica tot lotul, e mai probabil o nepotrivire de format decât un lot întreg greșit.
+  if (kept.length === 0 && questions.length > 1) return passthrough;
+  return { questions: kept, flaggedCount: questions.length - kept.length, flaggedReasons: reasons, checked: true };
 }
