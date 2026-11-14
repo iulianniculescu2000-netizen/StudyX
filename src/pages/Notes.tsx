@@ -19,6 +19,7 @@ import { dur, ease } from '../theme/motion';
 import { renderDiagramBlock } from '../components/ai-chat/diagram';
 import { sanitizeSvg } from '../components/ai-chat/sanitize';
 import { parseSchemaSource, schemaNoteText, schemaTitle } from '../lib/ai/schemaStudy';
+import { notesSummary } from '../lib/notesSummary';
 
 const SCHEMA_GROUP = '__schema__';
 const isSchemaId = (id: string) => id.startsWith('schema-');
@@ -99,6 +100,8 @@ export default function Notes() {
 
   const groupKeyOf = (n: { questionId: string; quiz: { id: string } | null }) =>
     isSchemaId(n.questionId) && !n.quiz ? SCHEMA_GROUP : (n.quiz?.id ?? '__orphan__');
+
+  const schemaNoteCount = enriched.filter((n) => groupKeyOf(n) === SCHEMA_GROUP).length;
 
   const filtered = enriched.filter(n => {
     if (quizFilter && groupKeyOf(n) !== quizFilter) return false;
@@ -293,7 +296,11 @@ export default function Notes() {
           tour={{ id: 'notes', label: 'Ghid pentru notițe' }}
           subtitle={enriched.length === 0
             ? 'Nicio notiță salvată'
-            : `${enriched.length} ${enriched.length === 1 ? 'notiță' : 'notițe'} din ${grouped.size} ${grouped.size === 1 ? 'grilă' : 'grile'}`}
+            : notesSummary(
+              enriched.length - schemaNoteCount,
+              new Set(enriched.map(groupKeyOf).filter((key) => key !== SCHEMA_GROUP)).size,
+              schemaNoteCount,
+            )}
           actions={enriched.length > 0 && hasKey ? (
             <>
               <button
