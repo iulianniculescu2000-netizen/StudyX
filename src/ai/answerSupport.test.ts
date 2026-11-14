@@ -47,3 +47,32 @@ describe('enforceBooksOnly', () => {
     expect(enforceBooksOnly('Din cunoștințe generale (nu din cărți): ceva.')).toBe('Nu am găsit în cărți.');
   });
 });
+
+describe('cifrele din propozițiile citate', () => {
+  const withText = [
+    { n: 1, score: 0.8, text: 'Tromboliza trebuie să înceapă până la maxim 4,5 ore de la debut. Glicemie peste 126 mg/dl.' },
+    { n: 2, score: 0.8, text: 'Lactuloza 10-30 ml de trei ori pe zi.' },
+  ];
+
+  it('cifrele care apar în pasajul citat nu sunt semnalate (virgula și punctul zecimal sunt la fel)', async () => {
+    const { unverifiedFigures } = await import('./answerSupport');
+    expect(unverifiedFigures('Fereastra este de 4.5 ore [1]. Lactuloză 10–30 ml [2].', withText)).toEqual([]);
+  });
+
+  it('o cifră absentă din pasajul citat e de verificat, iar răspunsul devine parțial susținut', async () => {
+    const { unverifiedFigures } = await import('./answerSupport');
+    const answer = 'Fereastra este de 6,5 ore [1].\n- Glicemie peste 126 mg/dl [1].';
+    expect(unverifiedFigures(answer, withText)).toEqual(['6.5']);
+    expect(assessAnswerSupport(answer, withText)).toMatchObject({ level: 'partial', label: 'Parțial susținut: o cifră de verificat în carte', unverified: ['6.5'] });
+  });
+
+  it('nu verifică propozițiile fără [n], numerotarea listei, cifrele singure și etichetele', async () => {
+    const { unverifiedFigures } = await import('./answerSupport');
+    const answer = 'Din experiență, 80% răspund.\n12. Există 2 forme [1].\nVezi și [1, 2].';
+    expect(unverifiedFigures(answer, withText)).toEqual([]);
+  });
+
+  it('fără textul pasajelor rămâne calculul vechi', () => {
+    expect(assessAnswerSupport('Doza e de 999 mg [1].', cites).level).toBe('supported');
+  });
+});

@@ -126,7 +126,9 @@ function ChatMessageBubble({
             className="mt-2 text-[11px]"
             style={{ color: theme.text3 }}
             data-support={message.support.level}
-            title="Calculat din citările [n] și scorurile căutării în cărți, nu de model"
+            title={message.support.unverified?.length
+              ? `Nu apar în pasajele citate: ${message.support.unverified.join(', ')}. Verifică-le în carte.`
+              : 'Calculat din citările [n] și scorurile căutării în cărți, nu de model'}
           >
             {message.support.label}
           </div>

@@ -790,6 +790,14 @@ export default function AIChatDrawer() {
         };
       });
 
+      // Pentru indicatorul de încredere: textul fiecărui pasaj, ca cifrele din propozițiile citate să fie căutate în el.
+      // Nu intră în citările salvate ale mesajului (ar umfla istoricul).
+      const supportCitations = citations.map((citation) => ({
+        n: citation.n,
+        score: citation.score,
+        text: contextChunks.find((entry) => entry.id === numbered.sources.find((source) => source.n === citation.n)?.id)?.text,
+      }));
+
       const contextSummary = numbered.context;
 
       // The engine trims this to a character budget; hand it a generous tail.
@@ -930,7 +938,7 @@ export default function AIChatDrawer() {
               // Răspuns declarat „din cunoștințe generale” și fără [n]: fără chipuri de sursă.
               ...(last.citations?.length ? { citations: citationsForAnswer(answerForSupport, last.citations) } : {}),
               // Indicator de încredere, calculat din [n] și scorurile retrieverului; doar când biblioteca a fost folosită.
-              ...(answerForSupport.trim() && (readySources.length > 0 || citations.length > 0) ? { support: assessAnswerSupport(answerForSupport, citations) } : {}),
+              ...(answerForSupport.trim() && (readySources.length > 0 || citations.length > 0) ? { support: assessAnswerSupport(answerForSupport, supportCitations) } : {}),
               ...(answerTruncated ? { truncated: true } : {}),
               ...(servedMeta ? { served: servedMeta } : {}),
             };
