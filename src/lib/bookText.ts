@@ -32,10 +32,30 @@ async function extraBookPages(book: BookCode): Promise<Array<{ printed: number; 
     .sort((a, b) => a.printed - b.printed);
 }
 
+/** Marcajul blocului de text din imagini (scheme, legende, casete, note) adăugat la finalul paginii. */
+export const FIGURE_TEXT_LABEL = 'Din figuri și casete:';
+
+/**
+ * Textul din imagini (etichete de scheme și algoritmi, legende, titluri de cadrane, note de subsol, casete „De reținut”) pe care PDF-ul din aplicație îl pierde,
+ * extras pagină cu pagină în proiectul Grile rezidențiat și adăugat doar unde lipsește (scripts/build-book-figures.py). Examenul întreabă și din el.
+ * Se lipește la finalul paginii, sub un marcaj, ca să rămână separat de proza paginii.
+ */
+async function withFigureText(book: BookCode, pages: string[]): Promise<string[]> {
+  const all = (await import('../data/rezidentiat/library/figures.json')).default as Record<string, Record<string, string>>;
+  const figures = all[book] ?? {};
+  return pages.map((text, index) => {
+    const extra = figures[String(index + 1)];
+    return extra ? `${text.trimEnd()}
+
+${FIGURE_TEXT_LABEL}
+${extra}` : text;
+  });
+}
+
 export function loadBookPages(book: BookCode): Promise<string[]> {
   let pages = cache.get(book);
   if (!pages) {
-    pages = LOADERS[book]().then((m) => m.default);
+    pages = LOADERS[book]().then((m) => withFigureText(book, m.default));
     cache.set(book, pages);
     pages.catch(() => cache.delete(book));
   }
