@@ -13,6 +13,7 @@ import {
   getCorrectAnswerText,
 } from '../../../helpers/quizAi';
 import { getCorrectOptionIds, isCorrectSelection } from '../helpers';
+import { explanationKey, loadExplanation, saveExplanation } from '../../../lib/explanationCache';
 
 const loadAIEngine = () => import('../../../ai/AIEngine');
 
@@ -198,8 +199,18 @@ export function useQuizAssist({ question, revealed, examMode, currentIdx, answer
         applyFallback();
         return;
       }
+      // Aceeași grilă cu același răspuns: explicația primită deja se refolosește, fără altă cerere către AI.
+      const cacheKey = explanationKey(question, userAnswer);
+      const saved = loadExplanation(activeProfileId, cacheKey);
+      if (saved) {
+        setAnalysisResult(saved);
+        setAnalysisQuestionId(question.id);
+        setAiText(saved.explanation);
+        return;
+      }
       const { analyzeAnswer } = await loadAIEngine();
       const { analysis } = await analyzeAnswer(activeProfileId, { question, userAnswer, correctAnswer, isCorrect });
+      saveExplanation(activeProfileId, cacheKey, analysis);
       if (isStale()) return; // user moved on — this answer belongs to a past question
       setAnalysisResult(analysis);
       setAnalysisQuestionId(question.id);
