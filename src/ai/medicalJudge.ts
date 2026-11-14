@@ -17,9 +17,16 @@
  * mismatched verdict count all result in the original questions passing
  * through unchanged. A broken judge must never be the reason a generation
  * comes back empty — it can only ever remove questions it is confident about.
+ *
+ * Al doilea model: când există cheie și la alt furnizor decât cel care tocmai a generat grilele, verificarea
+ * rulează acolo (un model care își verifică propria grilă repetă aceeași greșeală). Dacă acel furnizor nu
+ * răspunde, verificarea cade pe lanțul obișnuit, ca până acum.
  */
 import type { Question } from '../types';
-import { groqRequest } from '../lib/groq';
+import { getLastServedModel, groqRequest } from '../lib/groq';
+import { getConfiguredProviderModels, useAIStore } from '../store/aiStore';
+import { useAIUsageStore } from '../store/aiUsageStore';
+import { pickVerifier, type ModelRef } from '../lib/ai/crossCheck';
 import { validateJson } from './validator';
 import { VERIFIER_MATERIAL_RULE } from './promptKit';
 
@@ -59,11 +66,13 @@ function buildJudgePrompt(questions: Question[], groundingText: string | undefin
   const lines = [
     'Ești medic examinator senior. Verifici RIGID corectitudinea medicală a unor grile deja generate, ÎNAINTE ca un student să le vadă. NU genera conținut nou, NU reformula — doar verifică.',
     VERIFIER_MATERIAL_RULE,
-    'Pentru fiecare întrebare, decide dacă varianta/variantele marcate [MARCAT CORECT] sunt cu adevărat corecte din punct de vedere medical (mecanism, criterii de diagnostic, valori de referință, indicații, contraindicații).',
+    'Pentru fiecare întrebare, decide dacă varianta/variantele marcate [MARCAT CORECT] sunt cu adevărat răspunsul la enunț din punct de vedere medical (mecanism, criterii de diagnostic, valori de referință, indicații, contraindicații).',
+    'La enunțurile negative („NU”, „FALS”, „incorectă”, „cu excepția”) varianta marcată trebuie să fie excepția, adică afirmația falsă; nu o respinge pentru că e falsă.',
+    'Verifică și variantele NEMARCATE: dacă una dintre ele este, fără dubiu, un răspuns la fel de corect ca cel marcat (grila ar avea un răspuns corect în plus față de cheie), întrebarea e greșită.',
     groundingText
       ? `Ai la dispoziție și sursa din care au fost generate (curs) — folosește-o ca referință principală când e relevantă:\n"""\n${groundingText.slice(0, MAX_GROUNDING_CHARS)}\n"""`
       : 'Nu ai o sursă atașată — verifică pe baza cunoștințelor medicale general acceptate și STABILE.',
-    'Marchează "correct": false DOAR când ești sigur că varianta marcată e greșită sau clar depășită medical — NU pentru ambiguități minore de formulare, stil, sau interpretări la limită unde ambele tabere au dreptate.',
+    'Marchează "correct": false DOAR când ești sigur că varianta marcată e greșită sau clar depășită medical, ori că o variantă nemarcată e și ea corectă — NU pentru ambiguități minore de formulare, stil, sau interpretări la limită unde ambele tabere au dreptate.',
     '',
     questions.map((q, i) => formatQuestionForReview(q, i)).join('\n\n'),
     '',
@@ -71,6 +80,20 @@ function buildJudgePrompt(questions: Question[], groundingText: string | undefin
     '{"verdicts":[{"i":0,"correct":true},{"i":1,"correct":false,"reason":"1 propoziție, ce e greșit medical"}]}',
   ];
   return lines.join('\n');
+}
+
+/**
+ * Un furnizor cu cheie, diferit de cel care a servit ultima cerere (generarea). Null când nu se știe cine a generat
+ * sau când nu există a doua cheie: atunci verificarea merge pe lanțul obișnuit.
+ */
+export function pickJudgeModel(): ModelRef | null {
+  try {
+    const producer = getLastServedModel();
+    if (!producer) return null;
+    return pickVerifier(producer, getConfiguredProviderModels(useAIStore.getState()), useAIUsageStore.getState().windows);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -101,15 +124,19 @@ export async function verifyQuestionsMedically(
     };
   }
 
+  const request = {
+    task: 'analysis' as const,
+    messages: [{ role: 'user' as const, content: buildJudgePrompt(questions, groundingText) }],
+    temperature: 0,
+    maxTokens: Math.min(2200, 300 + questions.length * 60),
+    skipLibraryContext: true,
+  };
+  const other = pickJudgeModel();
   let raw: string;
   try {
-    raw = await groqRequest({
-      task: 'analysis',
-      messages: [{ role: 'user', content: buildJudgePrompt(questions, groundingText) }],
-      temperature: 0,
-      maxTokens: Math.min(2200, 300 + questions.length * 60),
-      skipLibraryContext: true,
-    });
+    raw = other
+      ? await groqRequest({ ...request, only: other }).catch(() => groqRequest(request))
+      : await groqRequest(request);
   } catch {
     return passthrough;
   }
