@@ -1,6 +1,11 @@
+import { useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Loader2, Sparkles, Zap } from 'lucide-react';
 import type { AIAnalysisResult, HintResult } from '../../ai/types';
+import type { ContextSource } from '../../ai/contextBuilder';
+import {
+  CITATION_TIER_TAG, citationChipParts, citationFromSource, citationOpenLabel, openBookCitation, useCitationTiers,
+} from '../../components/ai-chat/citations';
 import type { Theme } from '../../theme/themes';
 import AIRichText from '../../components/ai-chat/AIRichText';
 import { dur, ease, press } from '../../theme/motion';
@@ -121,6 +126,36 @@ export function HintPanel({
   );
 }
 
+/** Sursele citate cu [n] în explicație: un chip pe sursă, care deschide cartea la pagină (ca în chat). */
+function ExplanationSources({ sources }: { sources: ContextSource[] }) {
+  const citations = useMemo(() => sources.map((source) => citationFromSource(source)), [sources]);
+  const tiers = useCitationTiers(citations);
+  return (
+    <div className="mt-4 flex flex-wrap gap-2" data-testid="explanation-sources">
+      {citations.map((citation, index) => {
+        const tier = tiers[index] ?? 'general';
+        const chip = citationChipParts(citation);
+        return (
+          <button
+            key={`${citation.n}-${chip.full}`}
+            type="button"
+            onClick={() => openBookCitation(citation)}
+            className="citation-source"
+            data-tier={tier}
+            title={chip.full}
+            aria-label={`${citationOpenLabel(citation)}, sursa ${citation.n}: ${CITATION_TIER_TAG[tier] ? `${CITATION_TIER_TAG[tier]}, ` : ''}${chip.full}`}
+          >
+            <span className="citation-source-n" aria-hidden="true">{citation.n}</span>
+            {CITATION_TIER_TAG[tier] && <span className="citation-source-tier" aria-hidden="true">{CITATION_TIER_TAG[tier]}</span>}
+            <span className="citation-source-title">{chip.title}</span>
+            {chip.where && <span className="citation-source-page">{chip.where}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 interface AIExplanationPanelProps {
   aiLoading: boolean;
   aiText: string | null;
@@ -195,6 +230,9 @@ export function AIExplanationPanel({
               <AIRichText text={aiText} />
               {aiLoading && <span className="animate-pulse">...</span>}
             </div>
+            {analysisResult?.citations && analysisResult.citations.length > 0 && (
+              <ExplanationSources sources={analysisResult.citations} />
+            )}
             {analysisResult?.mistakeType && (
               <div className="mt-4 border-t border-dashed pt-4 opacity-60" style={{ borderColor: `${theme.accent2}30` }}>
                 <div className="mb-1 text-[10px] font-black uppercase tracking-widest" style={{ color: theme.accent2 }}>Analiză eroare</div>

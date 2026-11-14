@@ -1,4 +1,5 @@
 import type { Confidence, Difficulty, Question, QuestionStat } from '../types';
+import type { ContextSource } from './contextBuilder';
 
 export type AIRequestTask =
   | 'questions'
@@ -150,6 +151,8 @@ export interface AIAnalysisResult {
   recommendedTopic?: string;
   relatedConcepts?: string[];
   sources?: string[];
+  /** Sursele numerotate pe care explicația le citează cu [n] (carte + pagină); nu se salvează în profil. */
+  citations?: ContextSource[];
 }
 
 export interface AIQuestionRequest {

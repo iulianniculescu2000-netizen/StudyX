@@ -14,6 +14,9 @@ import {
   buildWrongOptionsPrompt,
 } from './prompts';
 import { retrieveRelevantChunks } from './retriever';
+import { buildNumberedContext } from './contextBuilder';
+import { citedSources, dropUnknownCitations, withoutCitations } from './explanationCitations';
+import { filterRelevantChunks } from '../components/ai-chat/retrievalQuery';
 import type {
   AIAnalysisResult,
   AIContextPayload,
@@ -41,6 +44,8 @@ type ContextChunk = ChunkRecord | RetrievedChunk;
 /** Shapes shown to the model in the (single) JSON repair pass. */
 const QUESTIONS_SCHEMA_HINT = '{"questions":[{"text":"...","options":[{"text":"...","isCorrect":true|false}],"explanation":"...","tags":["..."],"difficulty":"easy|medium|hard"}]}';
 const ANALYSIS_SCHEMA_HINT = '{"explanation":"...","mistakeType":"...","rule":"...","confidence":0.0-1.0,"missingConcept":"...","recommendedTopic":"...","relatedConcepts":["..."],"sources":["..."]}';
+/** Bugetul de caractere al contextului din cărți pentru explicația unei grile. */
+const EXPLANATION_CONTEXT_CHARS = 6000;
 export type ChatMode = 'grounded' | 'explain' | 'summarize' | 'diagram' | 'test' | 'mnemonic';
 
 // Per-mode sampling temperature. Creative modes (mnemonic) need more freedom or
@@ -82,8 +87,14 @@ interface ChatResponseOptions {
   onFinish?: (reason: string | null) => void;
 }
 
-async function buildRelevantContext(query: string, limit: number, userProfile?: UserProfileData | null) {
-  const chunks = await retrieveRelevantChunks(query, userProfile ?? null, limit);
+/**
+ * `assist` = ajutoarele din rezolvare (explicație, indiciu, mnemonic, variante greșite): aceeași cale ca în chat.
+ * Cărțile de bază au întâietate (`rezidentiat`), iar fragmentele fără legătură cu grila nu ajung în prompt
+ * (căutarea întoarce „cele mai apropiate” fragmente chiar când niciunul nu e despre subiect).
+ */
+async function buildRelevantContext(query: string, limit: number, userProfile?: UserProfileData | null, assist = false) {
+  const found = await retrieveRelevantChunks(query, userProfile ?? null, limit, assist ? { rezidentiat: true } : undefined);
+  const chunks = assist ? filterRelevantChunks(found) : found;
   return {
     chunks,
     summary: chunks.map((chunk) => `[Sursă: ${chunk.source}]\n${chunk.text}`).join('\n\n'),
@@ -412,10 +423,12 @@ export async function analyzeAnswer(
 ) {
   const query = `${payload.question.text} ${payload.correctAnswer}`;
   const profile = loadUserProfile(profileId);
-  const { chunks, summary } = await buildRelevantContext(query, 5, profile);
+  const { chunks } = await buildRelevantContext(query, 5, profile, true);
+  // Context numerotat, cu pagina fiecărui fragment: explicația poate cita [n], iar panoul deschide cartea la pagină.
+  const numbered = buildNumberedContext(chunks, EXPLANATION_CONTEXT_CHARS, 5);
 
   const context: AIContextPayload = {
-    summary,
+    summary: numbered.context,
     chunks,
     query,
     level: payload.question.difficulty,
@@ -433,8 +446,11 @@ export async function analyzeAnswer(
     skipLibraryContext: true,
   }) as AIAnalysisResult;
 
-  const analysis = normalizeAnalysisResult(rawAnalysis, context);
-  const nextProfile = updateUserProfileAfterAnswer(profileId, { ...payload, analysis });
+  const normalized = normalizeAnalysisResult(rawAnalysis, context);
+  const explanation = dropUnknownCitations(normalized.explanation ?? '', numbered.sources);
+  // Banca de greșeli păstrează explicația fără [n]: acolo sursele nu se afișează.
+  const nextProfile = updateUserProfileAfterAnswer(profileId, { ...payload, analysis: { ...normalized, explanation: withoutCitations(explanation) } });
+  const analysis: AIAnalysisResult = { ...normalized, explanation, citations: citedSources(explanation, numbered.sources) };
   return { analysis, profile: nextProfile };
 }
 
@@ -445,7 +461,7 @@ export async function generateQuestions(request: AIQuestionRequest) {
 
 export async function generateHint(question: Question) {
   const query = question.text;
-  const { chunks, summary } = await buildRelevantContext(query, 4);
+  const { chunks, summary } = await buildRelevantContext(query, 4, null, true);
 
   const context: AIContextPayload = {
     summary,
@@ -475,7 +491,7 @@ export async function generateHint(question: Question) {
 
 export async function generateMnemonicForConcept(concept: string, correctAnswer: string) {
   const query = `${concept} ${correctAnswer}`;
-  const { chunks, summary } = await buildRelevantContext(query, 3);
+  const { chunks, summary } = await buildRelevantContext(query, 3, null, true);
 
   const context: AIContextPayload = {
     summary,
@@ -497,7 +513,7 @@ export async function generateMnemonicForConcept(concept: string, correctAnswer:
 }
 
 export async function explainWrongOptions(question: Question) {
-  const { chunks, summary } = await buildRelevantContext(question.text, 4);
+  const { chunks, summary } = await buildRelevantContext(question.text, 4, null, true);
 
   const context: AIContextPayload = {
     summary,
