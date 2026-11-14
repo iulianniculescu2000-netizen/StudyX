@@ -3,6 +3,7 @@ import type { AIContextPayload, MistakeBankEntry, UserProfileData, WeakTopic } f
 import { buildQuestionTypeInstruction, type QuestionType } from '../lib/ai/questionTypes';
 import { DEFAULT_EXAM_STYLE, type ExamStyle } from '../lib/ai/examStyle';
 import { buildExemplarBlock } from '../data/questionExemplars';
+import { blueprintPromptBlock, planQuestionSet } from '../lib/ai/examBlueprint';
 import { CONTEXT_IS_MATERIAL_RULE, PERSONA_CORE, STRUCTURED_OUTPUT_RULES, TERMINOLOGY_RULE } from './promptKit';
 
 export const AI_PERSONALITY =
@@ -51,6 +52,17 @@ export const RESIDENCY_DISTRACTOR_CRAFT =
   'Evită: opțiuni vagi („frecvent utilizat”), perechi opuse simetrice construite didactic, cheia cu glosă între paranteze în timp ce celelalte sunt seci, ' +
   'toate opțiunile cu aceeași formă verbală sau aceeași lungime. Variază: una scurtă, una cu cifră, una cu negație. ' +
   'Păstrează calificatorul sursei („în practica generală”, „acum”) în cheie și în distractori.';
+
+/**
+ * Cum se construiește o grilă din textul unei cărți, ca la examenul real (măsurat pe 1200 de grile 2021–2025).
+ * Intră în prompt doar la Rezidențiat și doar când există un context din care se construiește.
+ */
+export const RESIDENCY_GROUNDED_BUILD_RULES =
+  'CONSTRUCȚIE DIN TEXT (ca la examenul real): dacă în context apare un titlu de secțiune, de cadran sau de tabel, enunțul îl reia aproape cuvânt cu cuvânt ' +
+  '(așa fac ~50% dintre grile); opțiunile corecte sunt propoziții din context, aproape literale; la complement multiplu cheile sunt un subset din aceeași listă, ' +
+  'în ordinea din text, cu distractorii intercalați; distractorii vin din aceeași pagină sau din vecinătate, iar la tabele schimbi rândul sau coloana, fără cifre inventate. ' +
+  'O grilă din zece poate avea enunțul sub formă de întrebare cu „?”, restul se termină cu „:”. ' +
+  'Niciodată: enunț care trimite la sursă („conform cursului”, „în text”), cifre scrise în litere, glosă între paranteze doar la răspunsul corect.';
 
 export const RESIDENCY_STYLE_RULES =
   'STIL DE GRILĂ (calibrat pe subiectele oficiale de rezidențiat și pe culegerile românești):\n' +
@@ -183,6 +195,11 @@ export function buildQuestionPrompt(
     'evită „toate de mai sus”, „niciuna” și cuvintele absolute („întotdeauna”, „niciodată”) când nu sunt ele însele adevărul.' +
     (examStyle === 'residency' ? ` ${RESIDENCY_DISTRACTOR_CRAFT}` : '');
 
+  // Structura lotului o fixează codul (distribuția reală de corecte și de metode de distractori), nu modelul.
+  const blueprint = examStyle === 'residency' && !questionTypes?.length
+    ? blueprintPromptBlock(planQuestionSet(count, questionType))
+    : '';
+
   const commonQualityRules = 'distractorii plauzibili din aceeași categorie, fără a menționa numele fișierului sau documentului, fără formulări meta de tip "conform cursului", fără opțiuni mai lungi de 18 cuvinte.';
 
   const answerQualityInstruction = questionType === 'multiple'
@@ -209,6 +226,8 @@ export function buildQuestionPrompt(
     `NIVEL CERUT: ${difficultyText(difficulty)}`,
     vignetteInstruction,
     distractorInstruction,
+    blueprint,
+    examStyle === 'residency' && safeContext ? RESIDENCY_GROUNDED_BUILD_RULES : '',
     answerQualityInstruction,
     // Anchors last before the context: the model copies the shape it saw most
     // recently, and prose rules alone never got the stems short enough.

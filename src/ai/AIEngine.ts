@@ -33,6 +33,7 @@ import type {
 import { loadUserProfile, updateUserProfileAfterAnswer, getWeakTopicsForProfile } from './UserProfile';
 import { validateJson } from './validator';
 import { verifyQuestionsMedically } from './medicalJudge';
+import { polishGeneratedQuestions } from '../lib/ai/examForm';
 import { fitHistoryToBudget, type StudentState } from './chatMemory';
 import { composeChatSystemPrompt } from './promptKit';
 import { compactOldAssistantTurns, logPromptBreakdown } from '../lib/ai/tokenBudget';
@@ -285,7 +286,12 @@ export class QuestionGenerator {
       skipLibraryContext: true,
     });
 
-    const sanitized = sanitizeGeneratedQuestions(parsed.questions.map(normalizeQuestion));
+    const sanitized = polishGeneratedQuestions(
+      sanitizeGeneratedQuestions(parsed.questions.map(normalizeQuestion)),
+      request.examStyle ?? DEFAULT_EXAM_STYLE,
+      // Pe un subiect fix contextul poate fi irelevant (RAG întoarce „cele mai apropiate” fragmente): acolo nu judecăm cheia după el.
+      { sourceText: request.subject ? undefined : context.summary },
+    ).questions;
     const judged = await verifyQuestionsMedically(sanitized, context.summary);
 
     return {
@@ -379,7 +385,7 @@ async function generateQuestionsFromTopicOnce(
     skipLibraryContext: true,
   });
 
-  const sanitized = sanitizeGeneratedQuestions(parsed.questions.map(normalizeQuestion));
+  const sanitized = polishGeneratedQuestions(sanitizeGeneratedQuestions(parsed.questions.map(normalizeQuestion)), examStyle).questions;
   // Silent before this: the model returning fewer than `count` items to begin
   // with, or one item in an otherwise-fine batch glitching (empty text, no
   // options left after dedup, no option marked correct) and getting dropped
