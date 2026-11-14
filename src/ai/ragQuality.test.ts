@@ -260,3 +260,15 @@ describe('pagini din marcaje PDF', () => {
     expect(assignPagesToChunks('Ceva text suficient de lung.', chunks, [])).toBe(chunks);
   });
 });
+
+describe('formulări de zi cu zi → termenul din cărți (într-un singur sens)', () => {
+  it('„pietrele la fiere” aduce litiaza biliară, „atac de cord” aduce infarctul', () => {
+    expect(expandMedicalQuery('Operăm pietrele la fiere?').phrases).toContain('litiaza biliara');
+    expect(expandMedicalQuery('ce fac la un atac de cord').phrases).toContain('infarct miocardic');
+    expect(expandMedicalQuery('zahăr mic în sânge').phrases).toContain('hipoglicemie');
+  });
+  it('termenul medical nu aduce formularea de zi cu zi', () => {
+    expect(expandMedicalQuery('litiaza biliară simptomatică').phrases.join(' ')).not.toMatch(/pietre/);
+    expect(expandMedicalQuery('dispnee de efort').phrases.join(' ')).not.toMatch(/aer/);
+  });
+});

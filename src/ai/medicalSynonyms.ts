@@ -63,6 +63,40 @@ export const MEDICAL_SYNONYM_GROUPS: readonly (readonly string[])[] = [
   ['tratament de fond', 'dmard', 'antireumatice modificatoare de boala', 'remisive'],
   // „Managementul X” în întrebare, „Tratament” / „Gestionarea” ca titlu în carte.
   ['management', 'tratament', 'gestionare', 'conduita terapeutica'],
+  // Kumar folosește ambele nume; titlul secțiunii e „Encefalopatia portosistemică”.
+  ['encefalopatie hepatica', 'encefalopatie portosistemica'],
+];
+
+/**
+ * Formulări de zi cu zi → termenul din cărți. Într-un singur sens: „pietre la fiere” aduce „litiază biliară”, dar
+ * „litiază biliară” NU aduce „pietre la fiere” (cuvintele comune „pietre”, „aer”, „sânge” ar strica clasarea).
+ * Doar echivalențe fără echivoc; simptomele vagi („amețeală”, „oboseală”) nu intră.
+ */
+export const LAY_TO_MEDICAL: readonly (readonly [lay: string, medical: string])[] = [
+  ['zahar mic in sange', 'hipoglicemie'],
+  ['zahar scazut in sange', 'hipoglicemie'],
+  ['glicemie mica', 'hipoglicemie'],
+  ['zahar mare in sange', 'hiperglicemie'],
+  ['zahar crescut in sange', 'hiperglicemie'],
+  ['pietre la fiere', 'litiaza biliara'],
+  ['pietre la colecist', 'litiaza biliara'],
+  ['pietre la rinichi', 'litiaza renala'],
+  ['atac de cord', 'infarct miocardic'],
+  ['supradenivelare de st', 'stemi'],
+  ['cheag in plaman', 'tromboembolism pulmonar'],
+  ['cheag de sange in plaman', 'tromboembolism pulmonar'],
+  ['atac cerebral', 'accident vascular cerebral'],
+  ['tensiune mare', 'hipertensiune arteriala'],
+  ['mancarime', 'prurit'],
+  ['raie', 'scabie'],
+  ['lipsa de aer', 'dispnee'],
+  ['tuse cu sange', 'hemoptizie'],
+  ['varsaturi cu sange', 'hematemeza'],
+  ['scaun negru', 'melena'],
+  ['sange in urina', 'hematurie'],
+  ['lesin', 'sincopa'],
+  ['galbenare', 'icter'],
+  ['inima marita', 'cardiomegalie'],
 ];
 
 /** Text de căutare: litere mici, fără diacritice (inclusiv ș/ț cu virgulă sau cu sedilă), spații normalizate. */
@@ -139,6 +173,10 @@ export function expandMedicalQuery(query: string): QueryExpansion {
   for (const group of MEDICAL_SYNONYM_GROUPS) {
     const hit = group.find((form) => normalized.includes(` ${form} `) || stemmed.includes(` ${stemPhrase(form)} `));
     if (hit) group.filter((form) => form !== hit).forEach(push);
+  }
+
+  for (const [lay, medical] of LAY_TO_MEDICAL) {
+    if (normalized.includes(` ${lay} `) || stemmed.includes(` ${stemPhrase(lay)} `)) push(medical);
   }
 
   return { phrases, matched };
