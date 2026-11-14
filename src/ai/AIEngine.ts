@@ -14,7 +14,7 @@ import {
   buildWrongOptionsPrompt,
 } from './prompts';
 import { retrieveRelevantChunks } from './retriever';
-import { buildNumberedContext } from './contextBuilder';
+import { buildNumberedContext, normalizeCitationMarks } from './contextBuilder';
 import { citedSources, dropUnknownCitations, withoutCitations } from './explanationCitations';
 import { filterRelevantChunks } from '../components/ai-chat/retrievalQuery';
 import type {
@@ -447,7 +447,7 @@ export async function analyzeAnswer(
   }) as AIAnalysisResult;
 
   const normalized = normalizeAnalysisResult(rawAnalysis, context);
-  const explanation = dropUnknownCitations(normalized.explanation ?? '', numbered.sources);
+  const explanation = dropUnknownCitations(normalizeCitationMarks(normalized.explanation ?? ''), numbered.sources);
   // Banca de greșeli păstrează explicația fără [n]: acolo sursele nu se afișează.
   const nextProfile = updateUserProfileAfterAnswer(profileId, { ...payload, analysis: { ...normalized, explanation: withoutCitations(explanation) } });
   const analysis: AIAnalysisResult = { ...normalized, explanation, citations: citedSources(explanation, numbered.sources) };

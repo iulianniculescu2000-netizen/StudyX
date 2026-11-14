@@ -71,7 +71,7 @@ import ChatHeader from './ai-chat/ChatHeader';
 import { useOptionCards } from './ai-chat/useOptionCards';
 import StudioPanel from './ai-chat/StudioPanel';
 import { citationFromSource, openBookCitation } from './ai-chat/citations';
-import { buildNumberedContext, chunkBodyText } from '../ai/contextBuilder';
+import { buildNumberedContext, chunkBodyText, normalizeCitationMarks } from '../ai/contextBuilder';
 import { citationsForAnswer, enforceBooksOnly, stripCitationsAfterGeneralKnowledge } from '../ai/groundingGuard';
 import { assessAnswerSupport } from '../ai/answerSupport';
 import { CHAT_STORAGE_KEY, useChatMessages } from './ai-chat/useChatMessages';
@@ -906,7 +906,7 @@ export default function AIChatDrawer() {
         let finalTextOverride: string | undefined;
         if (streamedAnswer.trim()) {
           try {
-            const checked = stripCitationsAfterGeneralKnowledge(await checkAndComplete({ answer: streamedAnswer }));
+            const checked = stripCitationsAfterGeneralKnowledge(await checkAndComplete({ answer: normalizeCitationMarks(streamedAnswer) }));
             const cleaned = booksOnly ? enforceBooksOnly(checked) : checked;
             if (cleaned !== streamedAnswer) {
               streamedAnswer = cleaned;

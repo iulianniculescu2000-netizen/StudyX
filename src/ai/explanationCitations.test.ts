@@ -31,3 +31,11 @@ describe('citările din explicația unei grile', () => {
     expect(withoutCitations('Corect [1]. Și [2, 3].')).toBe('Corect. Și.');
   });
 });
+
+describe('paranteze de citare scrise altfel de model', () => {
+  it('„【1】”, „【1†L3-L5】” și „［2, 3］” devin [n]; textul obișnuit rămâne neatins', async () => {
+    const { normalizeCitationMarks } = await import('./contextBuilder');
+    expect(normalizeCitationMarks('Până la 4,5 h【1】. Vezi【2†L3-L5】 și ［2, 3］.')).toBe('Până la 4,5 h[1]. Vezi[2] și [2, 3].');
+    expect(normalizeCitationMarks('Deja corect [1]; „【titlu】” rămâne.')).toBe('Deja corect [1]; „【titlu】” rămâne.');
+  });
+});

@@ -232,6 +232,15 @@ export function buildNumberedContext(chunks: ContextChunkInput[], maxChars: numb
   return { context: `${HEADER}\n\n${blocks.join('\n\n')}`, sources };
 }
 
+/**
+ * Unele modele (gpt-oss, văzut live la 14 nov 2026) scriu citările ca „【1】” sau „【1†L3-L5】” în loc de „[1]”.
+ * Fără normalizare, citările nu erau recunoscute: fără butoane de sursă în text și „Fără surse în cărți” sub un
+ * răspuns citat corect.
+ */
+export function normalizeCitationMarks(text: string): string {
+  return text.replace(/[【〔［]\s*(\d{1,2}(?:\s*[,–-]\s*\d{1,2})*)\s*(?:†[^】〕］]*)?[】〕］]/g, '[$1]');
+}
+
 export type CitationSegment<S extends { n: number } = ContextSource> =
   | { type: 'text'; text: string }
   | { type: 'cite'; raw: string; numbers: number[]; sources: S[] };

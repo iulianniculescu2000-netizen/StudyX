@@ -70,6 +70,22 @@ describe('MarkdownRenderer: structure', () => {
     expect(container.querySelector('.katex-display')).not.toBeNull();
     expect(container.querySelector('script')).toBeNull();
   });
+
+  it('renders CJK/fullwidth citation marks like 【1】 as interactive chips even without ASCII brackets', () => {
+    const { container } = render(
+      <MarkdownRenderer
+        content={'Conform protocolului【1】 și【2†L3-L5】.'}
+        citations={[
+          { n: 1, source: 'Kumar', topic: 'Hipertensiune', score: 1, excerpt: 'Ex 1', page: 75 },
+          { n: 2, source: 'Sinopsis', topic: 'Cardio', score: 0.9, excerpt: 'Ex 2', page: 120 },
+        ]}
+      />,
+    );
+    const chips = container.querySelectorAll('button.ai-md-cite');
+    expect(chips).toHaveLength(2);
+    expect(chips[0].textContent).toContain('Kumar');
+    expect(chips[1].textContent).toContain('Sinopsis');
+  });
 });
 
 describe('MarkdownRenderer: diagrams', () => {

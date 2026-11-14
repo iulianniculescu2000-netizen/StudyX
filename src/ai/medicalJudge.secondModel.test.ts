@@ -84,3 +84,31 @@ describe('verificatorul medical pe al doilea model', () => {
     expect(prompt).toContain('cu excepția');
   });
 });
+
+describe('bugetul de răspuns al verificatorului', () => {
+  beforeEach(() => {
+    groqRequest.mockReset();
+    configured = [{ provider: 'groq', model: 'openai/gpt-oss-120b' }];
+  });
+
+  it('lasă loc modelelor de raționament: mult peste vechiul 300 + 60 pe grilă', async () => {
+    const { judgeMaxTokens } = await import('./medicalJudge');
+    expect(judgeMaxTokens(2)).toBeGreaterThanOrEqual(2000);
+    expect(judgeMaxTokens(25, 1)).toBeLessThanOrEqual(8000);
+  });
+
+  it('răspuns gol la prima încercare: reîncearcă o dată cu buget dublu și aplică verdictul', async () => {
+    groqRequest.mockResolvedValueOnce('').mockResolvedValueOnce(JSON.stringify({ verdicts: [{ i: 0, correct: false, reason: 'cheie greșită' }] }));
+    const result = await verifyQuestionsMedically([question], undefined);
+    expect(groqRequest).toHaveBeenCalledTimes(2);
+    expect(groqRequest.mock.calls[1][0].maxTokens).toBe(groqRequest.mock.calls[0][0].maxTokens * 2);
+    expect(result).toMatchObject({ flaggedCount: 1, checked: true });
+  });
+
+  it('două răspunsuri goale: grilele trec, dar marcate ca neverificate', async () => {
+    groqRequest.mockResolvedValue('');
+    const result = await verifyQuestionsMedically([question], undefined);
+    expect(result.questions).toHaveLength(1);
+    expect(result.checked).toBeFalsy();
+  });
+});

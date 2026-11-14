@@ -35,6 +35,8 @@ export interface MedicalJudgeResult {
   flaggedCount: number;
   /** Short reasons for dropped questions, for surfacing to the user. */
   flaggedReasons: string[];
+  /** `true` doar când verificatorul chiar a dat verdicte; `false`/absent = grilele au trecut neverificate (fără cheie, eroare, răspuns gol). */
+  checked?: boolean;
 }
 
 interface JudgeVerdict {
@@ -50,6 +52,14 @@ interface JudgeResponse {
 const MAX_GROUNDING_CHARS = 6000;
 /** Above this, the review prompt itself gets unwieldy; split isn't worth it for a quality pass. */
 const MAX_QUESTIONS_PER_CALL = 25;
+/**
+ * Bugetul de răspuns. Modelele de raționament (gpt-oss) își consumă tokenii pe gândire înainte de JSON: cu vechiul
+ * buget (300 + 60/grilă) răspunsul venea gol („finish: length”, 418 din 420 tokeni pe gândire, văzut live la
+ * 14 nov 2026), JSON-ul lipsea și verificarea lăsa să treacă tot, în tăcere.
+ */
+export function judgeMaxTokens(questionCount: number, attempt = 0): number {
+  return Math.min(8000, (1500 + questionCount * 300) * (attempt + 1));
+}
 
 function letterFor(index: number): string {
   return String.fromCharCode(97 + index);
@@ -77,7 +87,7 @@ function buildJudgePrompt(questions: Question[], groundingText: string | undefin
     questions.map((q, i) => formatQuestionForReview(q, i)).join('\n\n'),
     '',
     `Răspunde STRICT cu JSON, fără text în plus, cu exact ${questions.length} intrări în "verdicts" (una per index de mai sus):`,
-    '{"verdicts":[{"i":0,"correct":true},{"i":1,"correct":false,"reason":"1 propoziție, ce e greșit medical"}]}',
+    '{"verdicts":[{"i":0,"correct":true},{"i":1,"correct":false,"reason":"1 propoziție în limba română, ce e greșit medical"}]}',
   ];
   return lines.join('\n');
 }
@@ -121,31 +131,37 @@ export async function verifyQuestionsMedically(
       questions: [...first.questions, ...second.questions],
       flaggedCount: first.flaggedCount + second.flaggedCount,
       flaggedReasons: [...first.flaggedReasons, ...second.flaggedReasons],
+      checked: Boolean(first.checked && second.checked),
     };
   }
 
-  const request = {
-    task: 'analysis' as const,
-    messages: [{ role: 'user' as const, content: buildJudgePrompt(questions, groundingText) }],
-    temperature: 0,
-    maxTokens: Math.min(2200, 300 + questions.length * 60),
-    skipLibraryContext: true,
-  };
   const other = pickJudgeModel();
-  let raw: string;
-  try {
-    raw = other
+  const ask = async (attempt: number): Promise<JudgeResponse | null> => {
+    const request = {
+      task: 'analysis' as const,
+      messages: [{ role: 'user' as const, content: buildJudgePrompt(questions, groundingText) }],
+      temperature: 0,
+      maxTokens: judgeMaxTokens(questions.length, attempt),
+      skipLibraryContext: true,
+    };
+    const raw = other
       ? await groqRequest({ ...request, only: other }).catch(() => groqRequest(request))
       : await groqRequest(request);
+    const parsed = validateJson<JudgeResponse>(raw);
+    return parsed.ok && Array.isArray(parsed.value?.verdicts) ? parsed.value : null;
+  };
+
+  let response: JudgeResponse | null;
+  try {
+    // Răspuns gol sau tăiat: o singură reîncercare, cu buget dublu.
+    response = (await ask(0)) ?? (await ask(1));
   } catch {
     return passthrough;
   }
-
-  const parsed = validateJson<JudgeResponse>(raw);
-  if (!parsed.ok || !Array.isArray(parsed.value?.verdicts)) return passthrough;
+  if (!response?.verdicts) return passthrough;
 
   const verdictByIndex = new Map<number, JudgeVerdict>();
-  for (const verdict of parsed.value.verdicts) {
+  for (const verdict of response.verdicts) {
     if (verdict && typeof verdict.i === 'number') verdictByIndex.set(verdict.i, verdict);
   }
 
@@ -167,5 +183,5 @@ export async function verifyQuestionsMedically(
   // single generated question being wrong.
   if (kept.length === 0 && questions.length > 1) return passthrough;
 
-  return { questions: kept, flaggedCount: questions.length - kept.length, flaggedReasons };
+  return { questions: kept, flaggedCount: questions.length - kept.length, flaggedReasons, checked: true };
 }

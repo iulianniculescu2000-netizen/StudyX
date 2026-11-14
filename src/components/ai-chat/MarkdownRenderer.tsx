@@ -8,7 +8,7 @@ import { copyText } from './diagramExport';
 import { BR_MARK, hasMath, isDiagramLang, isMermaidSource, normalizeMarkdown, safeUrl, splitMarkdownBlocks } from './markdown';
 import { CitationsContext, DiagramActionsContext, StreamingBlockContext, type DiagramActions } from './markdownContext';
 import { citationAriaLabel, citationLabel, openBookCitation, useCitationTiers } from './citations';
-import { parseInlineCitations } from '../../ai/contextBuilder';
+import { normalizeCitationMarks, parseInlineCitations } from '../../ai/contextBuilder';
 import type { Citation } from './shared';
 import { useMathPlugins, type MathPlugins } from './mathLoader';
 import MermaidBlock from './MermaidBlock';
@@ -57,20 +57,23 @@ function rehypeCitations(options: { citations: readonly Citation[] }) {
     if (!node.children || (node.tagName && NO_CITE_PARENTS.has(node.tagName))) return;
     const next: HastNode[] = [];
     for (const child of node.children) {
-      if (child.type === 'text' && child.value && child.value.includes('[')) {
-        for (const segment of parseInlineCitations(child.value, sources)) {
-          if (segment.type === 'text') {
-            next.push({ type: 'text', value: segment.text });
-          } else {
-            for (const source of segment.sources) {
-              next.push({ type: 'element', tagName: 'cite-chip', properties: { dataN: String(source.n) }, children: [] });
+      if (child.type === 'text' && child.value) {
+        const normalized = normalizeCitationMarks(child.value);
+        if (normalized.includes('[')) {
+          for (const segment of parseInlineCitations(normalized, sources)) {
+            if (segment.type === 'text') {
+              next.push({ type: 'text', value: segment.text });
+            } else {
+              for (const source of segment.sources) {
+                next.push({ type: 'element', tagName: 'cite-chip', properties: { dataN: String(source.n) }, children: [] });
+              }
             }
           }
+          continue;
         }
-      } else {
-        walk(child);
-        next.push(child);
       }
+      walk(child);
+      next.push(child);
     }
     node.children = next;
   };
