@@ -63,26 +63,27 @@ export default function AIUsagePanel() {
   });
 
   return (
-    <div
-      className="mb-6 rounded-[28px] border p-4"
-      style={{ borderColor: theme.border, background: theme.isDark ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.03)' }}
+    <section
+      aria-labelledby="ai-usage-title"
+      className="mb-6 rounded-[var(--r-xl)] border p-4"
+      style={{ borderColor: theme.border, background: 'var(--hover-fill)' }}
     >
       <div className="mb-3 flex items-center gap-2" style={{ color: theme.text }}>
-        <Gauge size={14} />
-        <span className="text-[11px] font-black uppercase tracking-[0.12em]">Consum AI</span>
+        <Gauge size={14} aria-hidden />
+        <h3 id="ai-usage-title" className="text-[11px] font-black uppercase tracking-[0.12em]">Consum AI</h3>
       </div>
 
       <ul className="space-y-2.5">
         {rows.map((row) => (
           <li
             key={row.id}
-            className="rounded-2xl border p-3"
+            className="rounded-[var(--r-md)] border p-3"
             style={{ background: theme.surface, borderColor: theme.border }}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="text-[13px] font-semibold" style={{ color: theme.text }}>{NAMES[row.id]}</div>
-                <div className="mt-0.5 text-[12px]" style={{ color: theme.text2 }}>
+                <div className="text-[13px] font-bold" style={{ color: theme.text }}>{NAMES[row.id]}</div>
+                <div className="mt-1 text-[12px] font-medium" style={{ color: theme.text2 }}>
                   {row.today
                     ? `Azi: ${row.today.estimated ? '≈ ' : ''}${compact(row.today.tokens)} tokeni · ${row.today.requests} ${row.today.requests === 1 ? 'cerere' : 'cereri'}`
                     : 'Azi: încă nicio cerere'}
@@ -92,11 +93,11 @@ export default function AIUsagePanel() {
                 </div>
               </div>
 
-              <div className="flex h-9 flex-shrink-0 items-end gap-[3px]" aria-hidden>
+              <div className="flex h-9 flex-shrink-0 items-end gap-[3px] border-b pb-px" style={{ borderColor: theme.border }} aria-hidden>
                 {row.series.map((value, index) => (
                   <div
                     key={dates[index]}
-                    className="w-[6px] rounded-sm"
+                    className="w-[6px] rounded-[3px]"
                     style={{
                       height: `${Math.max(value > 0 ? 12 : 4, Math.round((value / row.peak) * 100))}%`,
                       background: index === row.series.length - 1 ? theme.accent : `${theme.accent}55`,
@@ -108,17 +109,17 @@ export default function AIUsagePanel() {
             </div>
 
             {row.window?.remainingTokens !== undefined && row.window.limitTokens !== undefined && (
-              <div className="mt-2.5">
-                <div className="mb-1 flex justify-between text-[11px]" style={{ color: theme.text3 }}>
+              <div className="mt-3 border-t pt-2.5" style={{ borderColor: theme.border }}>
+                <div className="mb-1.5 flex flex-wrap justify-between gap-x-3 text-[11px]" style={{ color: theme.text3 }}>
                   <span>Limită pe minut, la ultima cerere</span>
-                  <span>
+                  <span className="font-semibold tabular-nums" style={{ color: theme.text2 }}>
                     {compact(row.window.remainingTokens)} din {compact(row.window.limitTokens)} rămase
                     {row.windowAgeSeconds !== null && row.windowAgeSeconds > 60 ? ' · valoare veche' : ''}
                   </span>
                 </div>
-                <div className="h-1 overflow-hidden rounded-full" style={{ background: theme.surface2 }}>
+                <div className="h-1.5 overflow-hidden rounded-full" style={{ background: theme.surface2 }}>
                   <div
-                    className="h-full rounded-full"
+                    className="h-full rounded-full transition-[width] duration-[var(--dur-slow)] ease-[var(--ease-standard)]"
                     style={{
                       width: `${Math.max(0, Math.min(100, (row.window.remainingTokens / row.window.limitTokens) * 100))}%`,
                       background: row.window.remainingTokens / row.window.limitTokens < 0.2 ? theme.warning : theme.success,
@@ -135,6 +136,6 @@ export default function AIUsagePanel() {
         Numără doar ce ai folosit din StudyX, pe acest dispozitiv; „≈" înseamnă estimare (răspunsurile din chat vin în flux, fără număr exact).
         Soldul total și limitele zilnice le vezi pe pagina furnizorului — nu toți le trimit aplicației.
       </p>
-    </div>
+    </section>
   );
 }

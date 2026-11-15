@@ -44,7 +44,7 @@ export default function ProviderStatusCard({ status, onAddKey }: ProviderStatusC
           whileTap={calmMotion ? undefined : { scale: 0.97 }}
           onClick={() => (busy ? status.cancel() : void status.verify())}
           disabled={!anyKey}
-          className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)] disabled:opacity-40"
+          className="press-feedback flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)] disabled:cursor-not-allowed disabled:opacity-40"
           style={{ background: theme.surface2, color: theme.accentText, border: `1px solid ${theme.border}` }}
           title="Trimite o cerere de un singur token fiecărui model, pe rând"
         >
@@ -69,15 +69,22 @@ export default function ProviderStatusCard({ status, onAddKey }: ProviderStatusC
             && !rows.some((r) => status.lastKind(provider, r.id) === 'ok');
           const runningHere = status.running === provider || status.running === 'all';
           return (
-            <li key={provider} className="rounded-[var(--r-md)] border p-3" style={{ background: theme.surface, borderColor: theme.border }}>
+            <li key={provider} className="rounded-[var(--r-md)] border px-3.5 py-3" style={{ background: theme.surface, borderColor: theme.border }}>
               <div className="flex items-center justify-between gap-3">
-                <span className="text-[13px] font-semibold" style={{ color: theme.text }}>{PROVIDER_NAMES[provider]}</span>
+                <span className="flex items-center gap-2 text-[13px] font-bold" style={{ color: theme.text }}>
+                  <span
+                    aria-hidden
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{ background: hasKey ? theme.success : theme.border2 }}
+                  />
+                  {PROVIDER_NAMES[provider]}
+                </span>
                 {hasKey ? (
                   <button
                     type="button"
                     onClick={() => void status.verify(provider)}
                     disabled={busy}
-                    className="rounded-[var(--r-sm)] px-2 py-1 text-[11px] font-bold focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)] disabled:opacity-40"
+                    className="fine-row -mr-1 rounded-[var(--r-sm)] px-2 py-1 text-[11px] font-bold focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)] disabled:cursor-not-allowed disabled:opacity-40"
                     style={{ color: theme.accentText }}
                   >
                     {runningHere && busy ? 'Verific…' : 'Verifică'}
@@ -86,7 +93,7 @@ export default function ProviderStatusCard({ status, onAddKey }: ProviderStatusC
                   <button
                     type="button"
                     onClick={() => onAddKey(provider)}
-                    className="rounded-[var(--r-sm)] px-2 py-1 text-[11px] font-bold focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
+                    className="fine-row -mr-1 rounded-[var(--r-sm)] px-2 py-1 text-[11px] font-bold focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
                     style={{ color: theme.accentText }}
                   >
                     Adaugă cheia
@@ -95,9 +102,9 @@ export default function ProviderStatusCard({ status, onAddKey }: ProviderStatusC
               </div>
 
               {!hasKey ? (
-                <p className="mt-1 text-[12px]" style={{ color: theme.text3 }}>Fără cheie · nu intră în lanțul de rezerve.</p>
+                <p className="mt-1 text-[12px] pl-3.5" style={{ color: theme.text3 }}>Fără cheie · nu intră în lanțul de rezerve.</p>
               ) : (
-                <ul className="mt-1.5 divide-y" style={{ borderColor: theme.border }}>
+                <ul className="mt-1.5 divide-y pl-3.5" style={{ borderColor: theme.border }}>
                   {rows.map((row) => {
                     const st = status.statusOf(provider, row.id);
                     const text = describeStatus(st, status.now);

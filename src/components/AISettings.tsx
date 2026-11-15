@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Key, Cpu, Eye, EyeOff, Check,
   Trash2,
-  Loader2, Gift, ChevronDown, ArrowUpRight, Brain, RefreshCw, Sparkles
+  Loader2, Gift, ChevronDown, ArrowUpRight, Brain, RefreshCw, Sparkles, CircleAlert, Info
 } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
 import { useAIStore, type CloudProvider } from '../store/aiStore';
@@ -72,6 +72,9 @@ const KEY_GUIDE: Record<CloudProvider, { intro: string; steps: string[] }> = {
   },
 };
 
+// Aceeași etichetă mică pentru toate câmpurile dialogului (culoarea vine din temă, nu din opacitate: contrast stabil în ambele teme).
+const FIELD_LABEL = 'flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.12em]';
+
 interface AISettingsProps {
   open: boolean;
   onClose: () => void;
@@ -82,6 +85,7 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
   const { calmMotion, t } = useAdaptiveMotion();
   const titleId = useId();
   const checkTitleId = useId();
+  const keyInputId = useId();
   const {
     apiKey, provider, model, setApiKey, setProvider, setModel, setProviderModel,
     providerKeys, providerModels, setProviderApiKey, copilotConnected, refreshCopilotStatus,
@@ -280,7 +284,7 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
                   whileTap={calmMotion ? undefined : { scale: 0.97 }}
                   onClick={onClose}
                   aria-label="Închide"
-                  className="p-2 rounded-[var(--r-md)] transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
+                  className="press-feedback p-2 rounded-[var(--r-md)] focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
                   style={{ color: theme.text3, background: theme.surface2, border: `1px solid ${theme.border}`, cursor: 'pointer' }}
                 >
                   <X size={16} />
@@ -288,39 +292,65 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
               </div>
 
               {/* Body */}
-              <div className="flex-1 overflow-y-auto p-6 pt-5 custom-scrollbar" style={{ minHeight: 0 }}>
+              <div className="flex-1 overflow-y-auto px-6 pb-1 pt-5 custom-scrollbar" style={{ minHeight: 0 }}>
                 <CopilotStatusSection />
 
                 {/* API Key */}
                 <div className="mb-6">
-                  <label className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.1em] mb-2.5 opacity-60" style={{ color: theme.text }}>
-                    <Key size={12} /> Cheie API {activeProvider.name}
+                  <label htmlFor={keyInputId} className={`${FIELD_LABEL} mb-2.5`} style={{ color: theme.text2 }}>
+                    <Key size={12} aria-hidden /> Cheie API {activeProvider.name}
                   </label>
                   <div className="relative">
                     <input
+                      id={keyInputId}
                       ref={keyInputRef}
                       type={showKey ? 'text' : 'password'}
+                      autoComplete="off"
+                      spellCheck={false}
+                      aria-invalid={keyInvalid || undefined}
                       value={draft}
                       onChange={(e) => { setDraft(e.target.value); setVerifyResult(null); }}
                       onKeyDown={(e) => e.key === 'Enter' && handleSave()}
                       placeholder={activeProvider.keyHint}
-                      className="w-full px-4 py-3 rounded-[var(--r-md)] text-sm pr-10 font-medium focus:outline-none focus-visible:shadow-[var(--ring-focus)]"
-                      style={{ background: theme.surface2, border: `1px solid ${theme.border}`, color: theme.text }}
+                      className="w-full px-4 py-3 rounded-[var(--r-md)] text-sm pr-11 font-medium transition-shadow focus:outline-none focus-visible:shadow-[var(--ring-focus)]"
+                      style={{
+                        background: theme.surface2,
+                        border: `1px solid ${keyInvalid ? `${theme.danger}66` : theme.border}`,
+                        color: theme.text,
+                      }}
                     />
-                    <button onClick={() => setShowKey(!showKey)} aria-label={showKey ? 'Ascunde cheia' : 'Arată cheia'} className="fine-row absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-[var(--r-sm)] hover:bg-[var(--hover-fill)] transition-colors" style={{ color: theme.text3 }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowKey(!showKey)}
+                      aria-label={showKey ? 'Ascunde cheia' : 'Arată cheia'}
+                      className="fine-row absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-[var(--r-sm)] hover:bg-[var(--hover-fill)] focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
+                      style={{ color: theme.text3 }}
+                    >
                       {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
                     </button>
                   </div>
                   <button
+                    type="button"
                     onClick={() => setShowGuide((v) => !v)}
-                    className="mt-2.5 inline-flex items-center gap-1.5 text-[11px] font-black hover:opacity-80 transition-opacity"
+                    aria-expanded={showGuide}
+                    className="fine-row -ml-1.5 mt-1.5 inline-flex items-center gap-1.5 rounded-[var(--r-sm)] px-1.5 py-1 text-[11px] font-black focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
                     style={{ color: theme.accentText }}
                   >
-                    <Gift size={12} /> Cum obțin o cheie gratuită?
-                    <ChevronDown size={12} style={{ transform: showGuide ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                    <Gift size={12} aria-hidden /> Cum obțin o cheie gratuită?
+                    <ChevronDown
+                      size={12}
+                      aria-hidden
+                      className={calmMotion ? '' : 'transition-transform duration-[var(--dur-base)] ease-[var(--ease-standard)]'}
+                      style={{ transform: showGuide ? 'rotate(180deg)' : 'none' }}
+                    />
                   </button>
                   {showGuide && (
-                    <div className="mt-3 rounded-[var(--r-md)] p-4" style={{ background: `${theme.accent}0C`, border: `1px solid ${theme.accent}25` }}>
+                    <motion.div
+                      initial={calmMotion ? false : { opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0, transition: t.page }}
+                      className="mt-2 rounded-[var(--r-md)] p-4"
+                      style={{ background: `${theme.accent}0C`, border: `1px solid ${theme.accent}25` }}
+                    >
                       <p className="mb-3 text-[11px] font-bold" style={{ color: theme.accentText }}>
                         {KEY_GUIDE[activeCloudProvider].intro}
                       </p>
@@ -341,32 +371,34 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
                         href={activeProvider.docs}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="elev-1 mt-3.5 inline-flex items-center gap-1.5 rounded-[var(--r-sm)] px-3.5 py-2 text-[11px] font-black text-white"
+                        className="elev-1 press-feedback mt-3.5 inline-flex items-center gap-1.5 rounded-[var(--r-sm)] px-3.5 py-2 text-[11px] font-black text-white focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
                         style={{ background: theme.accent }}
                       >
-                        <ArrowUpRight size={13} /> Deschide {activeProvider.name}
+                        <ArrowUpRight size={13} aria-hidden /> Deschide {activeProvider.name}
                       </a>
-                    </div>
+                    </motion.div>
                   )}
                   {keyInvalid && (
                     <div
-                      className="mt-2 rounded-[var(--r-sm)] px-3 py-2 text-[11px] font-bold leading-relaxed"
+                      className="mt-2 flex items-start gap-2 rounded-[var(--r-sm)] px-3 py-2 text-[11px] font-bold leading-relaxed"
                       style={{ color: theme.text, background: `${theme.danger}1A`, border: `1px solid ${theme.danger}40` }}
                     >
-                      Cheia pare incompletă — copiaz-o din nou întreagă (cheia Groq începe cu „gsk_"; cheia Google e mai lungă).
+                      <CircleAlert size={14} strokeWidth={2.75} aria-hidden className="mt-px shrink-0" style={{ color: theme.danger }} />
+                      <span>Cheia pare incompletă — copiaz-o din nou întreagă (cheia Groq începe cu „gsk_"; cheia Google e mai lungă).</span>
                     </div>
                   )}
                   {!keyInvalid && keyForOtherProvider && detectedProvider && (
                     <div
-                      className="mt-2 rounded-[var(--r-sm)] px-3 py-2 text-[11px] font-bold leading-relaxed"
+                      className="mt-2 flex items-start gap-2 rounded-[var(--r-sm)] px-3 py-2 text-[11px] font-bold leading-relaxed"
                       style={{ color: theme.text, background: `${theme.accent}1A`, border: `1px solid ${theme.accent}40` }}
                     >
-                      Cheie {PROVIDERS.find((p) => p.id === detectedProvider)?.name ?? detectedProvider} detectată — la „Salvează" comut automat pe acest provider.
+                      <Info size={14} strokeWidth={2.75} aria-hidden className="mt-px shrink-0" style={{ color: theme.accentText }} />
+                      <span>Cheie {PROVIDERS.find((p) => p.id === detectedProvider)?.name ?? detectedProvider} detectată — la „Salvează" comut automat pe acest provider.</span>
                     </div>
                   )}
                   {verifying && (
-                    <p className="mt-2 flex items-center gap-1.5 text-[11px] font-bold" style={{ color: theme.accentText }}>
-                      <Loader2 size={12} className="animate-spin" /> Verific cheia cu {activeProvider.name}…
+                    <p role="status" className="mt-2 flex items-center gap-1.5 text-[11px] font-bold" style={{ color: theme.accentText }}>
+                      <Loader2 size={12} className="animate-spin" aria-hidden /> Verific cheia cu {activeProvider.name}…
                     </p>
                   )}
                   {!verifying && verifyResult && (() => {
@@ -391,14 +423,14 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
 
                 <div className="mb-6">
                   <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
-                    <label className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.1em] opacity-60" style={{ color: theme.text }}>
-                      <Cpu size={12} /> {provider === 'copilot' ? 'Provider cheie API (grile, verificare și rezervă)' : 'Provider AI'}
-                    </label>
+                    <h3 className={FIELD_LABEL} style={{ color: theme.text2 }}>
+                      <Cpu size={12} aria-hidden /> {provider === 'copilot' ? 'Provider cheie API (grile, verificare și rezervă)' : 'Provider AI'}
+                    </h3>
                     {provider === 'copilot' && (
                       <button
                         type="button"
                         onClick={() => setProvider(activeCloudProvider)}
-                        className="text-[11px] font-bold hover:opacity-80 transition-opacity"
+                        className="fine-row rounded-[var(--r-sm)] px-1.5 py-0.5 text-[11px] font-bold focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
                         style={{ color: theme.accentText }}
                       >
                         Folosește {activeProvider.name} și pentru Chat
@@ -411,6 +443,9 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
                       return (
                         <button
                           key={entry.id}
+                          type="button"
+                          aria-pressed={active}
+                          data-active={active}
                           onClick={() => {
                             if (provider === 'copilot') {
                               setSelectedCloudProvider(entry.id);
@@ -421,17 +456,14 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
                             setSaved(false);
                             setVerifyResult(null);
                           }}
-                          className="flex min-h-[82px] items-start gap-3 rounded-[var(--r-md)] px-4 py-3 text-left transition-colors"
-                          style={{
-                            background: active ? `${theme.accent}14` : theme.surface2,
-                            border: `1px solid ${active ? theme.accent + '50' : theme.border}`,
-                          }}
+                          className="fine-chip flex min-h-[82px] items-start gap-3 rounded-[var(--r-md)] px-4 py-3 text-left enabled:hover:[box-shadow:var(--elev-1)]"
+                          style={active ? undefined : { background: theme.surface2, borderColor: theme.border }}
                         >
-                          <div className="flex-1">
+                          <div className="min-w-0 flex-1">
                             <p className="text-sm font-black" style={{ color: theme.text }}>{entry.name}</p>
-                            <p className="mt-1 text-[11px] font-medium leading-5 opacity-60" style={{ color: theme.text }}>{entry.desc}</p>
+                            <p className="mt-1 text-[11px] font-medium leading-5" style={{ color: theme.text2 }}>{entry.desc}</p>
                           </div>
-                          {active && <div className="elev-1 mt-0.5 flex h-6 w-6 items-center justify-center rounded-full" style={{ background: theme.accent }}><Check size={12} color="white" strokeWidth={4} /></div>}
+                          {active && <div className="elev-1 mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full" style={{ background: theme.accent }}><Check size={12} color="white" strokeWidth={4} aria-hidden /></div>}
                         </button>
                       );
                     })}
@@ -443,20 +475,21 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
                 {/* Model Selection */}
                 <div className="mb-8">
                   <div className="mb-2.5 flex items-center justify-between gap-3">
-                    <label className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.1em] opacity-60" style={{ color: theme.text }}>
-                      <Cpu size={12} /> Model AI ({activeProvider.name})
-                    </label>
+                    <h3 className={FIELD_LABEL} style={{ color: theme.text2 }}>
+                      <Cpu size={12} aria-hidden /> Model AI ({activeProvider.name})
+                    </h3>
                     <motion.button
+                      type="button"
                       whileTap={calmMotion ? undefined : { scale: 0.97 }}
                       onClick={() => void handleRefreshModel()}
                       disabled={refreshingModel || !hasAnyProviderKey}
-                      className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] disabled:opacity-40"
+                      className="press-feedback flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)] disabled:cursor-not-allowed disabled:opacity-40"
                       style={{ background: theme.surface2, color: theme.accentText, border: `1px solid ${theme.border}` }}
                       title="Verifică toate providerele AI configurate și trece automat pe modelele care încă funcționează"
                     >
                       {refreshingModel
-                        ? <><Loader2 size={11} className="animate-spin" /> Verific…</>
-                        : <><RefreshCw size={11} /> Actualizează</>}
+                        ? <><Loader2 size={11} className="animate-spin" aria-hidden /> Verific…</>
+                        : <><RefreshCw size={11} aria-hidden /> Actualizează</>}
                     </motion.button>
                   </div>
                   <div className="space-y-2">
@@ -467,6 +500,9 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
                       return (
                         <button
                           key={m.id}
+                          type="button"
+                          aria-pressed={isModelSelected}
+                          data-active={isModelSelected}
                           disabled={!selectable}
                           onClick={() => {
                             if (provider === 'copilot') {
@@ -475,27 +511,27 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
                               setModel(m.id);
                             }
                           }}
-                          className="w-full flex items-center gap-3 px-4 py-3 rounded-[var(--r-md)] text-left transition-colors disabled:cursor-not-allowed focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
+                          className="fine-chip flex w-full items-center gap-3 rounded-[var(--r-md)] px-4 py-3 text-left enabled:hover:[box-shadow:var(--elev-1)] disabled:cursor-not-allowed"
                           style={{
-                            background: isModelSelected ? `${theme.accent}14` : theme.surface2,
-                            border: `1px solid ${isModelSelected ? theme.accent + '50' : theme.border}`,
-                            opacity: selectable ? 1 : 0.55,
+                            ...(isModelSelected ? {} : { background: theme.surface2, borderColor: theme.border }),
+                            opacity: selectable ? 1 : 0.6,
                           }}>
-                          <div className="flex-1">
+                          <div className="min-w-0 flex-1">
                             <p className="text-sm font-bold" style={{ color: theme.text }}>{m.name}</p>
-                            <p className="text-[11px] font-medium opacity-50" style={{ color: theme.text }}>
+                            <p className="mt-0.5 text-[11px] font-medium leading-snug" style={{ color: theme.text2 }}>
                               {selectable ? `${m.desc} · ${m.speed}` : 'indisponibil pentru cheia ta'}
                             </p>
                           </div>
-                          {isModelSelected && <div className="elev-1 w-6 h-6 rounded-full flex items-center justify-center" style={{ background: theme.accent }}><Check size={12} color="white" strokeWidth={4} /></div>}
+                          {isModelSelected && <div className="elev-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full" style={{ background: theme.accent }}><Check size={12} color="white" strokeWidth={4} aria-hidden /></div>}
                         </button>
                       );
                     })}
                   </div>
                 </div>
 
-                <motion.button whileTap={calmMotion || keyInvalid ? undefined : { scale: 0.97 }} onClick={handleSave} disabled={keyInvalid} className="elev-2 w-full py-3.5 rounded-[var(--r-md)] font-black text-sm text-white mb-8 disabled:opacity-45"
+                <motion.button whileTap={calmMotion || keyInvalid ? undefined : { scale: 0.97 }} type="button" onClick={handleSave} disabled={keyInvalid} className="elev-2 flex w-full items-center justify-center gap-2 py-3.5 rounded-[var(--r-md)] font-black text-sm text-white mb-8 transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)] disabled:cursor-not-allowed disabled:opacity-45"
                   style={{ background: saved ? theme.success : keyInvalid ? theme.surface2 : theme.accent, color: keyInvalid ? theme.text3 : '#fff' }}>
+                  {saved && <Check size={15} strokeWidth={3.5} aria-hidden />}
                   {saved ? 'Salvat!' : 'Salvează Configurarea'}
                 </motion.button>
 
@@ -503,18 +539,19 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
 
                 {/* What the assistant knows about you (Task 4) */}
                 <div className="mb-6 rounded-[var(--r-xl)] p-4 border" style={{ borderColor: theme.border, background: 'var(--hover-fill)' }}>
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="mb-3 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2" style={{ color: theme.text }}>
-                      <Brain size={14} />
-                      <span className="text-[11px] font-black uppercase tracking-[0.12em]">Ce știe asistentul despre tine</span>
+                      <Brain size={14} aria-hidden />
+                      <h3 className="text-[11px] font-black uppercase tracking-[0.12em]">Ce știe asistentul despre tine</h3>
                     </div>
                     {memorySummary && (
                       <button
+                        type="button"
                         onClick={handleResetMemory}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--r-sm)] text-[10px] font-black uppercase"
+                        className="press-feedback flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-[var(--r-sm)] text-[10px] font-black uppercase tracking-[0.08em] focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
                         style={{ color: theme.danger, background: `${theme.danger}12`, border: `1px solid ${theme.danger}30` }}
                       >
-                        <Trash2 size={11} /> Resetează
+                        <Trash2 size={11} aria-hidden /> Resetează
                       </button>
                     )}
                   </div>
@@ -569,8 +606,8 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
                   whileTap={calmMotion ? undefined : { scale: 0.97 }}
                   onClick={() => setShowProviderCheck(false)}
                   aria-label="Închide"
-                  className="rounded-[var(--r-sm)] p-2"
-                  style={{ color: theme.text3, background: theme.surface2 }}
+                  className="press-feedback rounded-[var(--r-sm)] p-2 focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
+                  style={{ color: theme.text3, background: theme.surface2, border: `1px solid ${theme.border}` }}
                 >
                   <X size={16} />
                 </motion.button>
@@ -588,7 +625,7 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
                       className="flex items-center gap-3 rounded-[var(--r-md)] px-4 py-3"
                       style={{ background: theme.surface2, border: `1px solid ${tone}30` }}
                     >
-                      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[var(--r-sm)]" style={{ background: `${tone}18`, color: tone }}>
+                      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[var(--r-sm)]" style={{ background: `${tone}18`, color: tone, border: `1px solid ${tone}28` }}>
                         {!entry.hadKey ? <Key size={15} /> : !entry.ok ? <X size={15} strokeWidth={3} /> : entry.changed ? <Sparkles size={15} /> : <Check size={15} strokeWidth={3} />}
                       </div>
                       <div className="min-w-0 flex-1">
@@ -613,7 +650,7 @@ export default function AISettings({ open, onClose }: AISettingsProps) {
               <motion.button
                 whileTap={calmMotion ? undefined : { scale: 0.97 }}
                 onClick={() => setShowProviderCheck(false)}
-                className="elev-1 mt-5 w-full rounded-[var(--r-md)] py-3 text-sm font-black text-white"
+                className="elev-1 mt-5 w-full rounded-[var(--r-md)] py-3 text-sm font-black text-white focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
                 style={{ background: theme.accent }}
               >
                 Am înțeles
