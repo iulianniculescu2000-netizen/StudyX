@@ -1,0 +1,196 @@
+{
+ "total": 1200,
+ "unmapped": 0,
+ "families": [
+  {
+   "name": "Chirurgie digestivă",
+   "keywords": [
+    "viscerala",
+    "digestiva",
+    "esofag",
+    "stomacul",
+    "intestin",
+    "colon",
+    "biliare",
+    "pancreas",
+    "ficatul",
+    "herni"
+   ],
+   "questions": 192
+  },
+  {
+   "name": "Cardiologie",
+   "keywords": [
+    "cardiolog",
+    "hipertensiun"
+   ],
+   "questions": 145
+  },
+  {
+   "name": "Chirurgie generală",
+   "keywords": [
+    "chirurgie generala",
+    "perioperator",
+    "infectiile chirurgicale",
+    "sangerarile",
+    "arsurile"
+   ],
+   "questions": 105
+  },
+  {
+   "name": "Nefrologie",
+   "keywords": [
+    "nefrolog",
+    "renale",
+    "hidro electrolitic",
+    "hidro-electrolitic"
+   ],
+   "questions": 77
+  },
+  {
+   "name": "Gastroenterologie și hepatologie",
+   "keywords": [
+    "gastro",
+    "hepat"
+   ],
+   "questions": 68
+  },
+  {
+   "name": "Obstetrică și ginecologie",
+   "keywords": [
+    "obstetric",
+    "ginecolog"
+   ],
+   "questions": 64
+  },
+  {
+   "name": "Boli infecțioase",
+   "keywords": [
+    "boli infectioase",
+    "infectii",
+    "sepsis",
+    "transmisibile",
+    "hiv"
+   ],
+   "questions": 58
+  },
+  {
+   "name": "Ortopedie",
+   "keywords": [
+    "ortoped",
+    "traumatolog"
+   ],
+   "questions": 57
+  },
+  {
+   "name": "Urologie",
+   "keywords": [
+    "urolog",
+    "tractului urinar"
+   ],
+   "questions": 52
+  },
+  {
+   "name": "Pneumologie",
+   "keywords": [
+    "pneumolog"
+   ],
+   "questions": 49
+  },
+  {
+   "name": "Pediatrie",
+   "keywords": [
+    "pediatrie"
+   ],
+   "questions": 49
+  },
+  {
+   "name": "Diabet",
+   "keywords": [
+    "diabet"
+   ],
+   "questions": 41
+  },
+  {
+   "name": "ORL",
+   "keywords": [
+    "orl",
+    "otorino"
+   ],
+   "questions": 41
+  },
+  {
+   "name": "Neurologie",
+   "keywords": [
+    "neurolog"
+   ],
+   "questions": 37
+  },
+  {
+   "name": "Reumatologie",
+   "keywords": [
+    "reumatolog"
+   ],
+   "questions": 29
+  },
+  {
+   "name": "Hematologie",
+   "keywords": [
+    "hematolog"
+   ],
+   "questions": 22
+  },
+  {
+   "name": "Chirurgie vasculară",
+   "keywords": [
+    "vascular"
+   ],
+   "questions": 22
+  },
+  {
+   "name": "Boală venoasă tromboembolică",
+   "keywords": [
+    "tromboembol"
+   ],
+   "questions": 20
+  },
+  {
+   "name": "Terapie intensivă",
+   "keywords": [
+    "terapie intensiva",
+    "reanimare"
+   ],
+   "questions": 19
+  },
+  {
+   "name": "Dermatologie",
+   "keywords": [
+    "dermatolog"
+   ],
+   "questions": 17
+  },
+  {
+   "name": "Endocrinologie",
+   "keywords": [
+    "endocrin"
+   ],
+   "questions": 15
+  },
+  {
+   "name": "Psihiatrie",
+   "keywords": [
+    "psihiatr"
+   ],
+   "questions": 15
+  },
+  {
+   "name": "Epidemiologie și etică",
+   "keywords": [
+    "epidemiolog",
+    "etica",
+    "sanatate publica"
+   ],
+   "questions": 6
+  }
+ ]
+}
