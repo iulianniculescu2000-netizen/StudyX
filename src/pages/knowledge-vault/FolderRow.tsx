@@ -59,8 +59,8 @@ export default function FolderRow({ folder, index, docCount, subCount, fragments
                 if (e.key === 'Escape') setEditing(false);
               }}
               onBlur={commit}
-              className="w-full rounded-[var(--r-sm)] bg-transparent px-1 text-[14px] font-semibold outline-none"
-              style={{ color: theme.text, border: `1px solid ${theme.accent}` }}
+              className="input-inline w-full text-[14px] font-semibold outline-none"
+              style={{ color: theme.text }}
             />
           ) : (
             <div className="truncate text-[14px] font-semibold" style={{ color: isEmpty ? theme.text2 : theme.text }}>{folder.name}</div>

@@ -35,10 +35,9 @@ import EmptyState from '../components/ui/EmptyState';
 import { suggestFolderAppearance } from '../lib/folderAppearance';
 import { isBundledLibraryBookName } from '../lib/rezidentiatLibrary';
 import { FILTERS, filterByType, plainSearchText, type TypeFilter } from './knowledge-vault/helpers';
-import BaseBooksGroup from './knowledge-vault/BaseBooksGroup';
 import { groupByTier } from '../lib/bookTier';
 import { isProtectedSource } from '../lib/bookProtection';
-import { findRezidentiatRootFolder, isRezidentiatRootFolder } from '../lib/rezidentiatRoot';
+import { isUnderRezidentiatRoot } from '../lib/rezidentiatRoot';
 import { bookOfSourceName } from '../lib/curriculum';
 import { dispatchOpenBook } from '../components/pdf/bookRequest';
 import FolderRow from './knowledge-vault/FolderRow';
@@ -55,11 +54,10 @@ export default function KnowledgeVault() {
   const removeKnowledgeSource = useAIStore((state) => state.removeKnowledgeSource);
   const findSourcesWithoutPages = useAIStore((state) => state.findSourcesWithoutPages);
   const allLibraryFolders = useAIStore((state) => state.libraryFolders);
-  // Ierarhia din Rezidențiat se vede și aici: cărțile de bază fixate sus, apoi materialele din Rezidențiat, apoi restul bibliotecii.
-  const libraryFolders = allLibraryFolders;
-  const knowledgeSources = allKnowledgeSources;
-  const rezRoot = useMemo(() => findRezidentiatRootFolder(libraryFolders), [libraryFolders]);
-  const baseBookIds = useMemo(() => new Set(groupByTier(knowledgeSources, libraryFolders).book.map((source) => source.id)), [knowledgeSources, libraryFolders]);
+  // Biblioteca AI are doar materialele generale: cărțile de bază și tot ce ține de Rezidențiat apar strict în secțiunea Rezidențiat
+  // (rămân în aplicație pentru căutare și AI, doar nu se afișează aici).
+  const libraryFolders = useMemo(() => allLibraryFolders.filter((folder) => !isUnderRezidentiatRoot(folder.id, allLibraryFolders)), [allLibraryFolders]);
+  const knowledgeSources = useMemo(() => groupByTier(allKnowledgeSources, allLibraryFolders).general, [allKnowledgeSources, allLibraryFolders]);
   const addLibraryFolder = useAIStore((state) => state.addLibraryFolder);
   const deleteLibraryFolder = useAIStore((state) => state.deleteLibraryFolder);
   const renameLibraryFolder = useAIStore((state) => state.renameLibraryFolder);
@@ -114,16 +112,14 @@ export default function KnowledgeVault() {
     const counts = new Map<string, number>();
     let unfiled = 0;
     for (const source of knowledgeSources) {
-      // Cărțile de bază au grupul lor, deasupra folderelor: nu se numără în foldere.
-      if (baseBookIds.has(source.id)) continue;
       if (source.folderId) counts.set(source.folderId, (counts.get(source.folderId) ?? 0) + 1);
       else unfiled += 1;
     }
     return { counts, unfiled };
-  }, [knowledgeSources, baseBookIds]);
+  }, [knowledgeSources]);
 
   const rootFolders = useMemo(
-    () => libraryFolders.filter((folder) => !folder.parentId && !isRezidentiatRootFolder(folder)),
+    () => libraryFolders.filter((folder) => !folder.parentId),
     [libraryFolders],
   );
 
@@ -185,9 +181,9 @@ export default function KnowledgeVault() {
     if (q) {
       list = list.filter((s) => plainSearchText(s.name).includes(q) || plainSearchText(s.preview).includes(q));
     }
-    // Cărțile de bază primele, apoi cele mai noi.
-    return [...list].sort((a, b) => Number(baseBookIds.has(b.id)) - Number(baseBookIds.has(a.id)) || (baseBookIds.has(a.id) ? 'KLS'.indexOf(bookOfSourceName(a.name) ?? "S") - 'KLS'.indexOf(bookOfSourceName(b.name) ?? "S") : 0) || b.addedAt - a.addedAt);
-  }, [knowledgeSources, activeFolderId, search, baseBookIds]);
+    // Cele mai noi primele.
+    return [...list].sort((a, b) => b.addedAt - a.addedAt);
+  }, [knowledgeSources, activeFolderId, search]);
 
   // Unfiltered by the search box — the exam plan card needs every source
   // directly in this folder, not just the ones matching the current query.
@@ -403,12 +399,11 @@ export default function KnowledgeVault() {
 
   const showFolderList = isTopLevel && !search.trim();
   const isSearchingTop = isTopLevel && !!search.trim();
-  const ownSources = knowledgeSources.filter((source) => !baseBookIds.has(source.id));
-  const showRecents = showFolderList && ownSources.length >= 4;
+  const showRecents = showFolderList && knowledgeSources.length >= 4;
   const recentSources = showRecents
-    ? [...ownSources].sort((a, b) => b.addedAt - a.addedAt).slice(0, 3)
+    ? [...knowledgeSources].sort((a, b) => b.addedAt - a.addedAt).slice(0, 3)
     : [];
-  const showEmptyHint = showFolderList && ownSources.length === 0 && rootFolders.length === 0 && !rezRoot;
+  const showEmptyHint = showFolderList && knowledgeSources.length === 0 && rootFolders.length === 0;
 
   const typeFilteredSources = filterByType(visibleSources, typeFilter);
 
@@ -477,7 +472,7 @@ export default function KnowledgeVault() {
       index={index}
       docCount={folderCounts.counts.get(folder.id) ?? 0}
       subCount={subfoldersByParent.get(folder.id)?.length ?? 0}
-      fragments={knowledgeSources.reduce((sum, s) => (s.folderId === folder.id && !baseBookIds.has(s.id) ? sum + (s.chunkCount ?? 0) : sum), 0)}
+      fragments={knowledgeSources.reduce((sum, s) => (s.folderId === folder.id ? sum + (s.chunkCount ?? 0) : sum), 0)}
       onOpen={onOpen}
       onDelete={() => setFolderToDelete({ id: folder.id, name: folder.name })}
       onRename={(name) => renameLibraryFolder(folder.id, name)}
@@ -626,8 +621,6 @@ export default function KnowledgeVault() {
         </div>
 
         {/* ── TOP LEVEL ── */}
-        {showFolderList && <BaseBooksGroup onAsk={askAIAboutSource} />}
-
         {showRecents && (
           <section>
             <SectionLabel className="mb-2">Recente</SectionLabel>
@@ -651,15 +644,6 @@ export default function KnowledgeVault() {
                   </div>
                 </button>
               ))}
-            </div>
-          </section>
-        )}
-
-        {showFolderList && rezRoot && (
-          <section>
-            <SectionLabel className="mb-2">Materiale din Rezidențiat</SectionLabel>
-            <div className="glass-panel overflow-hidden rounded-[var(--r-md)]">
-              {renderFolderRow(rezRoot, 0, () => setActiveFolderId(rezRoot.id))}
             </div>
           </section>
         )}
@@ -718,8 +702,8 @@ export default function KnowledgeVault() {
                       onBlur={submitNewFolder}
                       placeholder="Nume folder"
                       aria-label="Nume folder nou"
-                      className="w-full rounded-[var(--r-sm)] px-3 py-2 text-[14px] font-medium outline-none"
-                      style={{ background: 'var(--fill-subtle)', color: theme.text }}
+                      className="input-inline w-full text-[14px] font-medium outline-none"
+                      style={{ color: theme.text }}
                     />
                   </div>
                 )}
@@ -760,8 +744,8 @@ export default function KnowledgeVault() {
                         onBlur={submitNewSubfolder}
                         placeholder="Nume subfolder"
                         aria-label="Nume subfolder nou"
-                        className="w-full rounded-[var(--r-sm)] px-3 py-2 text-[14px] font-medium outline-none"
-                        style={{ background: 'var(--fill-subtle)', color: theme.text }}
+                        className="input-inline w-full text-[14px] font-medium outline-none"
+                        style={{ color: theme.text }}
                       />
                     </div>
                   )}

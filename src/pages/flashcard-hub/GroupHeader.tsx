@@ -60,8 +60,8 @@ function RenameInput({ initial, onCommit, onCancel, theme }: { initial: string; 
         if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); finish(false, ''); }
       }}
       onBlur={(event) => finish(true, event.currentTarget.value)}
-      className="focus-ring min-w-0 flex-1 rounded-[var(--r-sm)] border px-2 py-0.5 text-[13px] font-semibold outline-none"
-      style={{ background: theme.surface2, borderColor: 'var(--hairline)', color: theme.text }}
+      className="input-inline min-w-0 flex-1 text-[13px] font-semibold outline-none"
+      style={{ color: theme.text }}
     />
   );
 }

@@ -1476,6 +1476,21 @@ button.press-feedback:not(:disabled):active {
   border-radius: 0;
   padding: 0;
 }
+/* Câmp de redenumire / nume nou direct în rândul unei liste: regula globală pentru input îi dă umplutură de 10px și un inel de
+   focalizare de 4px, deci câmpul devine mai înalt decât titlul pe care îl înlocuiește și inelul acoperă rândul de sub el (ex. „Gol”).
+   Aici câmpul rămâne cât textul, cu un singur chenar de accent, fără inel. */
+.input-inline,
+.input-inline:hover,
+.input-inline:focus {
+  padding: 2px 8px;
+  min-height: 0;
+  line-height: 1.35;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--accent) !important;
+  background: var(--fill-subtle);
+  box-shadow: none;
+  transform: none;
+}
 .search-field:focus-within {
   box-shadow: var(--ring-focus);
 }

@@ -144,8 +144,8 @@ export default function FolderTree({
                         <input autoFocus type="text" value={editName}
                           onChange={(e) => setEditName(e.target.value)}
                           onKeyDown={(e) => { if (e.key === 'Enter') handleRenameFolder(folder.id); if (e.key === 'Escape') setEditingFolder(null); }}
-                          className="flex-1 bg-transparent text-sm rounded px-1"
-                          style={{ color: theme.text, outline: `1px solid ${theme.accent}`, border: 'none' }} />
+                          className="input-inline min-w-0 flex-1 text-sm"
+                          style={{ color: theme.text }} />
                         <button
                           onClick={() => handleRenameFolder(folder.id)}
                           aria-label="Salvează numele folderului"

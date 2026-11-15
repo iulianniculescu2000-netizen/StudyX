@@ -44,7 +44,11 @@ const hasAbbreviation = (text: string) => /(^|[^\p{L}])[A-ZĂÂÎȘȚ]{2,5}($|[^
 
 /** Mesaj fără subiect propriu: comandă („fa mi o schema”) sau trimitere („această grilă”). */
 export function lacksSubject(text: string): boolean {
-  return contentTokens(text).length < 2 && !hasAbbreviation(text);
+  const tokens = contentTokens(text);
+  // Un singur cuvânt lung („din balneofizioterapie”) e un subiect: numele cursului sau al bolii, nu o comandă. Fără asta,
+  // răspunsul la „ce curs anume?” era înlocuit în căutare cu mesajul anterior, iar cursul numit nu se mai căuta deloc.
+  if (tokens.length === 1 && tokens[0].length >= 9) return false;
+  return tokens.length < 2 && !hasAbbreviation(text);
 }
 
 const REFERS_TO_QUESTION = /\b(aceast[aă]|asta|aceasta|grila|grilă|intrebarea|întrebarea)\b/i;

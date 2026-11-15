@@ -17,7 +17,7 @@ describe('lacksSubject', () => {
   });
 
   it('nu confundă cu fără subiect mesajele care au unul, nici abrevierile scurte', () => {
-    for (const text of ['din artrita reumatoida', 'citeste despre AR din cursul relevant', 'schema tratamentului în HTA', 'explică-mi sindromul nefrotic', 'rezumat despre HIV']) {
+    for (const text of ['din balenofizioterapie', 'din artrita reumatoida','citeste despre AR din cursul relevant', 'schema tratamentului în HTA', 'explică-mi sindromul nefrotic', 'rezumat despre HIV']) {
       expect(lacksSubject(text), text).toBe(false);
     }
   });
