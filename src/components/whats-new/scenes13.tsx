@@ -75,7 +75,7 @@ export function CopilotScene() {
           <Check size={11} strokeWidth={3} /> Cod confirmat
         </div>
       </div>
-      <div style={{ ...layer, left: 'calc(50% - 208px)', top: 112, opacity: found, transform: `translate3d(0, ${(1 - found) * 8}px, ${30 + found * 30}px) scale(${1 - press * 0.07})` }}>
+      <div style={{ ...layer, left: 'calc(50% - 196px)', top: 112, opacity: found, transform: `translate3d(0, ${(1 - found) * 8}px, ${30 + found * 30}px) scale(${1 - press * 0.07})` }}>
         <span className={chipClass} style={{ background: theme.accent, color: '#fff', fontSize: 11, padding: '6px 12px', boxShadow: 'var(--elev-2)' }}>
           <Bot size={11} /> Conectează GitHub Copilot
         </span>
@@ -83,7 +83,7 @@ export function CopilotScene() {
 
       {/* Copilot, cu cota contului */}
       <div
-        className="px-3.5 py-3"
+        className="px-3 py-3"
         style={{
           ...layer, ...sceneCard(theme, 3), left: 'calc(50% - 20px)', top: 16, width: 216,
           transform: `translate3d(${(1 - card) * 30}px, 0, ${-60 + card * 100}px) rotateY(${-14 + card * 8}deg)`, opacity: card,
