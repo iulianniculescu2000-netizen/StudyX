@@ -12,6 +12,7 @@
  */
 import type { Question } from '../../types';
 import { EXAM_STYLE_META, type ExamStyle } from './examStyle';
+import { findFormIssues, wordCount } from './examForm';
 
 export interface ConformanceTarget {
   /** Share of items with the expected option count (0-1). */
@@ -79,6 +80,90 @@ function mean(values: number[]): number {
 
 function inRange(value: number, [min, max]: [number, number]) {
   return value >= min && value <= max;
+}
+
+function median(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+function coefficientOfVariation(values: number[]): number {
+  if (values.length < 2) return 0;
+  const avg = mean(values);
+  if (avg === 0) return 0;
+  return Math.sqrt(mean(values.map((v) => (v - avg) ** 2))) / avg;
+}
+
+/**
+ * Trăsături măsurate în cuvinte pe cele 1200 de grile reale 2021–2025 (proiectul Grile rezidentiat); completează
+ * metricile pe caractere de mai sus. Doar la rezidențiat. Valorile reale: enunț cu mediana de 8 cuvinte, dispersia lungimii
+ * opțiunilor (CV) 0,34, cheia cu ~0,4 cuvinte mai lungă decât distractorii, 56% din grilele CM cu 3 corecte, zero trimiteri la sursă.
+ */
+export function residencyWordMetrics(questions: Question[]): ConformanceMetric[] {
+  const stemMedian = median(questions.map((q) => wordCount(q.text)));
+
+  const spreads = questions.map((q) => coefficientOfVariation(q.options.map((o) => wordCount(o.text))));
+  const spread = mean(spreads);
+
+  const keyGaps = questions.flatMap((q) => {
+    const key = q.options.filter((o) => o.isCorrect).map((o) => wordCount(o.text));
+    const wrong = q.options.filter((o) => !o.isCorrect).map((o) => wordCount(o.text));
+    return key.length && wrong.length ? [mean(key) - mean(wrong)] : [];
+  });
+  const keyGap = mean(keyGaps);
+
+  const errorShare = share(questions.map((q) => findFormIssues(q, 'residency').some((issue) => issue.severity === 'error')));
+
+  const metrics: ConformanceMetric[] = [
+    {
+      id: 'stemWords',
+      label: 'Mediana enunțului (cuvinte)',
+      value: stemMedian,
+      target: '5–12 cuvinte',
+      ok: stemMedian >= 5 && stemMedian <= 12,
+      hint: 'Enunțul real are mediana de 8 cuvinte; enunțurile foarte scurte sau foarte lungi trădează o grilă generată.',
+    },
+    {
+      id: 'optionSpread',
+      label: 'Dispersia lungimii variantelor',
+      value: spread,
+      target: '≥ 0,20',
+      ok: spread >= 0.2,
+      hint: 'La examen o grilă are variante de lungimi diferite (una scurtă, una lungă); cele de aceeași lungime se văd.',
+    },
+    {
+      id: 'keyGap',
+      label: 'Cheia față de distractori (cuvinte)',
+      value: keyGap,
+      target: '−0,5…+1,5',
+      ok: keyGap >= -0.5 && keyGap <= 1.5,
+      hint: 'Cheia e în medie cu ~0,4 cuvinte mai lungă decât distractorii; o diferență mare o dă de gol.',
+    },
+    {
+      id: 'formErrors',
+      label: 'Grile cu semne sigure de „generat”',
+      value: errorShare,
+      target: '≤ 5%',
+      ok: errorShare <= 0.05,
+      hint: 'Trimiteri la carte („conform cursului”) sau variante-paragraf: la examenul real nu apar.',
+    },
+  ];
+
+  const multiple = questions.filter((q) => q.options.filter((o) => o.isCorrect).length > 1);
+  if (multiple.length >= 5) {
+    const threeShare = share(multiple.map((q) => q.options.filter((o) => o.isCorrect).length === 3));
+    metrics.push({
+      id: 'cmMix',
+      label: 'Complement multiplu cu 3 corecte',
+      value: threeShare,
+      target: '≤ 75%',
+      ok: threeShare <= 0.75,
+      hint: 'La examen sunt 25% cu 2 corecte, 56% cu 3 și 19% cu 4; un lot aproape numai cu 3 corecte nu seamănă.',
+    });
+  }
+  return metrics;
 }
 
 /**
@@ -153,6 +238,8 @@ export function scoreExamConformance(questions: Question[], style: ExamStyle): C
     },
   ];
 
+  if (style === 'residency' && questions.length > 0) metrics.push(...residencyWordMetrics(questions));
+
   const score = questions.length === 0
     ? 0
     : Math.round((metrics.filter((metric) => metric.ok).length / metrics.length) * 100);
@@ -169,7 +256,10 @@ export function formatConformanceReport(report: ConformanceReport): string {
   for (const metric of report.metrics) {
     const value = metric.id.endsWith('Length')
       ? `${Math.round(metric.value)} car.`
-      : `${Math.round(metric.value * 100)}%`;
+      : metric.id === 'stemWords' ? `${metric.value} cuv.`
+        : metric.id === 'optionSpread' ? metric.value.toFixed(2)
+          : metric.id === 'keyGap' ? `${metric.value >= 0 ? '+' : ''}${metric.value.toFixed(1)}`
+            : `${Math.round(metric.value * 100)}%`;
     lines.push(`${metric.ok ? '✓' : '✗'} ${metric.label}: ${value}  (țintă ${metric.target})`);
     if (!metric.ok && metric.hint) lines.push(`    → ${metric.hint}`);
   }
