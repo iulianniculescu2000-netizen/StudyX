@@ -15,8 +15,10 @@ Doar pentru **firul de Rezidențiat** (stilul `residency`); firul de facultate (
 | Controale de formă („semne de generat”: trimiteri la sursă, opțiuni-paragraf, glosă doar la cheie, antiteze, lungime uniformă) | **adăugat**: `findFormIssues` / `polishGeneratedQuestions`, rulate pe ambele căi de generare înaintea verificatorului |
 | Construcția din text (enunț = titlul unității, chei literale, subset din listă, distractori de pe pagină) | **adăugat**: `RESIDENCY_GROUNDED_BUILD_RULES`, doar cu context |
 | Verificator care nu vede cheia | **adăugat**: `blindVerify` în `src/ai/medicalJudge.ts`, după judecător, pe alt furnizor când există a doua cheie; doar la Rezidențiat; scoate grila al cărei răspuns diferă de cheie, deschis la erori. Testat cu modele simulate, nu cu chei reale |
-| Plauzibilitatea distractorilor, poarta de citire pe imaginea paginii | nefăcut |
-| Ponderi pe capitole pentru o simulare de 200 de grile; pagini fierbinți la alegerea paginilor de generat | nefăcut: nu există încă un constructor de simulare în Rezidențiat |
+| Plauzibilitatea distractorilor (OK / SLAB / RAU) | **adăugat**: judecătorul medical numește distractorii evident implauzibili (`weak`); grila cu cel puțin doi cade (`WEAK_DISTRACTORS_TO_DROP`); doar la Rezidențiat, prin `{ plausibility: true }`; fără apel în plus. Testat cu modele simulate |
+| Poarta de citire pe imaginea paginii | **parțial**: varianta pe text există (`keySupport`, cheia trebuie să se regăsească în textul sursă). Varianta pe imagine nu se poate face în aplicație: cere un model cu vedere (Gemini sau altul cu cheie) și redarea paginii din PDF-ul inclus, iar nimic din asta nu rulează acum în fluxul de generare. Ar fi un apel în plus pe grilă, cu imaginea paginii (`pdfjs` există în cititor), și ar trebui măsurat cu o cheie reală |
+| Ponderi pe specialități pentru simulare (Cardiologie ~24 din 200, Ortopedie ~9 etc.) | **adăugat**: `src/lib/examShares.ts` + `src/data/rezidentiat/examShares.json` (cifre agregate, generate de `scripts/build-exam-shares.py`); `buildExamSimulation` le aplică fără disciplină aleasă, când disciplinele băncii se recunosc (≥70%); CS/CM rămâne 25/75 în fiecare specialitate; `weighted: false` păstrează alegerea la întâmplare |
+| Metrici în cuvinte în scorul de conformitate | **adăugat** (`residencyWordMetrics` în `examConformance.ts`): mediana enunțului, dispersia lungimii variantelor, cheia față de distractori, semne sigure de „generat”, amestecul CM. Niciun prag existent nu s-a mutat |
 
 ## Textele cărților (Kumar, Lawrence, Sinopsis)
 - Textul din aplicație (`src/data/rezidentiat/library/*.pages.json`) e aceeași extragere pagină cu pagină ca în proiectul-sursă (aceleași pagini 391/345/118), dar curățat (diacritice cu virgulă, cuvinte nedespărțite, fără filigran): rămâne baza.
@@ -30,6 +32,7 @@ Doar pentru **firul de Rezidențiat** (stilul `residency`); firul de facultate (
 - Reordonarea nu atinge grilele cu opțiuni care depind de ordine („ambele”, „toate”, „B și C”).
 
 ## Pași următori (decizia proprietarului)
-1. Încercarea verificatorului orb cu chei reale: costă un apel în plus pe lot, iar rata de dezacord a unui model-rezolvitor nu e măsurată.
-2. Constructor de simulare Rezidențiat cu ponderile pe specialități (Cardiologie ~21 din 200, Ortopedie ~9 etc.).
-3. Metrici noi în `scoreExamConformance` (mediana enunțului în cuvinte, dispersia lungimii opțiunilor, cheia vs distractori); cer recalibrarea pragurilor testelor existente.
+1. Încercarea cu chei reale a generării, a filtrului de formă, a verificatorului orb și a plauzibilității: rata de dezacord și de respingere nu e măsurată.
+2. Exemplarele din aplicație (`questionExemplars.ts`) au variante de lungime prea uniformă (dispersie 0,15 față de 0,34 la examenul real): un model care copiază forma din ele copiază și uniformitatea. De variat lungimile, apoi remăsurat.
+3. Poarta de citire pe imaginea paginii, cu model cu vedere (vezi tabelul).
+4. Legarea ponderilor și la „Aproape de examen” și la propunerile de grile din Organizare (acum doar la simulare).
