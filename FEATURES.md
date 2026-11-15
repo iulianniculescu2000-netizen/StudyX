@@ -75,6 +75,7 @@ Legendă status: ✅ Complet · ⚠️ Parțial / cosmetic · 🛠️ De aliniat
 | Procesare documente: PDF, DOCX, OCR | ✅ | `src/ai/pdfParser.ts`, `src/ai/docxParser.ts`, `src/ai/ocrParser.ts` |
 | RAG: chunking, embeddings, vector store, retriever | ✅ | `src/ai/retriever.ts`, `src/ai/vectorStore.ts`, `src/ai/chunker.ts` |
 | Provideri: Groq + Google Gemini + Mistral | ✅ | `src/lib/groq.ts` |
+| GitHub Copilot ca AI principal (chat, explicații, grile), conectare cu cod, alegerea contului | ✅ | `electron/copilot.cjs`, `src/lib/groqCore/copilotBridge.ts` |
 | Setări AI (chei API per-provider) | ✅ | `src/components/AISettings.tsx` |
 | Rate limiting / governor cereri | ✅ | `src/lib/aiRequestGovernor.ts` |
 | Generare în loturi (batch) | ✅ | `src/lib/ai/batchQuizGeneration.ts` |
