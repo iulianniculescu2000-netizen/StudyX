@@ -10,6 +10,10 @@ const {
   sanitizeQuota,
   sanitizeAuthStatus,
   classifyCopilotError,
+  isQuotaExhausted,
+  dropPastResetDate,
+  isGitHubDeviceUrl,
+  sanitizeAccounts,
   buildCopilotSessionPayload,
   registerCopilotIPC,
 } = require('./copilot.cjs');
@@ -92,6 +96,65 @@ describe('electron/copilot.cjs unit tests', () => {
     });
   });
 
+  it('classifyCopilotError does not mistake ordinary words or numbers for auth or quota problems', () => {
+    // „author” conține „auth”, „4290” conține „429”: înainte, ambele scoteau Copilot din uz degeaba.
+    expect(classifyCopilotError(new Error('The author field is missing from the reply'))).toMatchObject({ errorCode: 'error' });
+    expect(classifyCopilotError(new Error('Request failed after 4290 ms'))).toMatchObject({ errorCode: 'error' });
+    expect(classifyCopilotError(new Error('Model returned 14029 tokens'))).toMatchObject({ errorCode: 'error' });
+    expect(classifyCopilotError(new Error('Timeout after 120000ms waiting for session.idle'))).toEqual({
+      errorCode: 'error',
+      error: 'GitHub Copilot nu a răspuns la timp.',
+    });
+    expect(classifyCopilotError(new Error('403 Forbidden'))).toMatchObject({ errorCode: 'auth_required' });
+    expect(classifyCopilotError(new Error('User is not signed in'))).toMatchObject({ errorCode: 'auth_required' });
+    expect(classifyCopilotError(new Error('402: premium requests exhausted'))).toMatchObject({ errorCode: 'quota_exhausted' });
+    expect(classifyCopilotError(new Error('quota exceeded for chat'))).toMatchObject({ errorCode: 'quota_exhausted' });
+  });
+
+  it('opens only the official GitHub device page for sign-in', () => {
+    expect(isGitHubDeviceUrl('https://github.com/login/device')).toBe(true);
+    expect(isGitHubDeviceUrl('https://github.com/login/device?user_code=ABCD-1234')).toBe(true);
+    expect(isGitHubDeviceUrl('http://github.com/login/device')).toBe(false);
+    expect(isGitHubDeviceUrl('https://github.com.evil.example/login/device')).toBe(false);
+    expect(isGitHubDeviceUrl('https://evil.example/login/device')).toBe(false);
+    expect(isGitHubDeviceUrl('https://github.com/settings/tokens')).toBe(false);
+    expect(isGitHubDeviceUrl('file:///C:/Windows/System32/calc.exe')).toBe(false);
+    expect(isGitHubDeviceUrl('nu e un url')).toBe(false);
+  });
+
+  it('sanitizeAccounts keeps only safe account fields and marks which can be switched to', () => {
+    const out = sanitizeAccounts([
+      { accountId: 'acc-1', host: 'https://github.com', login: 'student', authSource: 'gh', active: true, switchable: true, selectionId: 'sel-1', token: 'ghp_secret' },
+      { host: 'https://github.com', login: 'platit', authSource: 'user', active: false, switchable: false },
+      { login: '' },
+      null,
+    ]);
+    expect(out).toEqual([
+      { key: 'acc-1', login: 'student', source: 'gh', active: true, switchable: true },
+      { key: 'https://github.com|platit', login: 'platit', source: 'user', active: false, switchable: false },
+    ]);
+    expect(JSON.stringify(out)).not.toContain('ghp_');
+    expect(JSON.stringify(out)).not.toContain('sel-1');
+    expect(sanitizeAccounts(undefined)).toEqual([]);
+  });
+
+  it('isQuotaExhausted is true only for a limited account with nothing left', () => {
+    expect(isQuotaExhausted(null)).toBe(false);
+    expect(isQuotaExhausted({ isUnlimitedEntitlement: true, remainingPercentage: 0 })).toBe(false);
+    expect(isQuotaExhausted({ isUnlimitedEntitlement: false, remainingPercentage: 12 })).toBe(false);
+    expect(isQuotaExhausted({ isUnlimitedEntitlement: false })).toBe(false);
+    expect(isQuotaExhausted({ isUnlimitedEntitlement: false, remainingPercentage: 0 })).toBe(true);
+  });
+
+  it('dropPastResetDate keeps only a reset date that is still ahead', () => {
+    const past = new Date(Date.now() - 5_000).toISOString();
+    const future = new Date(Date.now() + 3 * 24 * 3600_000).toISOString();
+    expect(dropPastResetDate({ remainingPercentage: 40, resetDate: past })).toEqual({ remainingPercentage: 40 });
+    expect(dropPastResetDate({ remainingPercentage: 40, resetDate: future })).toEqual({ remainingPercentage: 40, resetDate: future });
+    expect(dropPastResetDate({ remainingPercentage: 40, resetDate: 'nu e o dată' })).toEqual({ remainingPercentage: 40 });
+    expect(dropPastResetDate(null)).toBeNull();
+  });
+
   it('buildCopilotSessionPayload merges system prompts and formats single or multi-turn history', () => {
     const single = buildCopilotSessionPayload(
       [
@@ -120,8 +183,8 @@ describe('electron/copilot.cjs unit tests', () => {
     expect(exe!).not.toMatch(/app\.asar[/\\]/i);
   });
 
-  it('registers all 4 IPC channels and stays locally disconnected after copilot:disconnect', async () => {
-    for (const ch of ['copilot:status', 'copilot:stream', 'copilot:abort', 'copilot:disconnect']) {
+  it('registers all IPC channels and stays locally disconnected after copilot:disconnect', async () => {
+    for (const ch of ['copilot:status', 'copilot:stream', 'copilot:abort', 'copilot:disconnect', 'copilot:switch-account', 'copilot:login-start', 'copilot:login-cancel', 'copilot:login-open-page']) {
       expect(handlers.has(ch), ch).toBe(true);
     }
 

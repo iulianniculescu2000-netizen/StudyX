@@ -1160,6 +1160,8 @@ function createWindow() {
   registerCopilotIPC(ipcMain, {
     getMainWindow: () => mainWindow,
     getUserDataPath: () => app.getPath('userData'),
+    // Doar pentru teste automate: cu STUDYX_TEST_NO_BROWSER=1 conectarea cu cod nu deschide browserul utilizatorului.
+    openExternal: (url) => (process.env.STUDYX_TEST_NO_BROWSER === '1' ? Promise.resolve() : shell.openExternal(url)),
   });
 }
 

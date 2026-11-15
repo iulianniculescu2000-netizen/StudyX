@@ -55,6 +55,7 @@ declare global {
         login?: string | null;
         authType?: string | null;
         host?: string | null;
+        accounts?: Array<{ key: string; login: string; source: string | null; active: boolean; switchable: boolean }>;
         lastModel?: string | null;
         statusMessage?: string | null;
         quota?: {
@@ -96,6 +97,13 @@ declare global {
         error?: string;
       }>;
       copilotAbort?: (requestId: string) => Promise<{ ok: boolean }>;
+      copilotSwitchAccount?: (accountKey: string) => Promise<{ ok: boolean; error?: string }>;
+      copilotLoginStart?: () => Promise<
+        { ok: true; userCode: string; verificationUri: string; expiresIn: number } | { ok: false; error?: string }
+      >;
+      copilotLoginCancel?: () => Promise<{ ok: boolean }>;
+      copilotLoginOpenPage?: () => Promise<{ ok: boolean }>;
+      copilotOnLoginEvent?: (cb: (event: { type: 'done' | 'error'; error?: string }) => void) => () => void;
       copilotDisconnect?: () => Promise<{
         state: 'disconnected' | 'connected' | 'quota_exhausted' | 'error';
         isAuthenticated: boolean;

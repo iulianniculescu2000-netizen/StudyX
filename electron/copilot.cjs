@@ -2,6 +2,7 @@ const path = require('path');
 const fs = require('fs');
 
 const COPILOT_STREAM_EVENT_CHANNEL = 'copilot:stream-event';
+const COPILOT_LOGIN_EVENT_CHANNEL = 'copilot:login-event';
 const REQUEST_TIMEOUT_MS = 120000;
 
 let client = null;
@@ -9,8 +10,11 @@ let startPromise = null;
 let lastServedModel = null;
 let lastQuotaSnapshot = null;
 let lastQuotaExhausted = false;
-let lastErrorMessage = null;
+/** Tipul contului din ultima verificare: „user” = conectat din StudyX, „gh-cli” = preluat din GitHub CLI. */
+let lastAuthType = null;
 const activeStreams = new Map();
+/** Conectarea cu cod în curs (cel mult una): sesiunea motorului prin care rulează, id-ul fluxului și pagina de verificare. */
+let loginFlow = null;
 
 function loadCopilotSdk() {
   return require('@github/copilot-sdk');
@@ -72,6 +76,20 @@ function sanitizeQuota(raw) {
   };
 }
 
+/** Conturile pe care le vede motorul, fără nimic secret: cheia e identificatorul stabil al contului, nu un token. */
+function sanitizeAccounts(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((a) => a && typeof a === 'object' && typeof a.login === 'string' && a.login)
+    .map((a) => ({
+      key: typeof a.accountId === 'string' && a.accountId ? a.accountId : `${a.host || ''}|${a.login}`,
+      login: a.login,
+      source: typeof a.authSource === 'string' ? a.authSource : null,
+      active: Boolean(a.active),
+      switchable: a.switchable !== false && typeof a.selectionId === 'string' && Boolean(a.selectionId),
+    }));
+}
+
 function sanitizeAuthStatus(auth, extras = {}) {
   const isAuthenticated = Boolean(auth && auth.isAuthenticated);
   const quota = extras.quota ?? null;
@@ -92,6 +110,7 @@ function sanitizeAuthStatus(auth, extras = {}) {
     authType: isAuthenticated && typeof auth.authType === 'string' ? auth.authType : null,
     host: isAuthenticated && typeof auth.host === 'string' ? auth.host : null,
     quota,
+    accounts: isAuthenticated ? sanitizeAccounts(extras.accounts) : [],
     lastModel: typeof extras.lastModel === 'string' ? extras.lastModel : null,
     statusMessage:
       errorMessage ||
@@ -99,52 +118,90 @@ function sanitizeAuthStatus(auth, extras = {}) {
         ? auth.statusMessage.trim()
         : isAuthenticated
           ? 'Conectat la GitHub Copilot'
-          : 'Nu s-a găsit o sesiune GitHub Copilot activă (gh sau Copilot CLI).'),
+          : 'Nu am găsit niciun cont GitHub conectat pe acest calculator (GitHub CLI sau Copilot CLI).'),
   };
 }
 
+const QUOTA_ERROR_RE =
+  /(?:^|\D)(?:402|429)(?:\D|$)|\bquota\b|rate[ _-]?limit|too many requests|limit (?:exceeded|reached)|premium requests?.{0,40}(?:exhausted|exceeded|used)/i;
+const AUTH_ERROR_RE =
+  /(?:^|\D)(?:401|403)(?:\D|$)|not authenticated|unauthenticated|unauthori[sz]ed|authentication (?:required|failed)|not (?:logged|signed) in|no (?:valid )?(?:credentials|token)|bad credentials|copilot (?:is )?not (?:enabled|available)|no (?:active )?copilot (?:subscription|access)/i;
+const TIMEOUT_ERROR_RE = /\btime(?:d)?[ -]?out\b|\betimedout\b/i;
+
+/**
+ * Împarte o eroare a motorului în patru feluri pe care restul aplicației le tratează diferit: oprită de utilizator,
+ * cotă atinsă (trecem pe cheile API), cont lipsă sau fără acces (cerem reconectarea) și orice altceva (trecătoare).
+ * Potrivirile sunt pe cuvinte și coduri întregi: „author” sau un „4290 ms” dintr-un mesaj nu înseamnă autentificare ori cotă.
+ */
 function classifyCopilotError(err, aborted = false) {
   if (aborted) {
     return { errorCode: 'aborted', error: 'Cerere oprită.' };
   }
   const raw = err instanceof Error ? err.message : typeof err === 'string' ? err : JSON.stringify(err || '');
   const message = String(raw || '').trim();
-  const lower = message.toLowerCase();
 
-  if (
-    lower.includes('402') ||
-    lower.includes('429') ||
-    lower.includes('quota') ||
-    lower.includes('rate limit') ||
-    lower.includes('too many requests') ||
-    lower.includes('limit exceeded') ||
-    lower.includes('exhausted')
-  ) {
+  if (QUOTA_ERROR_RE.test(message)) {
     return {
       errorCode: 'quota_exhausted',
       error: 'Cota GitHub Copilot pentru chat a fost atinsă.',
     };
   }
 
-  if (
-    lower.includes('401') ||
-    lower.includes('403') ||
-    lower.includes('not authenticated') ||
-    lower.includes('unauthenticated') ||
-    lower.includes('unauthorized') ||
-    lower.includes('login') ||
-    lower.includes('auth')
-  ) {
+  if (AUTH_ERROR_RE.test(message)) {
     return {
       errorCode: 'auth_required',
-      error: 'Conectarea GitHub Copilot lipsește sau a expirat. Verifică `gh auth status`.',
+      error: 'Contul GitHub de pe acest calculator nu mai este conectat sau nu are acces la Copilot.',
     };
+  }
+
+  if (TIMEOUT_ERROR_RE.test(message)) {
+    return { errorCode: 'error', error: 'GitHub Copilot nu a răspuns la timp.' };
   }
 
   return {
     errorCode: 'error',
     error: message ? (message.length > 220 ? `${message.slice(0, 217)}…` : message) : 'Eroare necunoscută GitHub Copilot.',
   };
+}
+
+/** Unele conturi raportează ca dată de resetare chiar momentul curent: o dată care a trecut nu ajută pe nimeni, așa că o lăsăm deoparte. */
+function dropPastResetDate(quota) {
+  if (!quota || typeof quota.resetDate !== 'string') return quota;
+  const at = Date.parse(quota.resetDate);
+  if (Number.isFinite(at) && at > Date.now() + 60_000) return quota;
+  const { resetDate: _past, ...rest } = quota;
+  return rest;
+}
+
+/** Cota e atinsă doar când contul are o limită și nu a mai rămas nimic din ea. */
+function isQuotaExhausted(quota) {
+  return Boolean(
+    quota && !quota.isUnlimitedEntitlement && typeof quota.remainingPercentage === 'number' && quota.remainingPercentage <= 0,
+  );
+}
+
+/** Conturile GitHub pe care le vede motorul (cel activ și cele în care poate comuta). Listă goală dacă nu se poate citi. */
+async function readAccounts(instance) {
+  let session = null;
+  try {
+    session = await createAccountSession(instance);
+    const res = await session.rpc.accounts.enumerate({ query: { kind: 'accounts', refresh: true } });
+    return Array.isArray(res?.items) ? res.items : [];
+  } catch {
+    return [];
+  } finally {
+    await disposeSession(instance, session);
+  }
+}
+
+/** Cota de chat a contului, citită direct de la motor (fără să trimită vreun mesaj). Null dacă motorul nu o oferă. */
+async function readChatQuota(instance) {
+  try {
+    const res = await instance.rpc.account.getQuota();
+    return dropPastResetDate(sanitizeQuota(res && res.quotaSnapshots ? res.quotaSnapshots.chat : null));
+  } catch {
+    return null;
+  }
 }
 
 function buildCopilotSessionPayload(messages, systemPrompt) {
@@ -210,6 +267,114 @@ function sendStreamEvent(getMainWindow, payload) {
   }
 }
 
+/** Singura pagină pe care o deschidem în browser pentru conectare: pagina oficială GitHub pentru coduri de dispozitiv. */
+function isGitHubDeviceUrl(value) {
+  try {
+    const url = new URL(String(value));
+    return url.protocol === 'https:' && url.hostname === 'github.com' && url.pathname.startsWith('/login/device');
+  } catch {
+    return false;
+  }
+}
+
+function sendLoginEvent(getMainWindow, payload) {
+  try {
+    const win = typeof getMainWindow === 'function' ? getMainWindow() : null;
+    if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) {
+      win.webContents.send(COPILOT_LOGIN_EVENT_CHANNEL, payload);
+    }
+  } catch {
+    // window closing
+  }
+}
+
+/** O sesiune fără unelte și fără drepturi, doar ca să ajungem la metodele de conectare ale motorului (sunt legate de sesiune). */
+async function createAccountSession(instance) {
+  return instance.createSession({
+    availableTools: [],
+    onPermissionRequest: async () => ({ kind: 'denied-by-rules', rules: [] }),
+  });
+}
+
+async function disposeSession(instance, session) {
+  if (!session) return;
+  const sessionId = typeof session.sessionId === 'string' ? session.sessionId : '';
+  try {
+    await session.disconnect();
+  } catch {
+    // ignore
+  }
+  if (sessionId && instance) {
+    try {
+      await instance.deleteSession(sessionId);
+    } catch {
+      // ignore
+    }
+  }
+}
+
+async function endLoginFlow({ cancel }) {
+  const flow = loginFlow;
+  loginFlow = null;
+  if (!flow) return;
+  flow.cancelled = true;
+  if (cancel) {
+    try {
+      await flow.session.rpc.accounts.login.cancel({ flowId: flow.flowId });
+    } catch {
+      // ignore
+    }
+  }
+  await disposeSession(flow.instance, flow.session);
+}
+
+/**
+ * Așteaptă ca utilizatorul să introducă codul pe GitHub. Motorul face singur interogările până la autorizare sau
+ * expirare, iar noi doar anunțăm fereastra la final. Parola nu trece niciodată pe aici: se scrie pe github.com.
+ */
+async function awaitLoginCompletion(flow, { getMainWindow, getUserDataPath }) {
+  try {
+    let step = await flow.session.rpc.accounts.login.advance({ flowId: flow.flowId });
+    // Un cont cu mai multe identități cere alegerea uneia: luăm contul github.com (singurul pe care îl oferim).
+    if (step.kind === 'completed' && step.result?.status === 'needs-account-selection') {
+      const accounts = Array.isArray(step.result.accounts) ? step.result.accounts : [];
+      const pick = accounts.find((a) => a && a.host === 'github.com') || accounts[0];
+      if (!pick) throw new Error('Nu am găsit un cont GitHub de ales.');
+      step = await flow.session.rpc.accounts.login.advance({ flowId: flow.flowId, input: pick.selectionId });
+    }
+    if (flow.cancelled) return;
+    if (step.kind === 'error') throw new Error(step.message || 'Conectarea a eșuat.');
+    if (step.kind !== 'completed' || step.result?.status !== 'completed') {
+      const status = step.kind === 'completed' ? step.result?.status : step.kind;
+      if (status === 'needs-plaintext-consent' || status === 'declined') {
+        // Nu salvăm jetonul necriptat fără acordul explicit al utilizatorului: lăsăm conectarea neterminată.
+        throw new Error('Windows nu a putut păstra conectarea în siguranță pe acest calculator, așa că nu am salvat-o.');
+      }
+      throw new Error('Conectarea nu s-a încheiat. Încearcă din nou.');
+    }
+
+    writeLocalState(getUserDataPath, { disconnected: false });
+    lastQuotaSnapshot = null;
+    lastQuotaExhausted = false;
+    await endLoginFlow({ cancel: false });
+    // Motorul pornit înainte de conectare nu vede mereu contul nou: îl repornim, apoi verificăm că îl vede.
+    await stopCopilotEngine();
+    const instance = await ensureClient(getUserDataPath);
+    const auth = await instance.getAuthStatus();
+    if (!auth?.isAuthenticated) throw new Error('Conectarea s-a făcut, dar motorul nu vede încă contul. Apasă „Verifică starea”.');
+    sendLoginEvent(getMainWindow, { type: 'done' });
+  } catch (err) {
+    if (flow.cancelled) return;
+    const message = err instanceof Error ? err.message : String(err || '');
+    const expired = /expire|timed? ?out|expirat/i.test(message);
+    await endLoginFlow({ cancel: true });
+    sendLoginEvent(getMainWindow, {
+      type: 'error',
+      error: expired ? 'Codul a expirat. Apasă din nou „Conectează GitHub Copilot”.' : message || 'Conectarea a eșuat.',
+    });
+  }
+}
+
 async function ensureClient(getUserDataPath) {
   if (client) return client;
   if (startPromise) return startPromise;
@@ -232,7 +397,6 @@ async function ensureClient(getUserDataPath) {
 
     await instance.start();
     client = instance;
-    lastErrorMessage = null;
     return instance;
   })();
 
@@ -244,6 +408,7 @@ async function ensureClient(getUserDataPath) {
 }
 
 async function stopCopilotEngine(options = {}) {
+  await endLoginFlow({ cancel: true });
   for (const entry of activeStreams.values()) {
     entry.aborted = true;
     try {
@@ -284,12 +449,122 @@ async function stopCopilotEngine(options = {}) {
   }
 }
 
-function registerCopilotIPC(ipcMain, { getMainWindow, getUserDataPath }) {
+/**
+ * Dacă contul a fost conectat chiar din StudyX (tip „user”), îl scoatem și din motor, ca „Deconectează” să însemne
+ * deconectare adevărată. Un cont preluat din GitHub CLI nu e al nostru: acela rămâne, iar „Deconectează” doar îl lasă
+ * deoparte în StudyX.
+ */
+async function logoutOwnAccount(getUserDataPath) {
+  // Fără o verificare anterioară nu știm al cui e contul: nu pornim motorul doar ca să aflăm.
+  if (lastAuthType !== 'user') return;
+  try {
+    const instance = await ensureClient(getUserDataPath);
+    const auth = await instance.getAuthStatus();
+    if (!auth?.isAuthenticated || auth.authType !== 'user') return;
+    const session = await createAccountSession(instance);
+    try {
+      await session.rpc.accounts.set({ command: { kind: 'logout' } });
+    } finally {
+      await disposeSession(instance, session);
+    }
+  } catch {
+    // Deconectarea locală (steagul „deconectat”) se face oricum.
+  }
+}
+
+function registerCopilotIPC(ipcMain, { getMainWindow, getUserDataPath, openExternal }) {
+  ipcMain.handle('copilot:switch-account', async (_event, accountKey) => {
+    const key = typeof accountKey === 'string' ? accountKey : '';
+    if (!key) return { ok: false, error: 'Cont necunoscut.' };
+    let session = null;
+    try {
+      const instance = await ensureClient(getUserDataPath);
+      // Căutăm contul în lista proaspătă: id-ul opac de comutare se schimbă, deci nu ne bazăm pe unul păstrat de interfață.
+      const items = await readAccounts(instance);
+      const target = sanitizeAccounts(items).find((a) => a.key === key);
+      const raw = items.find((a) => (typeof a.accountId === 'string' && a.accountId ? a.accountId : `${a.host || ''}|${a.login}`) === key);
+      if (!target || !raw || !target.switchable) return { ok: false, error: 'În contul acesta nu se poate comuta acum.' };
+      session = await createAccountSession(instance);
+      const res = await session.rpc.accounts.set({ command: { kind: 'switchActive', selectionId: raw.selectionId } });
+      if (!res?.ok) return { ok: false, error: 'Motorul nu a putut comuta contul.' };
+      writeLocalState(getUserDataPath, { disconnected: false });
+      lastQuotaSnapshot = null;
+      lastQuotaExhausted = false;
+      lastServedModel = null;
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: classifyCopilotError(err, false).error };
+    } finally {
+      if (session) await disposeSession(client, session);
+    }
+  });
+
+  ipcMain.handle('copilot:login-start', async () => {
+    try {
+      // Pornim de la zero: o conectare rămasă deschisă se anulează, iar un nou cod îl înlocuiește pe cel vechi.
+      await endLoginFlow({ cancel: true });
+      const instance = await ensureClient(getUserDataPath);
+      const session = await createAccountSession(instance);
+      let begun;
+      try {
+        begun = await session.rpc.accounts.login.begin({ kind: 'githubDotCom', method: 'device-code' });
+      } catch (err) {
+        await disposeSession(instance, session);
+        throw err;
+      }
+      const step = begun?.step;
+      if (!step || step.kind !== 'device-code' || !isGitHubDeviceUrl(step.verificationUri)) {
+        try {
+          await session.rpc.accounts.login.cancel({ flowId: begun.flowId });
+        } catch {
+          // ignore
+        }
+        await disposeSession(instance, session);
+        return { ok: false, error: 'GitHub nu a oferit conectarea cu cod. Încearcă din nou peste puțin.' };
+      }
+
+      const flow = { flowId: begun.flowId, session, instance, cancelled: false, verificationUri: step.verificationUri };
+      loginFlow = flow;
+      void awaitLoginCompletion(flow, { getMainWindow, getUserDataPath });
+      if (typeof openExternal === 'function') {
+        try {
+          await openExternal(step.verificationUri);
+        } catch {
+          // Utilizatorul poate deschide pagina din buton.
+        }
+      }
+      return {
+        ok: true,
+        userCode: String(step.userCode),
+        verificationUri: step.verificationUri,
+        expiresIn: typeof step.expiresIn === 'number' ? step.expiresIn : 900,
+      };
+    } catch (err) {
+      const classified = classifyCopilotError(err, false);
+      return { ok: false, error: classified.error };
+    }
+  });
+
+  ipcMain.handle('copilot:login-cancel', async () => {
+    await endLoginFlow({ cancel: true });
+    return { ok: true };
+  });
+
+  ipcMain.handle('copilot:login-open-page', async () => {
+    const uri = loginFlow?.verificationUri;
+    if (!uri || !isGitHubDeviceUrl(uri) || typeof openExternal !== 'function') return { ok: false };
+    try {
+      await openExternal(uri);
+      return { ok: true };
+    } catch {
+      return { ok: false };
+    }
+  });
+
   ipcMain.handle('copilot:status', async (_event, options = {}) => {
     const wantsConnect = Boolean(options && options.connect);
     if (wantsConnect) {
       writeLocalState(getUserDataPath, { disconnected: false });
-      lastErrorMessage = null;
     } else if (readLocalState(getUserDataPath).disconnected) {
       return {
         state: 'disconnected',
@@ -306,6 +581,7 @@ function registerCopilotIPC(ipcMain, { getMainWindow, getUserDataPath }) {
     try {
       const instance = await ensureClient(getUserDataPath);
       const auth = await instance.getAuthStatus();
+      lastAuthType = auth?.isAuthenticated && typeof auth.authType === 'string' ? auth.authType : null;
       if (!auth?.isAuthenticated) {
         return sanitizeAuthStatus(auth, {
           quota: null,
@@ -314,11 +590,21 @@ function registerCopilotIPC(ipcMain, { getMainWindow, getUserDataPath }) {
           errorMessage: null,
         });
       }
+      // Cota vine direct de la cont: se vede din prima, nu abia după primul mesaj, și o cotă refăcută se observă singură.
+      const accounts = await readAccounts(instance);
+      const freshQuota = await readChatQuota(instance);
+      if (freshQuota) {
+        // Data de resetare vine sigur doar odată cu un răspuns; o păstrăm pe cea deja aflată dacă e încă în viitor.
+        const knownReset = dropPastResetDate(lastQuotaSnapshot)?.resetDate;
+        lastQuotaSnapshot = !freshQuota.resetDate && knownReset ? { ...freshQuota, resetDate: knownReset } : freshQuota;
+        lastQuotaExhausted = isQuotaExhausted(freshQuota);
+      }
       return sanitizeAuthStatus(auth, {
         quota: lastQuotaSnapshot,
         quotaExhausted: lastQuotaExhausted,
         lastModel: lastServedModel,
-        errorMessage: lastErrorMessage,
+        errorMessage: null,
+        accounts,
       });
     } catch (err) {
       const classified = classifyCopilotError(err, false);
@@ -334,7 +620,6 @@ function registerCopilotIPC(ipcMain, { getMainWindow, getUserDataPath }) {
           statusMessage: classified.error,
         };
       }
-      lastErrorMessage = classified.error;
       return {
         state: classified.errorCode === 'quota_exhausted' ? 'quota_exhausted' : 'error',
         isAuthenticated: false,
@@ -371,13 +656,11 @@ function registerCopilotIPC(ipcMain, { getMainWindow, getUserDataPath }) {
         return {
           ok: false,
           errorCode: 'auth_required',
-          error: auth?.statusMessage || 'Conectează GitHub Copilot (gh CLI sau Copilot CLI) în Setări AI.',
+          error: 'Nu am găsit niciun cont GitHub conectat pe acest calculator (GitHub CLI sau Copilot CLI).',
         };
       }
     } catch (err) {
-      const classified = classifyCopilotError(err, false);
-      lastErrorMessage = classified.errorCode === 'error' ? classified.error : null;
-      return { ok: false, ...classified };
+      return { ok: false, ...classifyCopilotError(err, false) };
     }
 
     let session = null;
@@ -421,7 +704,7 @@ function registerCopilotIPC(ipcMain, { getMainWindow, getUserDataPath }) {
         }
         if (event.type === 'assistant.usage') {
           const data = event.data || {};
-          const quota = sanitizeQuota(data.quotaSnapshots?.chat);
+          const quota = dropPastResetDate(sanitizeQuota(data.quotaSnapshots?.chat));
           usageInfo = {
             ...(typeof data.model === 'string' ? { model: data.model } : {}),
             ...(typeof data.modelDisplayName === 'string' ? { modelDisplayName: data.modelDisplayName } : {}),
@@ -435,9 +718,7 @@ function registerCopilotIPC(ipcMain, { getMainWindow, getUserDataPath }) {
           }
           if (quota) {
             lastQuotaSnapshot = quota;
-            if (!quota.isUnlimitedEntitlement && typeof quota.remainingPercentage === 'number' && quota.remainingPercentage <= 0) {
-              lastQuotaExhausted = true;
-            }
+            if (isQuotaExhausted(quota)) lastQuotaExhausted = true;
           }
           return;
         }
@@ -465,15 +746,8 @@ function registerCopilotIPC(ipcMain, { getMainWindow, getUserDataPath }) {
         sendStreamEvent(getMainWindow, { requestId, type: 'delta', deltaContent: fullText });
       }
 
-      lastErrorMessage = null;
-      if (
-        usageInfo?.quota &&
-        (usageInfo.quota.isUnlimitedEntitlement || (typeof usageInfo.quota.remainingPercentage === 'number' && usageInfo.quota.remainingPercentage > 0))
-      ) {
-        lastQuotaExhausted = false;
-      } else if (!usageInfo?.quota) {
-        lastQuotaExhausted = false;
-      }
+      // Un răspuns primit înseamnă că mai e cotă, în afară de cazul în care chiar acest răspuns a consumat-o pe ultima.
+      lastQuotaExhausted = isQuotaExhausted(usageInfo?.quota);
 
       return {
         ok: true,
@@ -486,8 +760,14 @@ function registerCopilotIPC(ipcMain, { getMainWindow, getUserDataPath }) {
       const classified = classifyCopilotError(err, entry.aborted);
       if (classified.errorCode === 'quota_exhausted') {
         lastQuotaExhausted = true;
-      } else if (classified.errorCode === 'error') {
-        lastErrorMessage = classified.error;
+      }
+      // O cerere căzută (de pildă la expirarea timpului) poate încă rula în motor: o oprim, ca să nu consume cotă degeaba.
+      if (session && !entry.aborted) {
+        try {
+          await session.abort();
+        } catch {
+          // ignore
+        }
       }
       return { ok: false, ...classified };
     } finally {
@@ -498,10 +778,19 @@ function registerCopilotIPC(ipcMain, { getMainWindow, getUserDataPath }) {
         // ignore
       }
       if (session) {
+        const sessionId = typeof session.sessionId === 'string' ? session.sessionId : '';
         try {
           await session.disconnect();
         } catch {
           // ignore
+        }
+        // Fiecare cerere e o sesiune de unică folosință: o ștergem, ca întrebările să nu rămână pe disc în folderul motorului.
+        if (sessionId) {
+          try {
+            await instance.deleteSession(sessionId);
+          } catch {
+            // ignore
+          }
         }
       }
     }
@@ -532,7 +821,8 @@ function registerCopilotIPC(ipcMain, { getMainWindow, getUserDataPath }) {
     lastServedModel = null;
     lastQuotaSnapshot = null;
     lastQuotaExhausted = false;
-    lastErrorMessage = null;
+    await logoutOwnAccount(getUserDataPath);
+    lastAuthType = null;
     await stopCopilotEngine({ clearRuntimeDir: true, getUserDataPath });
     return {
       state: 'disconnected',
@@ -549,10 +839,15 @@ function registerCopilotIPC(ipcMain, { getMainWindow, getUserDataPath }) {
 
 module.exports = {
   COPILOT_STREAM_EVENT_CHANNEL,
+  COPILOT_LOGIN_EVENT_CHANNEL,
+  isGitHubDeviceUrl,
   resolveCopilotRuntimeExecutable,
   sanitizeQuota,
   sanitizeAuthStatus,
+  sanitizeAccounts,
   classifyCopilotError,
+  isQuotaExhausted,
+  dropPastResetDate,
   buildCopilotSessionPayload,
   registerCopilotIPC,
   stopCopilotEngine,

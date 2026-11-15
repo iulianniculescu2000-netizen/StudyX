@@ -72,6 +72,11 @@ Object.defineProperty(window, 'electronAPI', {
     copilotStatus: () => Promise.resolve({ state: 'disconnected', isAuthenticated: false }),
     copilotStream: () => Promise.resolve({ ok: false, errorCode: 'auth_required', error: 'Mock Copilot neconectat' }),
     copilotAbort: () => Promise.resolve({ ok: false }),
+    copilotSwitchAccount: () => Promise.resolve({ ok: false, error: 'Mock Copilot' }),
+    copilotLoginStart: () => Promise.resolve({ ok: false, error: 'Mock Copilot' }),
+    copilotLoginCancel: () => Promise.resolve({ ok: true }),
+    copilotLoginOpenPage: () => Promise.resolve({ ok: false }),
+    copilotOnLoginEvent: () => () => {},
     copilotDisconnect: () => Promise.resolve({ state: 'disconnected', isAuthenticated: false }),
   },
 });

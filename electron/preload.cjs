@@ -108,6 +108,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }
   },
   copilotAbort: (requestId) => ipcRenderer.invoke('copilot:abort', requestId),
+  // Conectarea cu cod: pornește fluxul (browserul se deschide singur), anulează, redeschide pagina și ascultă rezultatul.
+  copilotSwitchAccount: (accountKey) => ipcRenderer.invoke('copilot:switch-account', accountKey),
+  copilotLoginStart: () => ipcRenderer.invoke('copilot:login-start'),
+  copilotLoginCancel: () => ipcRenderer.invoke('copilot:login-cancel'),
+  copilotLoginOpenPage: () => ipcRenderer.invoke('copilot:login-open-page'),
+  copilotOnLoginEvent: (cb) => {
+    const listener = (_event, data) => {
+      if (!data || (data.type !== 'done' && data.type !== 'error')) return;
+      try {
+        cb({ type: data.type, ...(typeof data.error === 'string' ? { error: data.error } : {}) });
+      } catch {
+        // ignore callback failure
+      }
+    };
+    ipcRenderer.on('copilot:login-event', listener);
+    return () => ipcRenderer.removeListener('copilot:login-event', listener);
+  },
   copilotDisconnect: () => ipcRenderer.invoke('copilot:disconnect'),
   isElectron: true,
 });
