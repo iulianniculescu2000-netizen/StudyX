@@ -69,7 +69,7 @@ export function CopilotScene() {
           transform: `translate3d(0, ${(1 - machine) * 16}px, ${-70 + machine * 30}px) rotateY(${12 - machine * 6}deg)`, opacity: machine,
         }}
       >
-        <div className={`flex items-center gap-1.5 ${eyebrow}`} style={{ color: theme.text3 }}><Monitor size={11} /> github.com/login/device</div>
+        <div className={`flex items-center gap-1.5 ${eyebrow}`} style={{ color: theme.text3 }}><Monitor size={11} /> login/device</div>
         <div className="mt-1.5 rounded-[var(--r-sm)] px-2 py-1 font-mono text-[10.5px]" style={{ background: theme.fillSubtle, color: theme.text, letterSpacing: '0.16em' }}>ABCD-1234</div>
         <div className="mt-1.5 flex items-center gap-1.5 text-[10.5px] font-semibold" style={{ color: theme.success, opacity: found }}>
           <Check size={11} strokeWidth={3} /> Cod confirmat
@@ -85,7 +85,7 @@ export function CopilotScene() {
       <div
         className="px-3.5 py-3"
         style={{
-          ...layer, ...sceneCard(theme, 3), left: 'calc(50% - 24px)', top: 16, width: 232,
+          ...layer, ...sceneCard(theme, 3), left: 'calc(50% - 20px)', top: 16, width: 216,
           transform: `translate3d(${(1 - card) * 30}px, 0, ${-60 + card * 100}px) rotateY(${-14 + card * 8}deg)`, opacity: card,
         }}
       >
@@ -109,20 +109,19 @@ export function CopilotScene() {
         </div>
       </div>
       {[
-        { label: 'Chat AI', k: chat, x: -24, w: 68 },
-        { label: 'Explicații', k: explain, x: 50, w: 84 },
-        { label: 'Grile', k: explain, x: 140, w: 68 },
+        { label: 'Chat AI', k: chat, x: -20, w: 64 },
+        { label: 'Explicații', k: explain, x: 50, w: 80 },
+        { label: 'Grile', k: explain, x: 136, w: 60 },
       ].map(({ label, k, x, w }) => (
         <div
           key={label}
-          className="flex items-center gap-1.5 px-2.5"
+          className="flex items-center justify-center px-2.5"
           style={{
             ...layer, ...sceneCard(theme, 2), left: `calc(50% + ${x}px)`, top: 118, width: w, height: 28,
             transform: `translate3d(0, ${(1 - k) * 12}px, ${-20 + k * 50}px)`, opacity: k,
           }}
         >
-          <Check size={11} strokeWidth={3} style={{ color: spent ? theme.text3 : theme.success }} />
-          <span className="min-w-0 flex-1 truncate text-[10.5px] font-semibold" style={{ color: theme.text }}>{label}</span>
+          <span className="whitespace-nowrap text-[10.5px] font-semibold" style={{ color: spent ? theme.text3 : theme.text }}>{label}</span>
         </div>
       ))}
 

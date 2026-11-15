@@ -257,7 +257,7 @@ export default function CopilotStatusSection({ onStatusChanged }: CopilotStatusS
   const loginPanel: ReactNode = login.kind === 'waiting' ? (
             <div className="space-y-3" aria-live="polite">
               <p className="text-[12px] leading-relaxed" style={{ color: theme.text2 }}>
-                Am deschis GitHub în browser. Introdu acolo acest cod și confirmă. StudyX nu vede parola ta și continuă singur când termini.
+                GitHub se deschide în browser; dacă nu, apasă „Deschide GitHub”. Introdu acolo acest cod și confirmă. StudyX nu vede parola ta și continuă singur când termini.
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 <span
@@ -352,10 +352,10 @@ export default function CopilotStatusSection({ onStatusChanged }: CopilotStatusS
           ) : (
             <>
               <p className="text-[12px] leading-relaxed" style={{ color: theme.text2 }}>
-                Te conectezi direct de aici, fără terminal: apeși butonul, introduci un cod pe github.com și gata. StudyX nu îți cere și nu vede parola. Ai nevoie de acces la GitHub Copilot (merge și planul gratuit, cu cotă limitată). Motorul pornește fără unelte și fără acces la fișiere.
+                Te conectezi direct de aici, fără terminal. Dacă ești deja conectat la GitHub pe calculator (GitHub CLI), contul e preluat fără cod; altfel apeși butonul și introduci un cod pe github.com. StudyX nu îți cere și nu vede parola. Ai nevoie de acces la GitHub Copilot (merge și planul gratuit, cu cotă limitată). Motorul pornește fără unelte și fără acces la fișiere.
               </p>
               <p className="text-[11.5px] leading-relaxed" style={{ color: theme.text3 }}>
-                Dacă ești deja conectat la GitHub pe calculator (GitHub CLI), contul e preluat fără cod. Nu vrei Copilot? Chatul merge la fel cu o cheie API gratuită, mai jos.
+                Nu vrei Copilot? Chatul merge la fel cu o cheie API gratuită, mai jos.
               </p>
               {login.kind === 'failed' && (
                 <p role="alert" className="text-[11.5px] font-medium" style={{ color: theme.danger }}>
@@ -377,7 +377,7 @@ export default function CopilotStatusSection({ onStatusChanged }: CopilotStatusS
                   style={{ background: theme.accent }}
                 >
                   {busyAction === 'connect' ? <Loader2 size={13} className="animate-spin" aria-hidden /> : <Bot size={13} aria-hidden />}
-                  {busyAction === 'connect' ? 'Se pregătește conectarea…' : 'Conectează GitHub Copilot'}
+                  {busyAction === 'connect' ? 'Se pregătește conectarea… prima pornire durează puțin' : 'Conectează GitHub Copilot'}
                 </motion.button>
                 {!isElectron && (
                   <span className="text-[11px] font-medium" style={{ color: theme.text3 }}>
