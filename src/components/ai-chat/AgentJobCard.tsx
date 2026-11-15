@@ -54,12 +54,12 @@ function StepParamEditor({
 
   return (
     <div className="ml-[26px] mt-1.5 flex flex-wrap items-center gap-2">
-      <div className="flex items-center gap-1 rounded-lg px-1 py-0.5" style={{ background: theme.surface, border: `1px solid ${theme.border}` }}>
+      <div className="flex items-center gap-1 rounded-full px-1 py-0.5" style={{ background: theme.surface, border: `1px solid ${theme.border}` }}>
         <button
           type="button"
           onClick={() => onChange({ [countKey]: Math.max(countStep, countValue - countStep) } as Partial<AgentJobStepParams>)}
           aria-label={isFlashcards ? 'Mai puține carduri' : 'Mai puține întrebări'}
-          className="flex h-5 w-5 items-center justify-center rounded"
+          className="focus-ring flex h-5 w-5 items-center justify-center rounded-full transition-colors hover:bg-[var(--hover-fill)]"
           style={{ color: theme.text3 }}
         >
           <Minus size={11} />
@@ -71,7 +71,7 @@ function StepParamEditor({
           type="button"
           onClick={() => onChange({ [countKey]: Math.min(countMax, countValue + countStep) } as Partial<AgentJobStepParams>)}
           aria-label={isFlashcards ? 'Mai multe carduri' : 'Mai multe întrebări'}
-          className="flex h-5 w-5 items-center justify-center rounded"
+          className="focus-ring flex h-5 w-5 items-center justify-center rounded-full transition-colors hover:bg-[var(--hover-fill)]"
           style={{ color: theme.text3 }}
         >
           <Plus size={11} />
@@ -85,7 +85,8 @@ function StepParamEditor({
               key={opt.id}
               type="button"
               onClick={() => onChange({ questionType: opt.id })}
-              className="rounded-lg px-2 py-1 text-[10px] font-bold"
+              className="focus-ring rounded-full px-2.5 py-1 text-[10px] font-bold transition-colors"
+              aria-pressed={(params.questionType ?? 'single') === opt.id}
               style={chipStyle((params.questionType ?? 'single') === opt.id)}
             >
               {opt.label}
@@ -101,7 +102,8 @@ function StepParamEditor({
               key={opt.id}
               type="button"
               onClick={() => onChange({ difficulty: opt.id })}
-              className="rounded-lg px-2 py-1 text-[10px] font-bold"
+              className="focus-ring rounded-full px-2.5 py-1 text-[10px] font-bold transition-colors"
+              aria-pressed={(params.difficulty ?? 'auto') === opt.id}
               style={chipStyle((params.difficulty ?? 'auto') === opt.id)}
             >
               {opt.label}
@@ -148,7 +150,7 @@ export default function AgentJobCard({
   return (
     <div
       className="rounded-[var(--r-lg)] border p-3.5"
-      style={{ background: theme.surface2, borderColor: `${theme.accent}30` }}
+      style={{ background: theme.surface2, borderColor: `${theme.accent}30`, boxShadow: 'var(--elev-1), inset 0 1px 0 var(--glass-highlight)' }}
     >
       <div className="mb-2.5 flex items-center gap-2">
         <Sparkles size={14} style={{ color: theme.accentText }} />
@@ -227,15 +229,15 @@ export default function AgentJobCard({
           )}
           <button
             onClick={onCancel}
-            className="rounded-xl px-3 py-1.5 text-[11px] font-black"
+            className="press-feedback focus-ring rounded-full px-3.5 py-1.5 text-[11px] font-black"
             style={{ background: theme.surface, color: theme.text3, border: `1px solid ${theme.border}` }}
           >
             Anulează
           </button>
           <button
             onClick={onConfirm}
-            className="rounded-xl px-3.5 py-1.5 text-[11px] font-black uppercase tracking-wider text-white"
-            style={{ background: theme.accent }}
+            className="press-feedback focus-ring rounded-full px-4 py-1.5 text-[11px] font-black uppercase tracking-wider text-white"
+            style={{ background: theme.accent, boxShadow: 'var(--elev-1)' }}
           >
             Execută
           </button>
@@ -245,7 +247,7 @@ export default function AgentJobCard({
       {done && (
         <button
           onClick={onUndo}
-          className="mt-3 flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] font-black"
+          className="press-feedback focus-ring mt-3 flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[11px] font-black"
           style={{ background: theme.surface, color: theme.text2, border: `1px solid ${theme.border}` }}
         >
           <RotateCcw size={12} />
@@ -256,7 +258,7 @@ export default function AgentJobCard({
       {errored && onRetry && (
         <button
           onClick={onRetry}
-          className="mt-3 flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-[11px] font-black uppercase tracking-wider text-white"
+          className="press-feedback focus-ring mt-3 flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[11px] font-black uppercase tracking-wider text-white"
           style={{ background: theme.accent }}
         >
           <RotateCcw size={12} />

@@ -85,7 +85,7 @@ export default function CrossCheckCard({
     }
   };
 
-  const chip = 'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors hover:opacity-80';
+  const chip = 'fine-chip inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-opacity hover:opacity-80';
   const chipStyle = { background: theme.surface, color: theme.text3, border: `1px solid ${theme.border}` };
 
   if (phase.kind === 'done') {
@@ -97,7 +97,7 @@ export default function CrossCheckCard({
       <div
         data-testid="crosscheck-card"
         className="mt-3 rounded-[var(--r-md)] p-3"
-        style={{ background: theme.surface, border: `1px solid ${tone}55` }}
+        style={{ background: theme.surface, border: `1px solid ${tone}55`, boxShadow: 'var(--elev-1)' }}
       >
         <div className="flex flex-wrap items-center gap-2">
           <span
@@ -117,11 +117,11 @@ export default function CrossCheckCard({
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
           aria-controls={panelId}
-          className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold"
+          className="focus-ring -ml-1 mt-1.5 inline-flex items-center gap-1 rounded-full px-1 py-0.5 text-[11px] font-semibold"
           style={{ color: theme.accentText }}
         >
           {result.claims.length} {result.claims.length === 1 ? 'afirmație' : 'afirmații'}
-          <ChevronDown size={12} aria-hidden="true" style={{ transform: expanded ? 'rotate(180deg)' : undefined }} />
+          <ChevronDown size={12} aria-hidden="true" style={{ transform: expanded ? 'rotate(180deg)' : undefined, transition: 'transform var(--dur-fast) var(--ease-standard)' }} />
         </button>
         {expanded && (
           <ul id={panelId} className="mt-2 space-y-1.5">
@@ -142,7 +142,7 @@ export default function CrossCheckCard({
             })}
           </ul>
         )}
-        <p className="mt-2 text-[10px]" style={{ color: theme.text3 }}>
+        <p className="mt-2 text-[11px]" style={{ color: theme.text3 }}>
           Un model nu garantează adevărul: confirmă din curs înainte de examen.
         </p>
       </div>

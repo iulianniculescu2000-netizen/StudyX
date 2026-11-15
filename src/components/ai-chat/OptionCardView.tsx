@@ -43,8 +43,8 @@ function OptionCardView({ card, theme, onEdit, onSubmit, onCancel, onOpen }: Opt
     destination,
   ].filter(Boolean).join(' · ');
 
-  const shell = 'mt-3 rounded-2xl p-3.5';
-  const shellStyle = { background: theme.surface, border: `1px solid ${theme.border}` } as const;
+  const shell = 'mt-3 rounded-[var(--r-lg)] p-3.5';
+  const shellStyle = { background: theme.surface, border: `1px solid ${theme.border}`, boxShadow: 'var(--elev-1)' } as const;
 
   if (card.status === 'cancelled') {
     return <div className={`${shell} text-[12px]`} style={{ ...shellStyle, color: theme.text3 }}>Cerere anulată · {summary}</div>;
@@ -70,7 +70,7 @@ function OptionCardView({ card, theme, onEdit, onSubmit, onCancel, onOpen }: Opt
           <button
             type="button"
             onClick={() => onOpen(card.route!.route)}
-            className="press-feedback mt-2.5 inline-flex items-center gap-2 rounded-full px-4 py-2 text-[12px] font-semibold text-white"
+            className="press-feedback focus-ring mt-2.5 inline-flex items-center gap-2 rounded-full px-4 py-2 text-[12px] font-semibold text-white"
             style={{ background: theme.accent }}
           >
             <ArrowRight size={13} /> {card.route.label}
@@ -128,12 +128,12 @@ function OptionCardView({ card, theme, onEdit, onSubmit, onCancel, onOpen }: Opt
           type="button"
           onClick={onSubmit}
           disabled={!canSubmit}
-          className="press-feedback rounded-full px-5 py-2.5 text-[13px] font-semibold text-white disabled:opacity-45"
+          className="press-feedback focus-ring rounded-full px-5 py-2.5 text-[13px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45"
           style={{ background: theme.accent }}
         >
           Generează {countLabel(card.kind, card.count)}
         </button>
-        <button type="button" onClick={onCancel} className="press-feedback rounded-full px-4 py-2.5 text-[12.5px] font-semibold" style={{ color: theme.text3 }}>
+        <button type="button" onClick={onCancel} className="press-feedback focus-ring rounded-full px-4 py-2.5 text-[12.5px] font-semibold" style={{ color: theme.text3 }}>
           Renunț
         </button>
       </div>

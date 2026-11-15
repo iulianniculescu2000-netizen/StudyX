@@ -75,7 +75,7 @@ export default function ChatHeader({
         </p>
       </div>
 
-      <div className="hidden flex-shrink-0 items-center gap-1 rounded-full border p-1 sm:flex" style={{ borderColor: theme.border, background: theme.surface2 }}>
+      <div className="hidden flex-shrink-0 items-center gap-1 rounded-full border p-1 sm:flex" style={{ borderColor: theme.border, background: theme.surface2, boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}>
         {([
           { id: 'chat', label: 'Chat', icon: <PanelRightClose size={14} /> },
           { id: 'studio', label: 'Studio', icon: <PanelRightOpen size={14} /> },
@@ -85,10 +85,12 @@ export default function ChatHeader({
             <button
               key={entry.id}
               onClick={() => onViewChange(entry.id)}
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.1em]"
+              aria-pressed={active}
+              className="focus-ring inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] transition-colors duration-150 hover:bg-[var(--hover-fill)]"
               style={{
-                background: active ? theme.accent : 'transparent',
+                background: active ? theme.accent : undefined,
                 color: active ? '#fff' : theme.text3,
+                boxShadow: active ? 'var(--elev-1)' : undefined,
               }}
             >
               {entry.icon}

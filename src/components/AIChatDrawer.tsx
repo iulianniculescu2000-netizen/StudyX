@@ -10,6 +10,7 @@ import {
   Brain,
   Loader2,
   Sparkles,
+  Square,
   Target,
   X,
 } from 'lucide-react';
@@ -1142,8 +1143,8 @@ export default function AIChatDrawer() {
     const assertSameProfile = profileGuard();
     const prev = messages[index - 1];
     const hasCloudKey = Object.entries(providerKeys).some(([p, key]) => p !== 'copilot' && (key ?? '').trim().length > 0);
-    if (!hasCloudKey) {
-      addToast('Generarea de grile folosește o cheie API (Groq, Gemini sau Mistral). Adaugă una în Setări AI.', 'warning');
+    if (!hasCloudKey && !copilotConnected) {
+      addToast('Pentru a genera un set ai nevoie de GitHub Copilot sau de o cheie API (Groq, Gemini sau Mistral) în Setări AI.', 'warning');
       return;
     }
     setLoading(true);
@@ -1395,15 +1396,15 @@ export default function AIChatDrawer() {
           <div className="flex gap-2">
             <button
               type="button"
-              className="press-feedback rounded-full px-4 py-2 text-[12px] font-bold"
-              style={{ background: theme.accent, color: '#fff' }}
+              className="press-feedback focus-ring rounded-full px-4 py-2 text-[12px] font-bold"
+              style={{ background: theme.accent, color: '#fff', boxShadow: 'var(--elev-1)' }}
               onClick={() => { setRecapDismissed(true); void sendMessage(continuityRecap.prompt); }}
             >
               Continuăm
             </button>
             <button
               type="button"
-              className="press-feedback rounded-full px-4 py-2 text-[12px] font-bold"
+              className="press-feedback focus-ring rounded-full px-4 py-2 text-[12px] font-bold"
               style={{ color: theme.text2, border: `1px solid ${theme.border}` }}
               onClick={() => setRecapDismissed(true)}
             >
@@ -1422,8 +1423,18 @@ export default function AIChatDrawer() {
             }
             onNavigate={closeChat}
           />
-          <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="mb-5 flex h-12 items-center justify-center" style={{ color: theme.accent }}>
-            <Brain size={44} aria-hidden="true" />
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-[var(--r-lg)]"
+            style={{
+              color: theme.accent,
+              background: `color-mix(in srgb, ${theme.accent} 12%, ${theme.surface2})`,
+              border: `1px solid color-mix(in srgb, ${theme.accent} 24%, transparent)`,
+              boxShadow: 'var(--elev-1), inset 0 1px 0 var(--glass-highlight)',
+            }}
+          >
+            <Brain size={34} aria-hidden="true" />
           </motion.div>
           <h4 className="mb-2 text-[1.25rem] font-black tracking-tight" style={{ color: theme.text }}>
             {greeting.title}
@@ -1467,7 +1478,7 @@ export default function AIChatDrawer() {
                       setManualMode(true);
                       void sendMessage(action.prompt, action.mode);
                     }}
-                    className="premium-card-hover flex items-center justify-between rounded-[var(--r-lg)] border px-4 py-3 text-left press-feedback"
+                    className="premium-card-hover focus-ring flex items-center justify-between rounded-[var(--r-lg)] border px-4 py-3 text-left press-feedback"
                     style={{ background: theme.surface, borderColor: theme.border, color: theme.text }}
                   >
                     <div className="min-w-0 pr-3">
@@ -1501,7 +1512,7 @@ export default function AIChatDrawer() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1 + index * 0.08 }}
                 onClick={() => void sendMessage(item, mode)}
-                className="premium-card-hover w-full rounded-[var(--r-lg)] border p-4 text-left text-[11px] font-black uppercase tracking-wider transition-colors press-feedback"
+                className="premium-card-hover focus-ring w-full rounded-[var(--r-lg)] border p-4 text-left text-[11px] font-black uppercase tracking-wider transition-colors press-feedback"
                 style={{ background: theme.surface2, borderColor: theme.border, color: theme.text }}
               >
                 {item}
@@ -1539,7 +1550,7 @@ export default function AIChatDrawer() {
               </div>
               <div
                 className="flex items-center gap-2.5 rounded-[var(--r-lg)] border px-4 py-3"
-                style={{ background: theme.surface2, borderColor: theme.border }}
+                style={{ background: theme.surface2, borderColor: theme.border, boxShadow: 'var(--elev-1), inset 0 1px 0 var(--glass-highlight)' }}
               >
                 <Loader2 size={16} className="animate-spin" style={{ color: theme.accentText }} />
                 <span className="text-[13px] font-semibold" style={{ color: theme.text2 }}>
@@ -1548,10 +1559,10 @@ export default function AIChatDrawer() {
                 <button
                   onClick={stopGeneration}
                   title="Oprește generarea"
-                  className="ml-1 flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide transition-colors hover:opacity-80"
+                  className="focus-ring ml-1 flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide transition-opacity hover:opacity-80"
                   style={{ background: `${theme.danger}15`, color: theme.danger, border: `1px solid ${theme.danger}30` }}
                 >
-                  ⬛ Stop
+                  <Square size={10} fill="currentColor" aria-hidden="true" /> Stop
                 </button>
               </div>
             </div>

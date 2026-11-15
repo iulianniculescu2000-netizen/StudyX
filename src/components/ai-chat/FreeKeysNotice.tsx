@@ -70,8 +70,8 @@ export default function FreeKeysNotice({
 
       <button
         onClick={goToSettings}
-        className="mt-3 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] transition-opacity hover:opacity-85"
-        style={{ background: theme.accent, color: '#fff' }}
+        className="press-feedback focus-ring mt-3 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[11px] font-black uppercase tracking-[0.12em]"
+        style={{ background: theme.accent, color: '#fff', boxShadow: 'var(--elev-1)' }}
       >
         {hasNone ? 'Adaugă cheile gratuite' : 'Completează cheile'}
         <ArrowRight size={12} />

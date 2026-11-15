@@ -72,13 +72,13 @@ function ChatComposer({
             >
               <div className="mt-0.5" style={{ color: theme.accentText }}><Sparkles size={14} /></div>
               <div className="flex-1">
-                <span className="mb-1 block text-[9px] font-bold uppercase tracking-widest opacity-80">Tutor Contextual</span>
+                <span className="mb-1 block text-[10px] font-bold uppercase tracking-widest" style={{ color: theme.accentText }}>Tutor Contextual</span>
                 <span className="line-clamp-2 opacity-90">{quizContext.questionText}</span>
               </div>
               <button
                 onClick={onClearQuizContext}
                 aria-label="Scoate contextul întrebării"
-                className="fine-row rounded-full p-1 transition-colors hover:bg-[var(--hover-fill)]"
+                className="fine-row rounded-full p-1.5 transition-colors hover:bg-[var(--hover-fill)]"
                 style={{ color: theme.text3 }}
               >
                 <X size={12} />
@@ -104,7 +104,7 @@ function ChatComposer({
             <button
               onClick={() => onPastedImage(null)}
               aria-label="Scoate imaginea"
-              className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border text-white"
+              className="focus-ring absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border text-white"
               style={{ background: theme.danger, borderColor: theme.surface }}
             >
               <X size={10} />
@@ -189,7 +189,7 @@ function ChatComposer({
               onClick={onStop}
               aria-label="Oprește generarea"
               title="Oprește generarea"
-              className="composer-send press-feedback"
+              className="composer-send press-feedback focus-ring"
               style={{ background: `${theme.danger}1f`, color: theme.danger }}
             >
               <Square size={13} />
@@ -199,7 +199,7 @@ function ChatComposer({
               onClick={onSend}
               disabled={!canSend}
               aria-label="Trimite mesajul"
-              className="composer-send press-feedback"
+              className="composer-send press-feedback focus-ring"
               data-ready={canSend}
             >
               {pastedImage && !input.trim() ? <ImageIcon size={15} /> : <SendHorizonal size={15} />}

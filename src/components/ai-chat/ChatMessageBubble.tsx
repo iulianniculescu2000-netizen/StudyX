@@ -82,8 +82,10 @@ function ChatMessageBubble({
           background: message.role === 'user' ? theme.accent : theme.surface2,
           color: message.role === 'user' ? '#fff' : theme.text,
           borderRadius: message.role === 'user' ? 'var(--r-lg) var(--r-lg) 8px var(--r-lg)' : 'var(--r-lg) var(--r-lg) var(--r-lg) 8px',
-          border: message.role === 'assistant' ? `1px solid ${theme.border}` : 'none',
-          boxShadow: message.role === 'user' ? 'var(--elev-1)' : 'none',
+          border: message.role === 'assistant'
+            ? `1px solid ${message.isError ? `color-mix(in srgb, ${theme.danger} 38%, ${theme.border})` : theme.border}`
+            : 'none',
+          boxShadow: 'var(--elev-1), inset 0 1px 0 var(--glass-highlight)',
         }}
       >
         {message.role === 'assistant' && message.autoMode && message.mode && (
@@ -116,14 +118,14 @@ function ChatMessageBubble({
         )}
 
         {message.role === 'assistant' && message.served && !streaming && !message.isError && !message.agentJobId && message.content.trim() && (
-          <div className="mt-2 text-[11px]" style={{ color: theme.text3 }} title="Cine a scris acest răspuns">
+          <div className="mt-2.5 text-[11px] font-medium tabular-nums" style={{ color: theme.text3 }} title="Cine a scris acest răspuns">
             {servedBadgeText(message.served, message.completedWithCloud)}
           </div>
         )}
 
         {message.role === 'assistant' && message.support && !streaming && !message.isError && !message.agentJobId && message.content.trim() && (
           <div
-            className="mt-2 text-[11px]"
+            className="mt-1 text-[11px] font-medium"
             style={{ color: theme.text3 }}
             data-support={message.support.level}
             title={message.support.unverified?.length
@@ -159,8 +161,8 @@ function ChatMessageBubble({
             {agentResult && (
               <button
                 onClick={() => actions.go(agentResult.route)}
-                className="press-feedback mt-2.5 inline-flex items-center gap-2 rounded-[var(--r-md)] px-4 py-2.5 text-[12px] font-black text-white shadow-md"
-                style={{ background: theme.accent, boxShadow: `0 8px 20px ${theme.accent}33` }}
+                className="press-feedback focus-ring mt-2.5 inline-flex items-center gap-2 rounded-[var(--r-md)] px-4 py-2.5 text-[12px] font-black text-white"
+                style={{ background: theme.accent, boxShadow: 'var(--elev-2)' }}
               >
                 <ArrowRight size={14} /> {agentResult.label}
               </button>
@@ -171,8 +173,8 @@ function ChatMessageBubble({
         {message.role === 'assistant' && message.openRoute && (
           <button
             onClick={() => actions.go(message.openRoute!.route)}
-            className="press-feedback mt-3 inline-flex items-center gap-2 rounded-[var(--r-md)] px-4 py-2.5 text-[12px] font-black text-white shadow-md"
-            style={{ background: theme.accent, boxShadow: `0 8px 20px ${theme.accent}33` }}
+            className="press-feedback focus-ring mt-3 inline-flex items-center gap-2 rounded-[var(--r-md)] px-4 py-2.5 text-[12px] font-black text-white"
+            style={{ background: theme.accent, boxShadow: 'var(--elev-2)' }}
           >
             <ArrowRight size={14} /> {message.openRoute.label}
           </button>
@@ -193,7 +195,7 @@ function ChatMessageBubble({
                   <button
                     key={citationKey}
                     onClick={() => actions.toggleCitation(isActiveCitation ? null : citationKey)}
-                    className="citation-source"
+                    className="citation-source focus-ring"
                     data-tier={tier}
                     data-active={isActiveCitation}
                     title={chip.full}
@@ -225,7 +227,7 @@ function ChatMessageBubble({
                   {(citation.page !== undefined || citation.printedPage !== undefined || citation.sourceId) && (
                     <button
                       type="button"
-                      className="citation-pill mt-2 block transition-colors"
+                      className="citation-pill focus-ring mt-2.5 block transition-colors"
                       aria-label={`${citationOpenLabel(citation)}: ${citationLabel(citation)}`}
                       onClick={() => actions.openBook(citation)}
                     >
@@ -242,14 +244,14 @@ function ChatMessageBubble({
           <div className="mt-3 flex flex-wrap gap-1.5">
             <button
               onClick={() => actions.retryError(index)}
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors hover:opacity-80"
+              className="fine-chip inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-opacity hover:opacity-80"
               style={{ background: theme.surface, color: theme.text2, border: `1px solid ${theme.border}` }}
             >
               <RotateCcw size={12} /> Încearcă din nou
             </button>
             <button
               onClick={() => actions.switchModel(index)}
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors hover:opacity-80"
+              className="fine-chip inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-opacity hover:opacity-80"
               style={{ background: theme.surface, color: theme.text2, border: `1px solid ${theme.border}` }}
             >
               <Sparkles size={12} /> Alt model
@@ -257,7 +259,7 @@ function ChatMessageBubble({
           </div>
         )}
 
-        {message.role === 'assistant' && !message.isError && !message.optionCard && (!message.citations || message.citations.length === 0) && (
+        {message.role === 'assistant' && !message.agentJobId && !message.isError && !message.optionCard && (!message.citations || message.citations.length === 0) && (
           <div className="mt-4">
             <span className="citation-pill">Răspuns general</span>
           </div>
@@ -277,7 +279,7 @@ function ChatMessageBubble({
               <button
                 key={action.key}
                 onClick={action.onClick}
-                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors hover:opacity-80"
+                className="fine-chip inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-opacity hover:opacity-80"
                 style={{ background: theme.surface, color: theme.text3, border: `1px solid ${theme.border}` }}
               >
                 {action.icon}
@@ -304,7 +306,7 @@ function ChatMessageBubble({
               <button
                 key={suggestion}
                 onClick={() => actions.suggest(suggestion, message.mode ?? fallbackMode)}
-                className="rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors"
+                className="fine-chip rounded-full px-3 py-1.5 text-[11px] font-semibold transition-opacity hover:opacity-80"
                 style={{ background: theme.surface, color: theme.text2, border: `1px solid ${theme.border}` }}
               >
                 {suggestion}

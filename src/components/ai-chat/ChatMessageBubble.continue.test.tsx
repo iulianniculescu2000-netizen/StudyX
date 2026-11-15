@@ -70,3 +70,13 @@ describe('insigna „cine a răspuns”', () => {
     expect(screen.queryByTitle('Cine a scris acest răspuns')).toBeNull();
   });
 });
+
+describe('insigna „Răspuns general”', () => {
+  it('apare pe un răspuns fără citări, dar nu pe un mesaj cu card de agent', () => {
+    const plain = mount(answer());
+    expect(plain.queryByText('Răspuns general')).not.toBeNull();
+    plain.unmount();
+    const agent = mount(answer({ agentJobId: 'job-1' }));
+    expect(agent.queryByText('Răspuns general')).toBeNull();
+  });
+});
