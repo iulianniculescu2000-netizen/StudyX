@@ -11,7 +11,7 @@ import { NonRetryableError, extractApiErrorMessage, isRequestSpecificError } fro
 import { backgroundGovernor, generationGovernor, groqGovernor } from './governors';
 import { sanitizeKey } from './keys';
 import { buildProviderChain, getProviderConfig, isCopilotEligibleTask, markServed, trackProviderOutcome } from './providers';
-import { callCopilotBridge } from './copilotBridge';
+import { callCopilotBridge, reviveCopilotIfDue } from './copilotBridge';
 import { paceProvider } from './providerPacing';
 import { isDailyQuotaError, isModelCoolingDown, isModelSpecificFailure, isOversizedRequest, noteModelFailure } from './quotaGuard';
 import { lightModelFor, logPromptBreakdown } from '../ai/tokenBudget';
@@ -168,6 +168,7 @@ export async function groqRequest({
 }): Promise<string> {
   const governor = light ? backgroundGovernor : task === 'questions' ? generationGovernor : groqGovernor;
   return governor.run(task, async () => {
+    reviveCopilotIfDue();
     const state = useAIStore.getState();
     const primaryProvider = state.provider;
     const primaryKey = sanitizeKey(state.apiKey);
@@ -199,6 +200,8 @@ export async function groqRequest({
     let chain = buildProviderChain(primaryProvider, state.model, effectiveKeys, {
       task,
       copilotConnected: state.copilotConnected,
+      light,
+      hasImages: finalMessages.some((m) => typeof m.content !== 'string' && m.content.some((part) => part.type !== 'text')),
     });
     if (only) {
       const onlyKey = sanitizeKey(state.providerKeys[only.provider] ?? (only.provider === primaryProvider ? primaryKey : ''));
@@ -207,9 +210,9 @@ export async function groqRequest({
     }
 
     if (chain.length === 0) {
-      if (primaryProvider === 'copilot' && !isCopilotEligibleTask(task)) {
+      if (primaryProvider === 'copilot' && (!isCopilotEligibleTask(task) || light)) {
         throw new Error(
-          'Această funcție AI folosește un provider cu cheie API (Groq, Gemini sau Mistral). Adaugă o cheie în Setări AI pentru generarea de grile și verificare.',
+          'Această funcție AI (sugestii, analize, verificare, cereri cu imagini) folosește un provider cu cheie API (Groq, Gemini sau Mistral). Adaugă o cheie în Setări AI.',
         );
       }
       throw new Error(getProviderConfig(primaryProvider).keyHint);

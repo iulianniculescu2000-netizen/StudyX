@@ -10,7 +10,7 @@ import { extractApiErrorMessage, isRequestSpecificError } from './errors';
 import { groqGovernor } from './governors';
 import { sanitizeKey } from './keys';
 import { buildProviderChain, getProviderConfig, isCopilotEligibleTask, markServed, trackProviderOutcome } from './providers';
-import { callCopilotBridge } from './copilotBridge';
+import { callCopilotBridge, reviveCopilotIfDue } from './copilotBridge';
 import { paceProvider } from './providerPacing';
 import { isModelSpecificFailure, isOversizedRequest, noteModelFailure } from './quotaGuard';
 import { TASK_MAX_TOKENS, buildKnowledgeQuery, estimateMessagesTokens } from './requestConfig';
@@ -47,6 +47,7 @@ export async function groqStream(
   const streamMaxTokens = options.maxTokens
     ?? (streamTask === 'chat' ? STREAM_CHAT_MAX_TOKENS : TASK_MAX_TOKENS[streamTask] ?? STREAM_CHAT_MAX_TOKENS);
   return groqGovernor.run(streamTask, async () => {
+    reviveCopilotIfDue();
     const state = useAIStore.getState();
     const primaryProvider = state.provider;
     const primaryKey = sanitizeKey(state.apiKey);
@@ -57,6 +58,7 @@ export async function groqStream(
     const chain = buildProviderChain(primaryProvider, state.model, effectiveKeys, {
       task: streamTask,
       copilotConnected: state.copilotConnected,
+      hasImages: messages.some((m) => typeof m.content !== 'string' && m.content.some((part) => part.type !== 'text')),
     });
     if (chain.length === 0) {
       if (primaryProvider === 'copilot' && !isCopilotEligibleTask(streamTask)) {

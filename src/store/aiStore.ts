@@ -60,12 +60,22 @@ export interface CopilotQuotaSnapshot {
   resetDate?: string;
 }
 
+/** Un cont GitHub pe care îl vede motorul Copilot. `key` e identificatorul lui stabil, nu un token. */
+export interface CopilotAccount {
+  key: string;
+  login: string;
+  source: string | null;
+  active: boolean;
+  switchable: boolean;
+}
+
 export interface CopilotStatusInfo {
   state: CopilotConnectionState;
   isAuthenticated: boolean;
   login?: string | null;
   authType?: string | null;
   host?: string | null;
+  accounts?: CopilotAccount[];
   lastModel?: string | null;
   statusMessage?: string | null;
   quota?: CopilotQuotaSnapshot | null;
@@ -671,6 +681,7 @@ export const useAIStore = create<AIState & AIActions>()(
               login: result.login ?? null,
               authType: result.authType ?? null,
               host: result.host ?? null,
+              accounts: result.accounts ?? [],
               lastModel: result.lastModel ?? null,
               statusMessage: result.statusMessage ?? null,
               quota: result.quota ?? null,
@@ -1254,6 +1265,11 @@ export const useAIStore = create<AIState & AIActions>()(
             : { ...DEFAULT_COPILOT_STATUS };
           state.apiKey = state.provider === 'copilot' ? '' : (migratedKeys[state.provider] ?? '');
           state.hasKey = computeHasKey(state.provider, state.apiKey, state.copilotConnected);
+          // „Conectat” ținut minte de data trecută nu e o dovadă: contul GitHub de pe calculator poate fi deconectat sau
+          // cota atinsă între timp. Cine a ales Copilot îl are verificat o dată la pornire, în fundal.
+          if (state.provider === 'copilot') {
+            queueMicrotask(() => { void useAIStore.getState().refreshCopilotStatus(); });
+          }
           state.isHydrated = true;
           state.libraryFolders = (state.libraryFolders ?? []).map((folder) => ({
             ...folder,

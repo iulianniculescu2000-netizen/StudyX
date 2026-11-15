@@ -6,8 +6,13 @@ import { candidateModels } from '../ai/modelHealing';
 import type { AIRequestTask } from '../../ai/types';
 import type { CloudProviderId, ProviderId } from './types';
 
+/**
+ * Ce îi dăm lui Copilot: munca mare, cea pe care o vede utilizatorul (chatul, explicațiile, generarea de grile).
+ * Restul (sugestii, mnemonice, analize, planul agentului, memoria conversațiilor, verificatorii) rămâne pe cheile API:
+ * sunt multe și mici, ar mânca din cota contului, iar verificatorii trebuie oricum să fie alt model decât cel care a scris.
+ */
 export function isCopilotEligibleTask(task?: AIRequestTask): boolean {
-  return task === 'chat' || task === 'explanation';
+  return task === 'chat' || task === 'explanation' || task === 'questions';
 }
 
 export function getProviderConfig(provider: ReturnType<typeof useAIStore.getState>['provider']) {
@@ -80,14 +85,17 @@ export function buildProviderChain(
   primaryProvider: ProviderId,
   primaryModel: string,
   providerKeys: Partial<Record<ProviderId, string>>,
-  options?: { task?: AIRequestTask; copilotConnected?: boolean },
+  options?: { task?: AIRequestTask; copilotConnected?: boolean; light?: boolean; hasImages?: boolean },
 ): Array<{ provider: ProviderId; key: string; model: string; endpoint?: string }> {
   if (stickyFallback && stickyFallback.until <= Date.now()) stickyFallback = null;
 
   const includeCopilot =
     primaryProvider === 'copilot' &&
     Boolean(options?.copilotConnected) &&
-    isCopilotEligibleTask(options?.task);
+    isCopilotEligibleTask(options?.task) &&
+    // Sarcinile ușoare merg pe cheile API, iar puntea Copilot trimite doar text: o imagine ar fi pierdută fără semnal.
+    !options?.light &&
+    !options?.hasImages;
 
   const stickyCloud: CloudProviderId | null =
     stickyFallback &&

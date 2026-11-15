@@ -26,6 +26,36 @@ export function toCopilotMessages(messages: Array<GroqMessage | CopilotBridgeMes
   }));
 }
 
+/** Cât așteptăm până reîncercăm Copilot după „cotă atinsă”, când contul nu spune o dată de resetare din viitor. */
+const QUOTA_RETRY_MS = 15 * 60_000;
+
+/** Momentul de la care Copilot merită reîncercat după ce a răspuns „cotă atinsă”. Doar în memorie: la repornire starea se recitește de la cont. */
+let quotaRetryAt = 0;
+
+function noteQuotaExhausted(resetDate?: string): void {
+  const reset = resetDate ? Date.parse(resetDate) : Number.NaN;
+  const now = Date.now();
+  quotaRetryAt = Number.isFinite(reset) && reset > now ? reset : now + QUOTA_RETRY_MS;
+}
+
+/**
+ * Cota atinsă scoate Copilot din lanț, iar cererile merg pe cheile API. Fără pasul acesta ar rămâne scos până când
+ * utilizatorul apasă „Reîncearcă” în Setări AI. Când a trecut timpul de așteptare îl punem la loc o dată: dacă încă nu
+ * are cotă, răspunde imediat cu aceeași eroare și cererea continuă pe următorul furnizor.
+ */
+export function reviveCopilotIfDue(): void {
+  if (!quotaRetryAt || Date.now() < quotaRetryAt) return;
+  quotaRetryAt = 0;
+  const store = useAIStore.getState();
+  if (store.copilotStatusInfo.state !== 'quota_exhausted') return;
+  store.setCopilotStatusInfo({
+    ...store.copilotStatusInfo,
+    state: 'connected',
+    isAuthenticated: true,
+    statusMessage: 'Conectat la GitHub Copilot',
+  });
+}
+
 function createAbortError(message = 'Cerere oprită.'): Error {
   const err = new Error(message);
   err.name = 'AbortError';
@@ -77,6 +107,7 @@ export async function callCopilotBridge(
   if (!res || !res.ok) {
     if (res?.errorCode === 'quota_exhausted') {
       const msg = res.error || 'Cota GitHub Copilot pentru chat a fost atinsă.';
+      noteQuotaExhausted(store.copilotStatusInfo.quota?.resetDate);
       store.setCopilotStatusInfo({
         ...store.copilotStatusInfo,
         state: 'quota_exhausted',
@@ -107,13 +138,10 @@ export async function callCopilotBridge(
       throw err;
     }
 
-    const msg = res?.error || 'Eroare GitHub Copilot.';
-    store.setCopilotStatusInfo({
-      ...store.copilotStatusInfo,
-      state: 'error',
-      statusMessage: msg,
-    });
-    throw new Error(msg);
+    // O eroare trecătoare (rețea, timp expirat, motor repornit) nu schimbă starea conectării: cererea aceasta cade pe
+    // următorul furnizor, iar următoarea încearcă din nou Copilot. Altfel o singură eroare l-ar scoate din uz până la
+    // o reîncercare manuală din Setări AI.
+    throw new Error(res?.error || 'Eroare GitHub Copilot.');
   }
 
   const content = res.content ?? '';
@@ -125,6 +153,7 @@ export async function callCopilotBridge(
     !quota.isUnlimitedEntitlement &&
     typeof quota.remainingPercentage === 'number' &&
     quota.remainingPercentage <= 0;
+  if (quotaExhausted) noteQuotaExhausted(quota?.resetDate);
 
   store.setCopilotStatusInfo({
     ...store.copilotStatusInfo,

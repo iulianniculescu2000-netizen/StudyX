@@ -14,10 +14,10 @@ describe('GitHub Copilot task eligibility & routing', () => {
     vi.unstubAllGlobals();
   });
 
-  it('allows only chat and explanation for Copilot', () => {
+  it('gives Copilot the main work (chat, explanations, grile generation) and keeps the small tasks on API keys', () => {
     expect(isCopilotEligibleTask('chat')).toBe(true);
     expect(isCopilotEligibleTask('explanation')).toBe(true);
-    expect(isCopilotEligibleTask('questions')).toBe(false);
+    expect(isCopilotEligibleTask('questions')).toBe(true);
     expect(isCopilotEligibleTask('analysis')).toBe(false);
     expect(isCopilotEligibleTask('hint')).toBe(false);
     expect(isCopilotEligibleTask('mnemonic')).toBe(false);
@@ -40,7 +40,18 @@ describe('GitHub Copilot task eligibility & routing', () => {
     });
     expect(explanationChain[0].provider).toBe('copilot');
 
-    for (const nonCopilotTask of ['questions', 'analysis', 'hint', 'mnemonic'] as const) {
+    const generationChain = buildProviderChain('copilot', 'copilot-auto', keys, { task: 'questions', copilotConnected: true });
+    expect(generationChain[0].provider).toBe('copilot');
+    expect(generationChain.some((l) => l.provider === 'groq')).toBe(true);
+
+    // O sarcină ușoară sau o cerere cu imagini rămâne pe chei, chiar și pe o sarcină pe care Copilot o poate face.
+    for (const extra of [{ light: true }, { hasImages: true }]) {
+      const chain = buildProviderChain('copilot', 'copilot-auto', keys, { task: 'chat', copilotConnected: true, ...extra });
+      expect(chain.some((l) => l.provider === 'copilot')).toBe(false);
+      expect(chain[0]?.provider).toBe('groq');
+    }
+
+    for (const nonCopilotTask of ['analysis', 'hint', 'mnemonic'] as const) {
       const chain = buildProviderChain('copilot', 'copilot-auto', keys, {
         task: nonCopilotTask,
         copilotConnected: true,
@@ -92,7 +103,9 @@ describe('GitHub Copilot task eligibility & routing', () => {
     ]);
   });
 
-  it('routes explanation requests to Copilot and question generation strictly to cloud API keys', async () => {
+  it('routes explanation and question generation to Copilot, and analysis (judge, plans) to the API keys', async () => {
+    // Două cereri Copilot la rând așteaptă pasul de ritm dintre ele (400 ms): pe timere false nu ar trece niciodată.
+    vi.useRealTimers();
     const { useAIStore } = await import('../../store/aiStore');
     const groqMod = await import('../groq');
 
@@ -145,15 +158,24 @@ describe('GitHub Copilot task eligibility & routing', () => {
         skipLibraryContext: true,
         messages: [{ role: 'user', content: 'Generează grile' }],
       });
-      expect(qOut).toBe('[{"q":"Test"}]');
-      expect(copilotStreamMock).toHaveBeenCalledTimes(1);
+      expect(qOut).toBe('{"reason":"Corect [1]"}');
+      expect(copilotStreamMock).toHaveBeenCalledTimes(2);
+      expect(fetchMock).not.toHaveBeenCalled();
+
+      const judged = await groqMod.groqRequest({
+        task: 'analysis',
+        skipLibraryContext: true,
+        messages: [{ role: 'user', content: 'Verifică grilele' }],
+      });
+      expect(judged).toBe('[{"q":"Test"}]');
+      expect(copilotStreamMock).toHaveBeenCalledTimes(2);
       expect(fetchMock).toHaveBeenCalledTimes(1);
     } finally {
       window.electronAPI = prevApi;
     }
   });
 
-  it('rejects question generation cleanly when only Copilot is connected without cloud API keys', async () => {
+  it('rejects small tasks cleanly when only Copilot is connected without cloud API keys', async () => {
     const { useAIStore } = await import('../../store/aiStore');
     const groqMod = await import('../groq');
 
@@ -167,9 +189,9 @@ describe('GitHub Copilot task eligibility & routing', () => {
 
     await expect(
       groqMod.groqRequest({
-        task: 'questions',
+        task: 'analysis',
         skipLibraryContext: true,
-        messages: [{ role: 'user', content: 'Generează' }],
+        messages: [{ role: 'user', content: 'Analizează' }],
       }),
     ).rejects.toThrow(/cheie API/);
   });
@@ -220,6 +242,95 @@ describe('GitHub Copilot task eligibility & routing', () => {
       expect(chunks).toEqual(['Răspuns fallback Groq']);
       expect(useAIStore.getState().copilotStatusInfo.state).toBe('quota_exhausted');
       expect(groqMod.getLastServedModel()?.provider).toBe('groq');
+    } finally {
+      window.electronAPI = prevApi;
+    }
+  });
+
+  it('keeps Copilot connected after a passing error: this request falls back, the next one tries Copilot again', async () => {
+    const { useAIStore } = await import('../../store/aiStore');
+    const groqMod = await import('../groq');
+
+    useAIStore.setState({
+      provider: 'copilot',
+      model: 'copilot-auto',
+      apiKey: '',
+      copilotConnected: true,
+      copilotStatusInfo: { state: 'connected', isAuthenticated: true, login: 'med-user' },
+      providerKeys: { groq: GROQ_KEY },
+      providerModels: { copilot: 'copilot-auto', groq: 'openai/gpt-oss-120b' },
+    });
+
+    const copilotStreamMock = vi.fn(async () => ({
+      ok: false as const,
+      errorCode: 'error' as const,
+      error: 'ECONNRESET socket hang up',
+    }));
+    const fetchMock = vi.fn(async () =>
+      new Response(
+        `data: ${JSON.stringify({ choices: [{ delta: { content: 'Răspuns de rezervă' } }] })}
+
+data: [DONE]
+
+`,
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const prevApi = window.electronAPI;
+    window.electronAPI = {
+      ...(prevApi as NonNullable<typeof prevApi>),
+      copilotStream: copilotStreamMock,
+    };
+
+    try {
+      const text = await groqMod.groqStream([{ role: 'user', content: 'Explică AVC' }], () => {}, 0.5, undefined, true, { task: 'chat' });
+      expect(text).toBe('Răspuns de rezervă');
+      expect(copilotStreamMock).toHaveBeenCalledTimes(1);
+      // Înainte, orice eroare trecea starea pe „error” și Copilot nu mai era încercat până la o reîncercare manuală.
+      expect(useAIStore.getState().copilotStatusInfo.state).toBe('connected');
+      expect(useAIStore.getState().copilotConnected).toBe(true);
+    } finally {
+      window.electronAPI = prevApi;
+    }
+  });
+
+  it('tries Copilot again on its own once the quota wait has passed', async () => {
+    const { useAIStore } = await import('../../store/aiStore');
+    const { callCopilotBridge, reviveCopilotIfDue } = await import('./copilotBridge');
+
+    useAIStore.setState({
+      provider: 'copilot',
+      model: 'copilot-auto',
+      apiKey: '',
+      copilotConnected: true,
+      copilotStatusInfo: { state: 'connected', isAuthenticated: true, login: 'med-user' },
+      providerKeys: { groq: GROQ_KEY },
+    });
+
+    const prevApi = window.electronAPI;
+    window.electronAPI = {
+      ...(prevApi as NonNullable<typeof prevApi>),
+      copilotStream: vi.fn(async () => ({
+        ok: false as const,
+        errorCode: 'quota_exhausted' as const,
+        error: 'Cota GitHub Copilot pentru chat a fost atinsă.',
+      })),
+    };
+
+    try {
+      await expect(callCopilotBridge([{ role: 'user', content: 'Întrebare' }])).rejects.toMatchObject({ code: 'quota_exhausted' });
+      expect(useAIStore.getState().copilotConnected).toBe(false);
+
+      // Prea devreme: rămâne pe cheile API.
+      reviveCopilotIfDue();
+      expect(useAIStore.getState().copilotStatusInfo.state).toBe('quota_exhausted');
+
+      vi.setSystemTime(Date.now() + 16 * 60_000);
+      reviveCopilotIfDue();
+      expect(useAIStore.getState().copilotStatusInfo.state).toBe('connected');
+      expect(useAIStore.getState().copilotConnected).toBe(true);
+      expect(buildProviderChain('copilot', 'copilot-auto', { groq: GROQ_KEY }, { task: 'chat', copilotConnected: true })[0].provider).toBe('copilot');
     } finally {
       window.electronAPI = prevApi;
     }
