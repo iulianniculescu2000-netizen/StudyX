@@ -43,7 +43,12 @@ interface JudgeVerdict {
   i: number;
   correct: boolean;
   reason?: string;
+  /** Literele distractorilor evident implauzibili (absurzi, din altă clasă de lucruri, imposibili pentru cine știe jumătate din subiect). */
+  weak?: string[];
 }
+
+/** De la acest număr de distractori implauzibili, grila cade: ceilalți nu mai sunt o alegere reală (agentul „plauzibilitate”). */
+export const WEAK_DISTRACTORS_TO_DROP = 2;
 
 interface JudgeResponse {
   verdicts?: JudgeVerdict[];
@@ -61,6 +66,13 @@ export function judgeMaxTokens(questionCount: number, attempt = 0): number {
   return Math.min(8000, (1500 + questionCount * 300) * (attempt + 1));
 }
 
+/** Câți dintre distractorii (variante nemarcate) a numit judecătorul ca implauzibili; literele inexistente sau ale cheii nu contează. */
+export function weakDistractorCount(question: Question, verdict: Pick<JudgeVerdict, 'weak'> | undefined): number {
+  if (!verdict || !Array.isArray(verdict.weak)) return 0;
+  const picked = new Set(verdict.weak.map((w) => String(w).trim().toLowerCase().slice(0, 1)));
+  return question.options.filter((option, index) => !option.isCorrect && picked.has(letterFor(index))).length;
+}
+
 function letterFor(index: number): string {
   return String.fromCharCode(97 + index);
 }
@@ -72,7 +84,7 @@ function formatQuestionForReview(question: Question, index: number): string {
   return `[${index}] Enunț: ${question.text}\nVariante:\n${options}`;
 }
 
-function buildJudgePrompt(questions: Question[], groundingText: string | undefined): string {
+function buildJudgePrompt(questions: Question[], groundingText: string | undefined, plausibility = false): string {
   const lines = [
     'Ești medic examinator senior. Verifici RIGID corectitudinea medicală a unor grile deja generate, ÎNAINTE ca un student să le vadă. NU genera conținut nou, NU reformula — doar verifică.',
     VERIFIER_MATERIAL_RULE,
@@ -82,14 +94,16 @@ function buildJudgePrompt(questions: Question[], groundingText: string | undefin
     groundingText
       ? `Ai la dispoziție și sursa din care au fost generate (curs) — folosește-o ca referință principală când e relevantă:\n"""\n${groundingText.slice(0, MAX_GROUNDING_CHARS)}\n"""`
       : 'Nu ai o sursă atașată — verifică pe baza cunoștințelor medicale general acceptate și STABILE.',
+    plausibility && 'PLAUZIBILITATE: pentru variantele NEMARCATE, trece în "weak" literele celor evident implauzibile: absurde, din altă clasă de lucruri decât cere enunțul sau pe care nu le-ar alege nimeni care știe jumătate din subiect. Un distractor adevărat la o entitate vecină, sau o inversare de un cuvânt, e bun. Lasă "weak" gol când nu ești sigur.',
     'Marchează "correct": false DOAR când ești sigur că varianta marcată e greșită sau clar depășită medical, ori că o variantă nemarcată e și ea corectă — NU pentru ambiguități minore de formulare, stil, sau interpretări la limită unde ambele tabere au dreptate.',
     '',
     questions.map((q, i) => formatQuestionForReview(q, i)).join('\n\n'),
     '',
     `Răspunde STRICT cu JSON, fără text în plus, cu exact ${questions.length} intrări în "verdicts" (una per index de mai sus):`,
     '{"verdicts":[{"i":0,"correct":true},{"i":1,"correct":false,"reason":"1 propoziție în limba română, ce e greșit medical"}]}',
+    plausibility && 'La plauzibilitate, o intrare poate avea și "weak": de exemplu {"i":2,"correct":true,"weak":["c","e"]}.',
   ];
-  return lines.join('\n');
+  return lines.filter((line): line is string => typeof line === 'string').join('\n');
 }
 
 /**
@@ -119,6 +133,8 @@ export interface JudgeOptions {
    * la același răspuns). Un apel în plus pe lot, pe alt furnizor când există a doua cheie. Oprit implicit.
    */
   blind?: boolean;
+  /** Plauzibilitatea distractorilor (agentul „plauzibilitate”): judecătorul numește distractorii implauzibili, iar grila cu doi dintre ei cade. Doar la Rezidențiat. */
+  plausibility?: boolean;
 }
 
 export async function verifyQuestionsMedically(
@@ -149,7 +165,7 @@ export async function verifyQuestionsMedically(
   const ask = async (attempt: number): Promise<JudgeResponse | null> => {
     const request = {
       task: 'analysis' as const,
-      messages: [{ role: 'user' as const, content: buildJudgePrompt(questions, groundingText) }],
+      messages: [{ role: 'user' as const, content: buildJudgePrompt(questions, groundingText, options.plausibility) }],
       temperature: 0,
       maxTokens: judgeMaxTokens(questions.length, attempt),
       skipLibraryContext: true,
@@ -182,6 +198,11 @@ export async function verifyQuestionsMedically(
     // No verdict for this index (model skipped it) → keep it. The judge can
     // only remove questions it explicitly reviewed and rejected.
     if (!verdict || verdict.correct !== false) {
+      const weak = options.plausibility ? weakDistractorCount(question, verdict) : 0;
+      if (weak >= WEAK_DISTRACTORS_TO_DROP) {
+        flaggedReasons.push(`Grila „${question.text.slice(0, 60)}” are ${weak} distractori implauzibili, deci nu e o alegere reală.`);
+        return;
+      }
       kept.push(question);
       return;
     }
