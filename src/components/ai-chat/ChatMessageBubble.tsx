@@ -259,7 +259,7 @@ function ChatMessageBubble({
           </div>
         )}
 
-        {message.role === 'assistant' && !message.agentJobId && !message.isError && !message.optionCard && (!message.citations || message.citations.length === 0) && (
+        {message.role === 'assistant' && !streaming && !message.agentJobId && !message.isError && !message.optionCard && (!message.citations || message.citations.length === 0) && (
           <div className="mt-4">
             <span className="citation-pill">Răspuns general</span>
           </div>

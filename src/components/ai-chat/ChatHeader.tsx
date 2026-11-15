@@ -30,6 +30,8 @@ interface ChatHeaderProps {
   wideChat: boolean;
   setWideChat: (update: boolean | ((value: boolean) => boolean)) => void;
   hasMessages: boolean;
+  /** Furnizorul principal când nu e o cheie API (acum doar GitHub Copilot): se vede lângă starea chatului. */
+  aiProviderLabel?: string | null;
   /** Index of the last assistant answer, or undefined when there is none. */
   lastAssistantIndex: number | undefined;
   onRegenerate: (index: number) => void;
@@ -41,7 +43,7 @@ interface ChatHeaderProps {
 export default function ChatHeader({
   theme, calmMotion, popTransition, chatThread, loading, visualState, immersive, mobile, view, onViewChange, scopedSourceName, weakTopics,
   memoryInteractions, glass, glassPanelOpen, setGlassPanelOpen, overflowMenuOpen, setOverflowMenuOpen, wideChat, setWideChat,
-  hasMessages, lastAssistantIndex, onRegenerate, onClearRequest, onClose,
+  hasMessages, aiProviderLabel, lastAssistantIndex, onRegenerate, onClearRequest, onClose,
 }: ChatHeaderProps) {
   const status = {
     idle: 'Pregătit', waiting: 'Pregătesc răspunsul', streaming: 'Scriu răspunsul',
@@ -59,7 +61,10 @@ export default function ChatHeader({
           </h3>
           <TourHelpButton tour="chat" label="Vezi turul chatului AI" />
         </div>
-        <p role="status" className="mt-0.5 truncate text-[11px] font-semibold" style={{ color: visualState === 'error' ? theme.danger : theme.accentText }}>{status}</p>
+        <p role="status" className="mt-0.5 truncate text-[11px] font-semibold" style={{ color: visualState === 'error' ? theme.danger : theme.accentText }}>
+          {status}
+          {aiProviderLabel && <span className="font-medium" style={{ color: theme.text3 }}> · {aiProviderLabel}</span>}
+        </p>
         <p className="mt-0.5 text-[11px] font-medium truncate" style={{ color: theme.text3 }}>
           {chatThread === 'rezidentiat'
             ? 'Conversație separată, dedicată pregătirii de rezidențiat'

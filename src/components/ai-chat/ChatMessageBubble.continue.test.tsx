@@ -79,4 +79,9 @@ describe('insigna „Răspuns general”', () => {
     const agent = mount(answer({ agentJobId: 'job-1' }));
     expect(agent.queryByText('Răspuns general')).toBeNull();
   });
+
+  it('nu apare cât timp răspunsul se scrie, înainte să existe citările', () => {
+    const writing = mount(answer(), { streaming: true });
+    expect(writing.queryByText('Răspuns general')).toBeNull();
+  });
 });

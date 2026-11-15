@@ -160,6 +160,7 @@ export default function AIChatDrawer() {
   const setBooksOnly = useAIStore((state) => state.setBooksOnly);
   const providerKeys = useAIStore((state) => state.providerKeys);
   const copilotConnected = useAIStore((state) => state.copilotConnected);
+  const copilotIsMain = useAIStore((state) => state.provider === 'copilot' && state.copilotConnected);
   const recordAIInteraction = useAIStore((state) => state.recordAIInteraction);
   const memoryContext = useAIStore((state) => (
     activeProfileId ? state.getAIMemoryContext(activeProfileId) : ''
@@ -1712,6 +1713,7 @@ export default function AIChatDrawer() {
                   wideChat={wideChat}
                   setWideChat={setWideChat}
                   hasMessages={messages.length > 0}
+                  aiProviderLabel={copilotIsMain ? 'GitHub Copilot' : null}
                   lastAssistantIndex={lastAssistantIndex}
                   onRegenerate={regenerateAnswer}
                   onClearRequest={() => setConfirmClearOpen(true)}
