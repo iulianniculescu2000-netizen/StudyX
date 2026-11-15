@@ -59,9 +59,6 @@ node scripts/dev-commands.cjs ai:test
 ```bash
 # Lighthouse audit
 node scripts/dev-commands.cjs lighthouse
-
-# Performance tests
-node scripts/dev-commands.cjs performance:test
 ```
 
 ## 🎨 Comenzi Rapide (package.json)

@@ -33,7 +33,6 @@ const COMMANDS = {
   
   // Performance
   'lighthouse': 'npx lighthouse http://localhost:5173 --output=html --output-path=./lighthouse-report',
-  'performance:test': 'npx vitest run tests/performance/*.test.ts',
   
   // AI and ML tools
   'ai:test': 'npx vitest run tests/integration/ai-*.test.ts',
@@ -126,7 +125,6 @@ Usage: node scripts/dev-commands.cjs <command>
 
 ⚡ Performance:
   lighthouse          - Run Lighthouse audit
-  performance:test     - Run performance tests
 
 🤖 AI Features:
   ai:test              - Test AI integrations
