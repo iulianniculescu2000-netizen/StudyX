@@ -9,7 +9,12 @@ const { registerOrganizareIPC } = require('./organizare.cjs');
 const { registerCopilotIPC, stopCopilotEngine } = require('./copilot.cjs');
 const { compareVersion } = require('./lib/versions.cjs');
 const { shouldClearStorageOnFirstRun, inspectUserData } = require('./lib/firstRun.cjs');
-const { isSafeStorageId } = require('./lib/validate.cjs');
+const { isSafeStorageId, isTrustedSender } = require('./lib/validate.cjs');
+const { createSecureIpc } = require('./lib/secureIpc.cjs');
+const {
+  MAX_PDF_BYTES, MAX_DOCX_BYTES, MAX_IMAGE_BYTES, PDF_EXTS, DOCX_EXTS, IMAGE_EXTS,
+  resolveReadableFile, parseBooleanArg, parseSaveArgs, parseAutoBackupArgs,
+} = require('./lib/ipcArgs.cjs');
 const {
   getAdaptiveWindowMetrics: getAdaptiveMetricsFromHelper,
   clampBoundsToDisplay: clampBoundsHelper,
@@ -38,6 +43,15 @@ app.setPath('userData', sharedUserDataPath);
 
 // 1. Dev vs Prod userData isolation
 let mainWindow = null;
+
+// Toate canalele IPC (și cele din updater/organizare/copilot) trec prin acest înveliș: doar cadrul de sus al ferestrei principale,
+// încărcat din aplicație (dist-ul livrat, overlay-ul de actualizare sau serverul de dezvoltare), poate apela handlerele.
+const secureIpc = createSecureIpc(ipcMain, (event) => isTrustedSender(event, {
+  getMainWindow: () => mainWindow,
+  appRoots: [path.join(__dirname, '..', 'dist'), path.join(app.getPath('userData'), 'app-overlay', 'files', 'dist')],
+  devUrl: DEV_URL,
+  isDev,
+}));
 
 // ── Window background follows the app theme ────────────────────────────────
 // The renderer reports its background on every theme change (theme:set); we keep
@@ -696,7 +710,7 @@ const extractOCRText = async (filePath) => {
 function registerIpcHandlers() {
   // Window controls
   // Theme sync (renderer -> main): keep the native window colour and nativeTheme in step with the app.
-  ipcMain.on('theme:set', (_event, payload) => {
+  secureIpc.on('theme:set', (_event, payload) => {
     const mode = payload && ['light', 'dark', 'auto'].includes(payload.mode) ? payload.mode : 'auto';
     const background = payload && /^#[0-9a-fA-F]{6}$/.test(payload.background || '') ? payload.background : null;
     nativeTheme.themeSource = mode === 'auto' ? 'system' : mode;
@@ -705,19 +719,19 @@ function registerIpcHandlers() {
       saveWindowBackground(background);
     }
   });
-  ipcMain.on('win:minimize', () => mainWindow?.minimize());
-  ipcMain.on('win:maximize', () => {
+  secureIpc.on('win:minimize', () => mainWindow?.minimize());
+  secureIpc.on('win:maximize', () => {
     if (mainWindow?.isMaximized()) mainWindow.unmaximize();
     else mainWindow?.maximize();
   });
   
   // Custom close button click
-  ipcMain.on('win:close', () => {
+  secureIpc.on('win:close', () => {
     mainWindow?.close();
   });
 
   // Final exit after data is saved
-  ipcMain.on('win:destroy', () => {
+  secureIpc.on('win:destroy', () => {
     isQuitting = true;
     if (pendingQuitResolve) {
       // Închiderea e condusă de prepareForQuit (update/tray): doar semnalăm că salvarea s-a terminat.
@@ -729,14 +743,14 @@ function registerIpcHandlers() {
     mainWindow?.close();
   });
 
-  ipcMain.handle('win:isMaximized', () => mainWindow?.isMaximized() ?? false);
+  secureIpc.handle('win:isMaximized', () => mainWindow?.isMaximized() ?? false);
 
   // Cărțile de Rezidențiat livrate cu aplicația (Kumar, Lawrence, Sinopsis): extraResources/books în installer, build/books în dezvoltare.
   const bundledBooksDir = app.isPackaged ? path.join(process.resourcesPath, 'books') : path.join(__dirname, '..', 'build', 'books');
-  registerOrganizareIPC({ ipcMain, dialog, shell, getWindow: () => mainWindow, userDataDir: app.getPath('userData'), bundledBooksDir });
+  registerOrganizareIPC({ ipcMain: secureIpc, dialog, shell, getWindow: () => mainWindow, userDataDir: app.getPath('userData'), bundledBooksDir });
 
   // File import IPCs
-  ipcMain.handle('dialog:openJson', async () => {
+  secureIpc.handle('dialog:openJson', async () => {
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openFile', 'multiSelections'],
       filters: [{ name: 'JSON Files', extensions: ['json'] }],
@@ -749,7 +763,10 @@ function registerIpcHandlers() {
     return contents;
   });
 
-  ipcMain.handle('dialog:saveFile', async (_, { defaultPath, content }) => {
+  secureIpc.handle('dialog:saveFile', async (_, opts) => {
+    const args = parseSaveArgs(opts);
+    if (!args) return false;
+    const { defaultPath, content } = args;
     const result = await dialog.showSaveDialog(mainWindow, {
       defaultPath,
       filters: [{ name: 'JSON', extensions: ['json'] }],
@@ -759,7 +776,7 @@ function registerIpcHandlers() {
     return true;
   });
 
-  ipcMain.handle('dialog:openPdf', async () => {
+  secureIpc.handle('dialog:openPdf', async () => {
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openFile'],
       filters: [{ name: 'PDF Files', extensions: ['pdf'] }],
@@ -768,15 +785,16 @@ function registerIpcHandlers() {
     return extractPdfText(result.filePaths[0]);
   });
 
-  ipcMain.handle('pdf:readPath', async (_, filePath) => {
-    if (!filePath || !filePath.toLowerCase().endsWith('.pdf')) return null;
+  secureIpc.handle('pdf:readPath', async (_, filePath) => {
+    // Plafon 500 MB: cărțile PDF pot fi mari; fișierul trebuie să fie obișnuit (nu folder/dispozitiv), cale absolută.
+    const safePath = await resolveReadableFile(filePath, { exts: PDF_EXTS, maxBytes: MAX_PDF_BYTES });
+    if (!safePath) return null;
     try {
-      await fsp.access(filePath);
-      return extractPdfText(filePath);
+      return extractPdfText(safePath);
     } catch { return null; }
   });
 
-  ipcMain.handle('pdf:readBuffer', async (_, bufferLike) => {
+  secureIpc.handle('pdf:readBuffer', async (_, bufferLike) => {
     try {
       const buffer = Buffer.isBuffer(bufferLike)
         ? bufferLike
@@ -796,7 +814,7 @@ function registerIpcHandlers() {
     }
   });
 
-  ipcMain.handle('dialog:openDocx', async () => {
+  secureIpc.handle('dialog:openDocx', async () => {
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openFile'],
       filters: [{ name: 'Word Documents', extensions: ['docx'] }],
@@ -805,26 +823,26 @@ function registerIpcHandlers() {
     return extractDocxText(result.filePaths[0]);
   });
 
-  ipcMain.handle('docx:readPath', async (_, filePath) => {
-    if (!filePath || !filePath.toLowerCase().endsWith('.docx')) return null;
+  secureIpc.handle('docx:readPath', async (_, filePath) => {
+    // Plafon 100 MB pentru documente Word.
+    const safePath = await resolveReadableFile(filePath, { exts: DOCX_EXTS, maxBytes: MAX_DOCX_BYTES });
+    if (!safePath) return null;
     try {
-      await fsp.access(filePath);
-      return extractDocxText(filePath);
+      return extractDocxText(safePath);
     } catch { return null; }
   });
 
-  ipcMain.handle('image:readOCR', async (_, filePath) => {
-    const validExts = ['.jpg', '.jpeg', '.png', '.webp', '.bmp'];
-    const ext = path.extname(filePath).toLowerCase();
-    if (!filePath || !validExts.includes(ext)) return null;
+  secureIpc.handle('image:readOCR', async (_, filePath) => {
+    // Plafon 100 MB pentru imagini; verificările de tip se fac înainte de orice apel pe cale.
+    const safePath = await resolveReadableFile(filePath, { exts: IMAGE_EXTS, maxBytes: MAX_IMAGE_BYTES });
+    if (!safePath) return null;
     try {
-      await fsp.access(filePath);
-      return extractOCRText(filePath);
+      return extractOCRText(safePath);
     } catch { return null; }
   });
 
   // Base64 image import
-  ipcMain.handle('dialog:openImage', async () => {
+  secureIpc.handle('dialog:openImage', async () => {
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openFile'],
       filters: [{ name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'] }],
@@ -839,12 +857,14 @@ function registerIpcHandlers() {
   });
 
   // Settings & System
-  ipcMain.handle('win:setContentProtection', (_, enabled) => {
-    mainWindow?.setContentProtection(enabled);
+  secureIpc.handle('win:setContentProtection', (_, enabled) => {
+    const flag = parseBooleanArg(enabled);
+    if (flag === null) return false;
+    mainWindow?.setContentProtection(flag);
     return true;
   });
 
-  ipcMain.handle('notify:show', async (_, opts) => {
+  secureIpc.handle('notify:show', async (_, opts) => {
     try {
       if (!Notification.isSupported()) return false;
       const title = typeof opts?.title === 'string' ? opts.title : 'StudyX';
@@ -864,7 +884,7 @@ function registerIpcHandlers() {
     }
   });
 
-  ipcMain.handle('app:hardReset', async () => {
+  secureIpc.handle('app:hardReset', async () => {
     let markerWritten = false;
     try {
       await writeHardResetMarker();
@@ -887,7 +907,10 @@ function registerIpcHandlers() {
     return true;
   });
 
-  ipcMain.handle('dialog:saveCsv', async (_, { defaultPath, content }) => {
+  secureIpc.handle('dialog:saveCsv', async (_, opts) => {
+    const args = parseSaveArgs(opts);
+    if (!args) return false;
+    const { defaultPath, content } = args;
     const result = await dialog.showSaveDialog(mainWindow, {
       defaultPath,
       filters: [{ name: 'CSV', extensions: ['csv'] }],
@@ -897,9 +920,11 @@ function registerIpcHandlers() {
     return true;
   });
 
-  ipcMain.handle('app:autoBackup', async (_, { data, kind } = {}) => {
+  secureIpc.handle('app:autoBackup', async (_, arg) => {
     try {
-      if (typeof data !== 'string') throw new Error('Invalid backup payload');
+      const parsed = parseAutoBackupArgs(arg);
+      if (!parsed) throw new Error('Invalid backup payload');
+      const { data, kind } = parsed;
       // Test profiles must never rotate or overwrite the user's real backups.
       const backupDir = userDataOverride
         ? path.join(userDataOverride, 'backups')
@@ -924,7 +949,7 @@ function registerIpcHandlers() {
   });
 
   // Persistent Disk Storage for Profiles (Fixes 5MB LocalStorage limit)
-  ipcMain.handle('storage:save', async (_, { profileId, namespace, serialized } = {}) => {
+  secureIpc.handle('storage:save', async (_, { profileId, namespace, serialized } = {}) => {
     try {
       if (typeof serialized !== 'string') throw new Error('Invalid storage payload');
       if (!isSafeStorageId(profileId) || !isSafeStorageId(namespace)) throw new Error('Invalid storage id');
@@ -944,7 +969,7 @@ function registerIpcHandlers() {
   });
 
   // Deleting a profile removes its disk folder (userData/profiles/<safeId>) and nothing else.
-  ipcMain.handle('storage:delete-profile', async (_, { profileId } = {}) => {
+  secureIpc.handle('storage:delete-profile', async (_, { profileId } = {}) => {
     try {
       if (!isSafeStorageId(profileId)) return false;
       const safeId = profileId.replace(/[^a-z0-9_-]/gi, '_');
@@ -960,7 +985,7 @@ function registerIpcHandlers() {
     }
   });
 
-  ipcMain.handle('storage:load', async (_, { profileId, namespace } = {}) => {
+  secureIpc.handle('storage:load', async (_, { profileId, namespace } = {}) => {
     try {
       if (!isSafeStorageId(profileId) || !isSafeStorageId(namespace)) return null;
       const safeId = profileId.replace(/[^a-z0-9_-]/gi, '_');
@@ -985,7 +1010,7 @@ function registerIpcHandlers() {
     }
   });
 
-  ipcMain.once('app:ready', () => mainWindow?.show());
+  secureIpc.once('app:ready', () => mainWindow?.show());
 }
 
 // Main Functions
@@ -1156,8 +1181,8 @@ function createWindow() {
   screen.on('display-added', () => ensureWindowFitsDisplay(mainWindow));
   screen.on('display-removed', () => ensureWindowFitsDisplay(mainWindow));
 
-  registerUpdaterIPC(mainWindow, { prepareForQuit });
-  registerCopilotIPC(ipcMain, {
+  registerUpdaterIPC(mainWindow, { prepareForQuit, ipc: secureIpc });
+  registerCopilotIPC(secureIpc, {
     getMainWindow: () => mainWindow,
     getUserDataPath: () => app.getPath('userData'),
     // Doar pentru teste automate: cu STUDYX_TEST_NO_BROWSER=1 conectarea cu cod nu deschide browserul utilizatorului.

@@ -474,7 +474,7 @@ async function logoutOwnAccount(getUserDataPath) {
 
 function registerCopilotIPC(ipcMain, { getMainWindow, getUserDataPath, openExternal }) {
   ipcMain.handle('copilot:switch-account', async (_event, accountKey) => {
-    const key = typeof accountKey === 'string' ? accountKey : '';
+    const key = typeof accountKey === 'string' && accountKey.length <= 512 ? accountKey : '';
     if (!key) return { ok: false, error: 'Cont necunoscut.' };
     let session = null;
     try {
@@ -561,8 +561,9 @@ function registerCopilotIPC(ipcMain, { getMainWindow, getUserDataPath, openExter
     }
   });
 
-  ipcMain.handle('copilot:status', async (_event, options = {}) => {
-    const wantsConnect = Boolean(options && options.connect);
+  ipcMain.handle('copilot:status', async (_event, rawOptions) => {
+    const options = rawOptions && typeof rawOptions === 'object' ? rawOptions : {};
+    const wantsConnect = Boolean(options.connect);
     if (wantsConnect) {
       writeLocalState(getUserDataPath, { disconnected: false });
     } else if (readLocalState(getUserDataPath).disconnected) {
@@ -633,10 +634,15 @@ function registerCopilotIPC(ipcMain, { getMainWindow, getUserDataPath, openExter
     }
   });
 
-  ipcMain.handle('copilot:stream', async (_event, payload = {}) => {
+  ipcMain.handle('copilot:stream', async (_event, rawPayload) => {
+    const payload = rawPayload && typeof rawPayload === 'object' ? rawPayload : {};
     const requestId = typeof payload.requestId === 'string' && payload.requestId.trim() ? payload.requestId.trim() : '';
     if (!requestId) {
       return { ok: false, errorCode: 'error', error: 'Identificator de cerere invalid.' };
+    }
+    // Un al doilea flux cu același id nu îl înlocuiește pe primul (altfel „oprește” ar afecta cererea greșită).
+    if (activeStreams.has(requestId)) {
+      return { ok: false, errorCode: 'error', error: 'O cerere cu acest identificator rulează deja.' };
     }
 
     if (readLocalState(getUserDataPath).disconnected) {
@@ -663,6 +669,10 @@ function registerCopilotIPC(ipcMain, { getMainWindow, getUserDataPath, openExter
       return { ok: false, ...classifyCopilotError(err, false) };
     }
 
+    // Verificare repetată: între prima și aceasta au trecut așteptări, iar o cerere identică a putut porni între timp.
+    if (activeStreams.has(requestId)) {
+      return { ok: false, errorCode: 'error', error: 'O cerere cu acest identificator rulează deja.' };
+    }
     let session = null;
     let unsubscribe = null;
     const entry = { session: null, aborted: false };
@@ -797,7 +807,7 @@ function registerCopilotIPC(ipcMain, { getMainWindow, getUserDataPath, openExter
   });
 
   ipcMain.handle('copilot:abort', async (_event, requestId) => {
-    const id = typeof requestId === 'string' ? requestId.trim() : '';
+    const id = typeof requestId === 'string' && requestId.length <= 512 ? requestId.trim() : '';
     const entry = id ? activeStreams.get(id) : null;
     if (!entry) return { ok: false };
     entry.aborted = true;

@@ -748,6 +748,7 @@ async function downloadOverlay(manifest) {
 }
 
 function registerUpdaterIPC(mainWindow, hooks = {}) {
+  const ipc = hooks.ipc || ipcMain;
   mainWindowRef = mainWindow;
 
   try { ipcMain.removeHandler('updater:check'); } catch {}
@@ -756,7 +757,7 @@ function registerUpdaterIPC(mainWindow, hooks = {}) {
   try { ipcMain.removeHandler('updater:getVersion'); } catch {}
   try { ipcMain.removeHandler('updater:install-downloaded'); } catch {}
 
-  ipcMain.handle('updater:check', async () => {
+  ipc.handle('updater:check', async () => {
     const localVersion = getLocalVersion();
     try {
       let nativeResult = null;
@@ -912,7 +913,7 @@ function registerUpdaterIPC(mainWindow, hooks = {}) {
     }
   });
 
-  ipcMain.handle('updater:download', async (_, manifest) => {
+  ipc.handle('updater:download', async (_, manifest) => {
     try {
       if (manifest?.delivery === 'native') {
         return await downloadNativeUpdate();
@@ -928,7 +929,7 @@ function registerUpdaterIPC(mainWindow, hooks = {}) {
     }
   });
 
-  ipcMain.handle('updater:restart', async () => {
+  ipc.handle('updater:restart', async () => {
     if (typeof hooks.prepareForQuit === 'function') {
       try { await hooks.prepareForQuit(); } catch (e) { console.warn('[Updater] prepareForQuit:', e?.message || e); }
     }
@@ -936,9 +937,9 @@ function registerUpdaterIPC(mainWindow, hooks = {}) {
     app.quit();
   });
 
-  ipcMain.handle('updater:getVersion', () => getLocalVersion());
+  ipc.handle('updater:getVersion', () => getLocalVersion());
 
-  ipcMain.handle('updater:install-downloaded', async (_, installerPath) => {
+  ipc.handle('updater:install-downloaded', async (_, installerPath) => {
     if (!installerPath) {
       const autoUpdater = getNativeUpdater();
       if (!autoUpdater || !nativeUpdateDownloaded) {
