@@ -23,13 +23,8 @@ const COMMANDS = {
   'format': 'npx prettier --write .',
   
   // Bundle analysis
-  'analyze': 'node scripts/analyze-bundle.js',
-  'analyze:build': 'npx tsc -b && npx vite build && node scripts/analyze-bundle.js',
-  'bundle-report': 'npx webpack-bundle-analyzer dist/static/js/*.js',
-  
-  // Image optimization
-  'optimize-images': 'node scripts/optimize-images.js',
-  'optimize-images:responsive': 'node scripts/optimize-images.js --responsive',
+  'analyze': 'node scripts/analyze-bundle.cjs',
+  'analyze:build': 'npx tsc -b && npx vite build && node scripts/analyze-bundle.cjs',
   
   // Electron
   'electron:dev': 'cross-env NODE_ENV=development npx concurrently "npx vite" "wait-on http://localhost:5173 && npx electron ."',
@@ -42,7 +37,6 @@ const COMMANDS = {
   
   // AI and ML tools
   'ai:test': 'npx vitest run tests/integration/ai-*.test.ts',
-  'ai:analyze': 'node scripts/analyze-ai-usage.js',
   
   // Database and storage
   'db:migrate': 'node scripts/migrate-db.js',
@@ -129,11 +123,6 @@ Usage: node scripts/dev-commands.cjs <command>
 📊 Analysis:
   analyze             - Analyze bundle size
   analyze:build        - Build and analyze
-  bundle-report       - Generate bundle report
-
-🖼️ Assets:
-  optimize-images      - Optimize images
-  optimize-images:responsive - Optimize responsive images
 
 ⚡ Performance:
   lighthouse          - Run Lighthouse audit
@@ -141,7 +130,6 @@ Usage: node scripts/dev-commands.cjs <command>
 
 🤖 AI Features:
   ai:test              - Test AI integrations
-  ai:analyze           - Analyze AI usage
 
 🗄️ Database:
   db:migrate           - Run database migrations

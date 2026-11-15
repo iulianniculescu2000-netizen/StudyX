@@ -2,7 +2,7 @@
 
 Pentru cine (om sau chat nou) reia lucrul. Citește întâi secțiunile 0–2; restul e referință.
 
-Implementarea intro/UI/ghiduri și optimizarea AI din 11 octombrie sunt descrise în [StudyX-1.0-VALIDARE.md](StudyX-1.0-VALIDARE.md). Filmul are circa 65 s cu voce feminină română locală. Toate cele 13 ghiduri sunt adaptate la profil. Helperii AI sunt `src/ai/contextBudget.ts` și `src/lib/groqCore/studyPrompts.ts`. Datele și backupurile testelor Electron sunt izolate prin `STUDYX_USER_DATA`; `scripts/qa-desktop.cjs` verifică varianta live sau împachetată. Testul PDF folosește junction pe Windows și nu mai cere privilegiul de symlink. Fără push, tag sau publicare.
+Implementarea intro/UI/ghiduri și optimizarea AI din 11 octombrie sunt descrise în [StudyX-1.0-VALIDARE.md](arhiva/StudyX-1.0-VALIDARE.md). Filmul are circa 65 s cu voce feminină română locală. Toate cele 13 ghiduri sunt adaptate la profil. Helperii AI sunt `src/ai/contextBudget.ts` și `src/lib/groqCore/studyPrompts.ts`. Datele și backupurile testelor Electron sunt izolate prin `STUDYX_USER_DATA`; `scripts/qa-desktop.cjs` verifică varianta live sau împachetată. Testul PDF folosește junction pe Windows și nu mai cere privilegiul de symlink. Fără push, tag sau publicare.
 
 > **Actualizare 19 oct 2026.** Următorul update e **v1.1** (prin GitHub, către toți cei cu 1.0.0), nu un rebuild 1.0.0; bump-ul se face doar la cererea proprietarului. Tot ce s-a comis în 13–19 oct, pe teme și pe zile: [JURNAL-2026-10-13_19.md](JURNAL-2026-10-13_19.md). Stilul 3D (tururi, „?”, „Ce e nou” 1.1, carduri, ferestre) e descris în `src/components/depth/` și în skill-ul local `studyx-depth-3d`.
 
@@ -56,4 +56,4 @@ Română, concis; stil Apple, aerisit, cu detalii fine; previzualizare înainte 
 - **Documentație:** `FEATURES.md` cu căi reale; `scripts/dev-commands.js` fără rest Storybook; `.gitignore` ignoră artefactele de dezvoltare din `public/` în git, DAR Vite le copiază în build cât timp fișierele sunt pe disc (verificat 13 oct): mută-le în afara `public/` înainte de installer.
 
 ## 8. Unde am rămas (audit + reparații, 12-13 oct 2026)
-Citește [UNDE-AM-RAMAS-2026-10-12.md](UNDE-AM-RAMAS-2026-10-12.md): ce s-a reparat, ce a rămas, deciziile tale și pașii următori.
+Citește [UNDE-AM-RAMAS-2026-10-12.md](arhiva/UNDE-AM-RAMAS-2026-10-12.md) (arhivat): ce s-a reparat, ce a rămas, deciziile tale și pașii următori.

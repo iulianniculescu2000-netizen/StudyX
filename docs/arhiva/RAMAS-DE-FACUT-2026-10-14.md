@@ -1,6 +1,6 @@
 # StudyX — ce mai avem de făcut (predare pentru un chat nou, 14 octombrie 2026)
 
-Citește întâi [HANDOFF.md](HANDOFF.md) și [RAMAS-DE-FACUT-2026-10-13.md](RAMAS-DE-FACUT-2026-10-13.md) (reguli și hartă). Acest document spune ce s-a făcut pe 14 octombrie și ce rămâne. Începe cu `git log --oneline -20` și `git status --short`.
+Citește întâi [HANDOFF.md](../HANDOFF.md) și [RAMAS-DE-FACUT-2026-10-13.md](RAMAS-DE-FACUT-2026-10-13.md) (reguli și hartă). Acest document spune ce s-a făcut pe 14 octombrie și ce rămâne. Începe cu `git log --oneline -20` și `git status --short`.
 
 ## 0. Reguli (neschimbate)
 - **Nu există 1.1.** Tot ce s-a lucrat intră într-un **1.0.0 reconstruit** la final. Nu schimba versiunea, nu atinge `CURRENT_TOUR_VERSION`.

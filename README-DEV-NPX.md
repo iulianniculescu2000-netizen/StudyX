@@ -4,7 +4,7 @@
 
 ```bash
 # Instalează dependențe (o singură dată)
-node scripts/dev-commands.js install-deps
+node scripts/dev-commands.cjs install-deps
 
 # Sau clasic
 npm install
@@ -15,61 +15,53 @@ npm install
 ### 🔥 Development
 ```bash
 # Start development server
-node scripts/dev-commands.js dev
+node scripts/dev-commands.cjs dev
 
 # Build pentru producție
-node scripts/dev-commands.js build
+node scripts/dev-commands.cjs build
 
 # Preview build
-node scripts/dev-commands.js preview
+node scripts/dev-commands.cjs preview
 ```
 
 ### 🧪 Testing
 ```bash
 # Run tests cu UI
-node scripts/dev-commands.js test:ui
+node scripts/dev-commands.cjs test:ui
 
 # Run tests o singură dată
-node scripts/dev-commands.js test:run
+node scripts/dev-commands.cjs test:run
 
 # Smoke tests
-node scripts/dev-commands.js test:smoke
+node scripts/dev-commands.cjs test:smoke
 
 # E2E tests
-node scripts/dev-commands.js test:e2e
+node scripts/dev-commands.cjs test:e2e
 ```
 
 ### 📊 Analiză & Optimizare
 ```bash
 # Analiză bundle
-node scripts/dev-commands.js analyze
+node scripts/dev-commands.cjs analyze
 
 # Build + analiză
-node scripts/dev-commands.js analyze:build
+node scripts/dev-commands.cjs analyze:build
 
-# Report bundle
-node scripts/dev-commands.js bundle-report
-
-# Optimizare imagini
-node scripts/dev-commands.js optimize-images
 ```
 
 ### 🤖 AI Features
 ```bash
 # Test AI integrations
-node scripts/dev-commands.js ai:test
-
-# Analiză usage AI
-node scripts/dev-commands.js ai:analyze
+node scripts/dev-commands.cjs ai:test
 ```
 
 ### ⚡ Performance
 ```bash
 # Lighthouse audit
-node scripts/dev-commands.js lighthouse
+node scripts/dev-commands.cjs lighthouse
 
 # Performance tests
-node scripts/dev-commands.js performance:test
+node scripts/dev-commands.cjs performance:test
 ```
 
 ## 🎨 Comenzi Rapide (package.json)
@@ -95,69 +87,69 @@ npm run electron:dev:npx
 
 ```bash
 # Curățăre build artifacts
-node scripts/dev-commands.js clean
+node scripts/dev-commands.cjs clean
 
 # Curățăre completă
-node scripts/dev-commands.js clean:all
+node scripts/dev-commands.cjs clean:all
 
 # Verifică dependențe
-node scripts/dev-commands.js deps:check
+node scripts/dev-commands.cjs deps:check
 
 # Update dependențe
-node scripts/dev-commands.js deps:update
+node scripts/dev-commands.cjs deps:update
 ```
 
 ## 🔒 Security
 
 ```bash
 # Audit security
-node scripts/dev-commands.js security:audit
+node scripts/dev-commands.cjs security:audit
 
 # Fix issues
-node scripts/dev-commands.js security:fix
+node scripts/dev-commands.cjs security:fix
 
 # Check vulnerabilități
-node scripts/dev-commands.js security:check
+node scripts/dev-commands.cjs security:check
 ```
 
 ## 📚 Help
 
 ```bash
 # Arată toate comenzile
-node scripts/dev-commands.js help
+node scripts/dev-commands.cjs help
 
 # Help scurt
-node scripts/dev-commands.js --help
+node scripts/dev-commands.cjs --help
 
 # Exemplu comandă
-node scripts/dev-commands.js dev
+node scripts/dev-commands.cjs dev
 ```
 
 ## 🎯 Workflow Recomandat
 
 1. **Setup Inițial**
    ```bash
-   node scripts/dev-commands.js install-deps
+   node scripts/dev-commands.cjs install-deps
    ```
 
 2. **Development**
    ```bash
-   node scripts/dev-commands.js dev
+   node scripts/dev-commands.cjs dev
    ```
 
 3. **Testing**
    ```bash
-   node scripts/dev-commands.js test:ui
+   node scripts/dev-commands.cjs test:ui
    ```
 
 4. **Build & Analiză**
    ```bash
-   node scripts/dev-commands.js analyze:build
+   node scripts/dev-commands.cjs analyze:build
    ```
 
 5. **Performance Check**
    ```bash
-   node scripts/dev-commands.js lighthouse
+   node scripts/dev-commands.cjs lighthouse
    ```
 
 ## 💡 Avantaje NPX vs NPM
@@ -177,9 +169,9 @@ npm run build
 npm run test
 
 # NPX (nou)
-node scripts/dev-commands.js dev
-node scripts/dev-commands.js build
-node scripts/dev-commands.js test
+node scripts/dev-commands.cjs dev
+node scripts/dev-commands.cjs build
+node scripts/dev-commands.cjs test
 ```
 
 ## 🚀 Quick Start
@@ -188,10 +180,10 @@ node scripts/dev-commands.js test
 # Clone și setup
 git clone <repo>
 cd StudyX
-node scripts/dev-commands.js install-deps
+node scripts/dev-commands.cjs install-deps
 
 # Start development
-node scripts/dev-commands.js dev
+node scripts/dev-commands.cjs dev
 
 # Open browser
 # http://localhost:5173
@@ -199,7 +191,7 @@ node scripts/dev-commands.js dev
 
 ## 🔧 Configurare NPX
 
-Toate comenzile NPX sunt configurate în `scripts/dev-commands.js`:
+Toate comenzile NPX sunt configurate în `scripts/dev-commands.cjs`:
 - **Comenzi standardizate** - Consistent syntax
 - **Error handling** - Mesaje clare de eroare
 - **Cross-platform** - Funcționează peste tot

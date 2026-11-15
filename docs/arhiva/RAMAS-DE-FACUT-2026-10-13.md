@@ -1,6 +1,6 @@
 # StudyX — ce mai avem de făcut (predare pentru un chat nou, 13 octombrie 2026)
 
-Citește întâi [HANDOFF.md](HANDOFF.md) (reguli, hartă, capcane). Acest document spune ce s-a făcut în sesiunea de azi și ce rămâne.
+Citește întâi [HANDOFF.md](../HANDOFF.md) (reguli, hartă, capcane). Acest document spune ce s-a făcut în sesiunea de azi și ce rămâne.
 
 ## 0. Decizii și reguli de azi
 - **Nu există update 1.1.** Tot ce s-a lucrat intră într-un **1.0.0 reconstruit** la final. Nu schimba versiunea, nu adăuga slide-uri „Ce e nou în 1.1”, `CURRENT_TOUR_VERSION` rămâne neschimbat.
