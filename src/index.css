@@ -1402,7 +1402,7 @@ button.press-feedback:not(:disabled):active {
 .ai-md-table-full table { min-width: 0; font-size: 1em; }
 
 .ai-md-code, .ai-md-diagram { border: 1px solid var(--md-line); border-radius: 12px; overflow: hidden; margin-left: 0; margin-right: 0; }
-.ai-md-code-bar, .ai-md-diagram-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 6px 4px 12px; border-bottom: 1px solid var(--md-line); background: var(--md-soft); font-size: 11px; font-weight: 700; letter-spacing: 0.04em; }
+.ai-md-code-bar, .ai-md-diagram-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; padding: 6px 8px 6px 12px; border-bottom: 1px solid var(--md-line); background: var(--md-soft); font-size: 11px; font-weight: 700; letter-spacing: 0.04em; word-break: normal; overflow-wrap: normal; }
 .ai-md-code-bar > span:first-child { text-transform: lowercase; opacity: 0.7; }
 .ai-md-copy { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 8px; font-size: 11px; font-weight: 700; }
 .ai-md-cite { display: inline-flex; align-items: baseline; gap: 4px; margin: 0 2px; padding: 0 7px; border: 1px solid var(--md-line); border-radius: 999px; background: var(--md-soft); color: inherit; font: inherit; font-size: 0.78em; font-weight: 700; line-height: 1.6; cursor: pointer; vertical-align: baseline; }
@@ -1424,7 +1424,7 @@ button.press-feedback:not(:disabled):active {
 .ai-md-diagram-body { padding: 10px 8px; overflow-x: auto; cursor: var(--cursor-zoom-in, zoom-in); }
 /* În fereastra mărită (zonă de tras) fundalul alb al schemei folosește cursorul zonei, nu lupa de „clic pentru mărire”. */
 .ai-md-stage .ai-md-diagram-body, .ai-md-stage .ai-md-stage-content { cursor: inherit; }
-.ai-md-diagram-body svg { display: block; margin: 0 auto; max-width: 100%; height: auto; max-height: 460px; }
+.ai-md-diagram-body svg { display: block; margin: 0 auto; max-width: 100% !important; min-width: 0 !important; height: auto !important; }
 .ai-md-diagram-viewer svg { display: block; width: 100%; height: auto; max-width: none !important; }
 /* ── Schemă: glass nodes, path highlight, staggered draw-in ───────────────────────────────────── */
 .sx-host { position: relative; }

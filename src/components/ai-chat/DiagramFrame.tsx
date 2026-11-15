@@ -97,7 +97,7 @@ export default function DiagramFrame({ svg, code, onCreateFlashcards, onOpenPage
     addToast(outcome.message, outcome.ok ? 'success' : 'warning');
   };
 
-  const button = 'fine-row inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-[11.5px] font-semibold transition-colors hover:bg-[var(--hover-fill)] disabled:opacity-50';
+  const button = 'fine-row inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-2 text-[11.5px] font-semibold transition-colors hover:bg-[var(--hover-fill)] disabled:opacity-50';
 
   const actions: ReactNode = (
     <>
@@ -132,11 +132,11 @@ export default function DiagramFrame({ svg, code, onCreateFlashcards, onOpenPage
   return (
     <figure className="ai-md-diagram" style={{ borderColor: theme.border, color: theme.text }}>
       <figcaption className="ai-md-diagram-bar" style={{ borderColor: theme.border, color: theme.text3 }}>
-        <span className="flex items-center gap-1.5">
+        <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
           <span className="text-[11px] font-bold uppercase tracking-[0.1em]">Schemă</span>
           {interactive && <HelpTip id="chat-diagram" size={16} />}
         </span>
-        <span className="flex items-center gap-0.5" style={{ color: theme.text2 }}>
+        <span className="flex flex-wrap items-center justify-end gap-0.5" style={{ color: theme.text2 }}>
           {actions}
           {onCreateFlashcards && code && (
             <button type="button" className={button} onClick={() => onCreateFlashcards(code)} aria-label="Fă flashcarduri din schemă">

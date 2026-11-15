@@ -126,4 +126,17 @@ describe('MarkdownRenderer: diagrams', () => {
     expect(container.querySelector('pre code')?.textContent).toContain('sequenceDiagram');
     expect(screen.getByRole('button', { name: 'Copiază codul schemei' })).toBeTruthy();
   });
+
+  it('keeps schema toolbar labels unwrapped and allows wrapping button groups in narrow drawers', async () => {
+    renderMermaid.mockRejectedValue(new Error('parse'));
+    const { container } = render(<MarkdownRenderer content={'```mermaid\ngraph TD\nA[Unu] --> B[Doi]\n```'} />);
+    await flush();
+    const bar = container.querySelector('figcaption.ai-md-diagram-bar');
+    expect(bar).not.toBeNull();
+    expect(bar?.querySelector('.whitespace-nowrap')).not.toBeNull();
+    expect(bar?.querySelector('.flex-wrap')).not.toBeNull();
+    const zoomBtn = screen.getByRole('button', { name: 'Mărește schema pe tot ecranul' });
+    expect(zoomBtn.className).toContain('whitespace-nowrap');
+    expect(zoomBtn.className).toContain('shrink-0');
+  });
 });
