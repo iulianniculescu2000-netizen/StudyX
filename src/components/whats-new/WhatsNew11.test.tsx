@@ -12,6 +12,7 @@ import WhatsNewTour, { WHATS_NEW_OPEN_EVENT } from '../WhatsNewTour';
 import WhatsNewStage from './WhatsNewStage';
 import { RELEASE_11_SLIDES, whatsNewEditionFor } from './release11';
 import { RELEASE_12_SLIDES } from './release12';
+import { RELEASE_13_SLIDES } from './release13';
 import { pointerTilt, sway } from '../depth/useTilt';
 import { expectNoA11yViolations } from '../../test/a11y';
 
@@ -31,7 +32,7 @@ const mountSlides = () => render(
   </MemoryRouter>,
 );
 
-const open = async (edition?: '1.1' | '1.2') => {
+const open = async (edition?: '1.1' | '1.2' | '1.3') => {
   await act(async () => { window.dispatchEvent(new CustomEvent(WHATS_NEW_OPEN_EVENT, edition ? { detail: { edition } } : undefined)); });
   await act(async () => { await vi.advanceTimersByTimeAsync(600); });
 };
@@ -60,6 +61,7 @@ describe('„Ce e nou” 1.1', () => {
     expect(whatsNewEditionFor('1.0')).toBe('1.0');
     expect(whatsNewEditionFor('1.1')).toBe('1.1');
     expect(whatsNewEditionFor('1.2')).toBe('1.2');
+    expect(whatsNewEditionFor('1.3')).toBe('1.3');
     expect(whatsNewEditionFor('1.0.0')).toBe('1.0');
   });
 
@@ -125,6 +127,55 @@ describe('„Ce e nou” 1.1', () => {
     mountSlides();
     await open('1.2');
     for (const slide of [0, 2, 5]) {
+      await goTo(slide);
+      await expectNoA11yViolations(screen.getByRole('dialog'));
+    }
+  }, 20000);
+
+  it('ediția 1.3: cel mult șapte slide-uri, hero la început, scene inerte, cadru final și poveste în text', async () => {
+    mountSlides();
+    await open('1.3');
+    const dots = screen.getAllByRole('button', { name: /^Slide \d+$/ });
+    expect(dots).toHaveLength(RELEASE_13_SLIDES.length);
+    expect(RELEASE_13_SLIDES.length).toBeLessThanOrEqual(7);
+    expect(RELEASE_13_SLIDES[0].title).toBe('StudyX 1.3');
+    expect(within(screen.getByRole('dialog')).getByText('Ce e nou')).toBeTruthy();
+    for (const [i, slide] of RELEASE_13_SLIDES.entries()) {
+      expect(slide.scene.captions, slide.id).toHaveLength(slide.scene.marks.length);
+      expect(slide.scene.marks[0], slide.id).toBe(0);
+      expect(slide.scene.marks[slide.scene.marks.length - 1], slide.id).toBeLessThan(slide.scene.durationMs);
+      expect(slide.scene.transcript.length, slide.id).toBeGreaterThan(80);
+      if (i > 0) await goTo(i);
+      const dialog = screen.getByRole('dialog');
+      expect(within(dialog).getByRole('heading', { name: slide.title })).toBeTruthy();
+      const figure = within(dialog).getByRole('figure', { name: slide.scene.label });
+      expect(figure.querySelector('[inert]')?.getAttribute('aria-hidden')).toBe('true');
+      expect(figure.querySelector('.sr-only')?.textContent).toBe(slide.scene.transcript);
+      expect(within(figure).getByText(slide.scene.captions[slide.scene.captions.length - 1])).toBeTruthy();
+      expect(within(figure).queryByRole('button')).toBeNull();
+      if (slide.cta?.tour) expect(TOURS[slide.cta.tour as keyof typeof TOURS]).toBeTruthy();
+    }
+    // Cadrul final al slide-ului Copilot: cota contului s-a terminat, iar cererile trec pe cheile API (fără promisiuni de folosire nelimitată).
+    await goTo(1);
+    expect(screen.getByText('Cotă atinsă')).toBeTruthy();
+    expect(screen.getByText('Trece pe cheile API; reîncearcă mai târziu')).toBeTruthy();
+    expect(screen.getByText('Analizele și verificarea rămân pe cheile tale')).toBeTruthy();
+    expect(RELEASE_13_SLIDES[1].description).not.toMatch(/fără cheie|nelimitat/i);
+    // Cadrul final al verificării: cifra din afara pasajului e semnalată.
+    await goTo(3);
+    expect(screen.getByText('Parțial susținut: o cifră de verificat în carte')).toBeTruthy();
+    // Căutarea cu vorbe de zi cu zi și notițele cu scheme numărate separat.
+    await goTo(4);
+    expect(screen.getByText('dispnee')).toBeTruthy();
+    await goTo(5);
+    expect(screen.getByText('3 notițe din 2 grile · 1 schemă')).toBeTruthy();
+  }, 20000);
+
+  it.each(['light', 'dark'] as const)('ediția 1.3 nu are probleme de accesibilitate (axe) în tema %s', async (mode) => {
+    useThemeStore.setState({ mode });
+    mountSlides();
+    await open('1.3');
+    for (const slide of [0, 1, 3, 5]) {
       await goTo(slide);
       await expectNoA11yViolations(screen.getByRole('dialog'));
     }

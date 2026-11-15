@@ -35,6 +35,7 @@ import FocusCardDemo from './micro/FocusCardDemo';
 import WhatsNewStage from './whats-new/WhatsNewStage';
 import { RELEASE_11_SLIDES, whatsNewEditionFor, type WhatsNewEdition } from './whats-new/release11';
 import { RELEASE_12_SLIDES } from './whats-new/release12';
+import { RELEASE_13_SLIDES } from './whats-new/release13';
 import type { WhatsNewScene } from './whats-new/stage3d';
 import { useOverlayFlag } from '../hooks/useOverlayFlag';
 import { useAdaptiveMotion } from '../hooks/useAdaptiveMotion';
@@ -355,7 +356,10 @@ const SLIDES_11: Slide[] = RELEASE_11_SLIDES;
 /** Slide-urile 1.2, cu scene 3D; apar doar în ediția 1.2. */
 const SLIDES_12: Slide[] = RELEASE_12_SLIDES;
 
-const SLIDES_BY_EDITION: Record<WhatsNewEdition, Slide[]> = { '1.0': SLIDES, '1.1': SLIDES_11, '1.2': SLIDES_12 };
+/** Slide-urile 1.3, cu scene 3D; apar doar în ediția 1.3. */
+const SLIDES_13: Slide[] = RELEASE_13_SLIDES;
+
+const SLIDES_BY_EDITION: Record<WhatsNewEdition, Slide[]> = { '1.0': SLIDES, '1.1': SLIDES_11, '1.2': SLIDES_12, '1.3': SLIDES_13 };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main component
