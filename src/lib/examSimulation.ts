@@ -2,6 +2,7 @@ import type { Quiz, Question } from '../types';
 import { isFolderSessionQuiz } from './rezidentiatOverview';
 import { isRezidentiatQuiz } from './rezidentiatBank';
 import { findDuplicatesCached, memberKey, redundantMembers } from './bankDedup';
+import { allocateBySpecialty } from './examShares';
 
 export const EXAM_SIM_TAG = 'exam-simulation';
 export const DISCIPLINE_TAG_PREFIX = 'disc:';
@@ -105,7 +106,14 @@ export interface ExamSimulation {
 export function buildExamSimulation(
   quizzes: Quiz[],
   count: number,
-  options: { discipline?: string | null; random?: () => number; /** Raport CS/CM ca la examen (implicit activ). */ mix?: boolean } = {},
+  options: {
+    discipline?: string | null;
+    random?: () => number;
+    /** Raport CS/CM ca la examen (implicit activ). */
+    mix?: boolean;
+    /** Distribuția pe specialități ca la examenul real (implicit activă, doar fără disciplină aleasă și când disciplinele se recunosc). */
+    weighted?: boolean;
+  } = {},
 ): ExamSimulation | null {
   const random = options.random ?? Math.random;
   const pool: { question: Question; discipline: string; chapter: string; source: string }[] = [];
@@ -128,7 +136,29 @@ export function buildExamSimulation(
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
   let picked = pool.slice(0, count);
-  if (options.mix !== false && count < pool.length) {
+  const quotas = options.weighted !== false && !options.discipline && count < pool.length
+    ? allocateBySpecialty(count, pool.reduce((map, item) => map.set(item.discipline, (map.get(item.discipline) ?? 0) + 1), new Map<string, number>()))
+    : null;
+  if (quotas) {
+    // Câte grile pe specialitate vine din ponderile examenului; în fiecare specialitate se păstrează raportul CS/CM.
+    picked = [];
+    for (const [discipline, quota] of quotas) {
+      if (quota <= 0) continue;
+      const group = pool.filter((item) => item.discipline === discipline);
+      if (options.mix === false) {
+        picked.push(...group.slice(0, quota));
+        continue;
+      }
+      const cs = group.filter((item) => !isMultipleChoiceQuestion(item.question));
+      const cm = group.filter((item) => isMultipleChoiceQuestion(item.question));
+      const split = splitCsCm(quota, cs.length, cm.length);
+      picked.push(...cs.slice(0, split.cs), ...cm.slice(0, split.cm));
+    }
+    for (let i = picked.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(random() * (i + 1));
+      [picked[i], picked[j]] = [picked[j], picked[i]];
+    }
+  } else if (options.mix !== false && count < pool.length) {
     const cs = pool.filter((item) => !isMultipleChoiceQuestion(item.question));
     const cm = pool.filter((item) => isMultipleChoiceQuestion(item.question));
     const split = splitCsCm(count, cs.length, cm.length);

@@ -121,6 +121,7 @@ export default function ExamSimulation() {
             <p className="mt-2 text-[12px] leading-relaxed" style={{ color: theme.text3 }}>
               {discipline ? 'Dintr-o singură disciplină' : 'Din toate disciplinele'}, între 1 și {maxCustom} grile.
               Dacă banca permite, amestecul ține raportul examenului: ~1 din 4 grile cu un singur răspuns (CS), restul cu mai multe (CM).
+              {discipline ? '' : ' Fără disciplină aleasă, numărul de grile pe specialitate urmează ce a picat în 2021–2025 (de exemplu mult mai multă cardiologie decât dermatologie).'}
             </p>
             {lengthOptions.length === 1 && lengthOptions[0].partial && (
               <p className="mt-3 text-[12px] leading-relaxed" style={{ color: theme.text3 }}>
