@@ -149,11 +149,17 @@ export function shortProviderReason(error: string | undefined): string {
   return text.length > 70 ? `${text.slice(0, 67)}…` : text;
 }
 
+/** Valoarea de start a `lastError` într-o cerere: dacă a rămas așa, niciun furnizor nu a eșuat în cererea asta. */
+export const NO_FAILURE_YET = 'Eroare necunoscută';
+
 export function trackProviderOutcome(provider: ProviderId, primaryProvider: ProviderId, providerName: string, armSticky = true, primaryError?: string) {
   if (provider === primaryProvider) {
     stickyFallback = null;
     return;
   }
+  // Cererea a pornit direct pe furnizorul de rezervă (trecerea era deja făcută) și nu a eșuat nimic acum:
+  // nu e o trecere nouă de anunțat — altfel apare „Furnizorul ales nu a răspuns (Eroare necunoscută)” fără vreo eroare reală.
+  if (!primaryError || primaryError === NO_FAILURE_YET) return;
   // A request the primary rejected for its own content (too large, malformed) says nothing about the primary's health.
   if (!armSticky) return;
   const isNewSwitch = !stickyFallback || stickyFallback.provider !== provider;

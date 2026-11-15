@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { extractApiErrorMessage } from './errors';
-import { shortProviderReason } from './providers';
+import { NO_FAILURE_YET, shortProviderReason, trackProviderOutcome } from './providers';
+import { useToastStore } from '../../store/toastStore';
 
 const response = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
@@ -32,5 +33,14 @@ describe('erorile furnizorilor', () => {
     expect(shortProviderReason('Incorrect API key provided (401)')).toBe('cheia API nu este acceptată');
     expect(shortProviderReason('The model `x` was not found (404)')).toBe('modelul ales nu mai există');
     expect(shortProviderReason('')).toBe('');
+  });
+
+  it('nu anunță trecerea pe alt furnizor când nu a eșuat nimic în cererea curentă', () => {
+    useToastStore.setState({ toasts: [] });
+    trackProviderOutcome('groq', 'google', 'Groq', true, NO_FAILURE_YET);
+    expect(useToastStore.getState().toasts).toHaveLength(0);
+    trackProviderOutcome('groq', 'google', 'Groq', true, 'Rate limit exceeded');
+    expect(useToastStore.getState().toasts).toHaveLength(1);
+    trackProviderOutcome('google', 'google', 'Google Gemini');
   });
 });

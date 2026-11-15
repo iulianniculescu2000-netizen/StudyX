@@ -9,7 +9,7 @@ import { STREAM_USAGE_UNSUPPORTED } from './capabilities';
 import { extractApiErrorMessage, isRequestSpecificError } from './errors';
 import { groqGovernor } from './governors';
 import { sanitizeKey } from './keys';
-import { buildProviderChain, getProviderConfig, isCopilotEligibleTask, markServed, trackProviderOutcome } from './providers';
+import { NO_FAILURE_YET, buildProviderChain, getProviderConfig, isCopilotEligibleTask, markServed, trackProviderOutcome } from './providers';
 import { callCopilotBridge, reviveCopilotIfDue } from './copilotBridge';
 import { paceProvider } from './providerPacing';
 import { isModelSpecificFailure, isOversizedRequest, noteModelFailure } from './quotaGuard';
@@ -88,7 +88,7 @@ export async function groqStream(
     let streamUsageTokens = 0;
     let finishReason: string | null = null;
     let providerName = getProviderConfig(primaryProvider).name;
-    let lastError = 'Eroare necunoscută';
+    let lastError = NO_FAILURE_YET;
     // One controller for the whole stream: Stop reaches the body too, while the
     // 60 s limit below only covers waiting for the provider to start answering.
     let controller = new AbortController();

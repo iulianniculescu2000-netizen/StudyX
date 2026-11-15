@@ -10,7 +10,7 @@ import { JSON_MODE_UNSUPPORTED } from './capabilities';
 import { NonRetryableError, extractApiErrorMessage, isRequestSpecificError } from './errors';
 import { backgroundGovernor, generationGovernor, groqGovernor } from './governors';
 import { sanitizeKey } from './keys';
-import { buildProviderChain, getProviderConfig, isCopilotEligibleTask, markServed, trackProviderOutcome } from './providers';
+import { NO_FAILURE_YET, buildProviderChain, getProviderConfig, isCopilotEligibleTask, markServed, trackProviderOutcome } from './providers';
 import { callCopilotBridge, reviveCopilotIfDue } from './copilotBridge';
 import { paceProvider } from './providerPacing';
 import { isDailyQuotaError, isModelCoolingDown, isModelSpecificFailure, isOversizedRequest, noteModelFailure } from './quotaGuard';
@@ -228,7 +228,7 @@ export async function groqRequest({
         .filter((entry, index, all) => all.findIndex((other) => other.provider === entry.provider && other.model === entry.model) === index);
     }
 
-    let lastError = 'Eroare necunoscută';
+    let lastError = NO_FAILURE_YET;
     for (let ci = 0; ci < chain.length; ci++) {
       const link = chain[ci];
       const cfg = getProviderConfig(link.provider);
