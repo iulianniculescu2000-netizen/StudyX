@@ -3,6 +3,7 @@
  * formatting-aware source adapter, run the template parser, dedupe across all
  * files, and hand back structured questions ready for the review screen.
  */
+import { isSetFormat, parseSetFormat } from './grileSetFormat';
 import { parseGrile, type ParsedQuestion, type SourceLine } from './grileParser';
 import { dedupeQuestions, type DedupeResult } from './grileDedup';
 import { pdfToSourceLines } from './pdfGrileSource';
@@ -84,7 +85,9 @@ export async function extractGrileFromFiles(
       } else {
         // Documents: template engine first (fast, free, exact)…
         const { lines, pageImages } = await fileToSourceLines(file);
-        questions = attachPageImages(parseGrile(lines).questions, pageImages);
+        // Formatul „Set” (antet „Grila N CS/CM”, cheie, explicație pe variantă) se citește exact, cu explicațiile curățate.
+        const parsed = isSetFormat(lines) ? parseSetFormat(lines) : parseGrile(lines).questions;
+        questions = attachPageImages(parsed, pageImages);
         const textLen = lines.reduce((n, l) => n + l.text.length, 0);
         if (questions.length === 0 && hasKey) {
           if (textLen >= 60) {
