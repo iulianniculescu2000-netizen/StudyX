@@ -17,8 +17,8 @@ const overviewSteps: TourStep[] = [
     },
     {
       id: 'residency-disciplines',
-      title: 'Alege o disciplină',
-      body: 'Intri într-o disciplină, apoi într-o specialitate: vezi testele, progresul și continui de unde ai rămas. „Joacă tot” amestecă toate testele unei specialități într-o sesiune.',
+      title: 'Banca de grile',
+      body: 'Banca are câte un folder pentru Kumar și Lawrence, iar în fiecare folder capitolele cărții cu seturile lor de grile. Deschizi un capitol, vezi progresul și continui de unde ai rămas. „Joacă tot” amestecă seturile capitolului într-o sesiune.',
       icon: <Layers size={22} />,
       target: '[data-tutorial="residency-disciplines"]',
       targetPadding: 8,

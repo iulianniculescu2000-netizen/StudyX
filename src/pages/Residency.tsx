@@ -1,7 +1,7 @@
 import { plural } from '../lib/plural';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { BookOpen, ChevronRight, Play, Scissors, Stethoscope, HeartPulse } from 'lucide-react';
+import { BookOpen, ChevronRight, Library, Play } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
 import { useQuizStore } from '../store/quizStore';
 import { useFolderStore } from '../store/folderStore';
@@ -17,7 +17,7 @@ import { useAddRezidentiatBook } from '../hooks/useAddRezidentiatBook';
 import ImportPanel from '../components/residency/ImportPanel';
 import { useRezidentiatOverview } from '../components/residency/useResidencyData';
 import type { BookCode } from '../lib/curriculum';
-import { disciplineKey } from '../lib/rezidentiatOverview';
+import { buildBankTree } from '../lib/rezidentiatBankTree';
 import { startKumarDeckRoute } from '../lib/startKumarDeck';
 import { adoptStrayResidencyQuizzes } from '../lib/rezidentiatPlacement';
 import { useUserStore } from '../store/userStore';
@@ -34,13 +34,6 @@ import PlanCard from '../components/residency/PlanCard';
 import ContinueChapter from '../components/residency/ContinueChapter';
 import { usePlanProgress } from '../components/residency/useResidencyData';
 
-
-function DisciplineIcon({ name, size = 20 }: { name: string; size?: number }) {
-  const key = disciplineKey(name);
-  if (key === 'chirurgie') return <Scissors size={size} />;
-  if (key === 'medicina-interna') return <HeartPulse size={size} />;
-  return <Stethoscope size={size} />;
-}
 
 export default function Residency() {
   const theme = useTheme();
@@ -74,6 +67,7 @@ export default function Residency() {
     return allQuizzes.filter((quiz) => !quiz.archived && isFlashcardDeck(quiz) && classifyResidencyDeck(quiz, context) !== null).length;
   }, [allQuizzes, allFolders]);
   useEffect(() => { if (hydrated) adoptStrayResidencyQuizzes(); }, [hydrated]);
+  const bank = useMemo(() => buildBankTree(overview), [overview]);
   const [startingDeck, setStartingDeck] = useState(false);
   const addBook = useAddRezidentiatBook();
 
@@ -116,10 +110,10 @@ export default function Residency() {
                 aria-expanded={booksOpen}
                 aria-label={booksOpen ? 'Ascunde cărțile de bază' : 'Arată cărțile de bază'}
                 title="Cărțile de bază"
-                className="fine-chip press-feedback flex h-9 w-9 items-center justify-center rounded-full"
-                style={{ color: theme.accentText }}
+                className="press-feedback flex h-9 w-9 items-center justify-center rounded-full"
+                style={{ color: theme.accentText, background: `${theme.accent}1F`, outline: `1px solid ${theme.accent}55` }}
               >
-                <BookOpen size={17} aria-hidden />
+                <BookOpen size={18} strokeWidth={2.3} aria-hidden />
               </button>
               <RezidentiatQuizActions onAddBook={addBook.open} addingBook={addBook.busy !== null} />
             </>
@@ -173,31 +167,22 @@ export default function Residency() {
 
         {hasBank && (
           <section data-tutorial="residency-disciplines">
-            <SectionLabel className="mb-2">Discipline</SectionLabel>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {disciplines.map((discipline, index) => (
-                <div
-                  key={discipline.folder.id}
-                  className={`fx-rise ${disciplines.length % 2 === 1 && index === disciplines.length - 1 ? 'sm:col-span-2' : ''}`}
-                  style={{ '--i': index + 3 } as CSSProperties}
-                >
-                  <Link
-                    to={`/rezidentiat/${discipline.folder.id}`}
-                    className="glass-panel fx-lift fx-spot press-feedback flex h-full flex-col gap-4 rounded-2xl p-[18px]"
-                  >
-                    <div className="flex items-start justify-between">
-                      <GlassIconStack icon={<DisciplineIcon name={discipline.folder.name} />} color={theme.accentText} />
-                      <ProgressRing percent={discipline.progress} label={`${discipline.progress}% parcurs`} />
-                    </div>
-                    <div>
-                      <div className="text-[16px] font-semibold" style={{ color: theme.text }}>{discipline.folder.name}</div>
-                      <div className="mt-0.5 text-[12.5px]" style={{ color: theme.text3 }}>
-                        {plural(discipline.specialties.length, 'specialitate', 'specialități')} · {plural(discipline.questionCount, 'grilă', 'grile')}
-                      </div>
-                    </div>
-                  </Link>
+            <SectionLabel className="mb-2">Banca de grile</SectionLabel>
+            <div className="fx-rise" style={{ '--i': 3 } as CSSProperties}>
+              <Link
+                to="/rezidentiat/banca"
+                className="glass-panel fx-lift fx-spot press-feedback flex items-center gap-4 rounded-2xl p-[18px]"
+              >
+                <GlassIconStack icon={<Library size={20} />} color={theme.accentText} />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[16px] font-semibold" style={{ color: theme.text }}>Banca de grile</div>
+                  <div className="mt-0.5 text-[12.5px]" style={{ color: theme.text3 }}>
+                    {bank.books.length > 0 ? `${bank.books.map((book) => book.short).join(' · ')} · ` : ''}{plural(bank.questionCount, 'grilă', 'grile')}
+                  </div>
                 </div>
-              ))}
+                <ProgressRing percent={bank.progress} label={`${bank.progress}% parcurs`} />
+                <ChevronRight size={16} aria-hidden style={{ color: theme.text3 }} />
+              </Link>
             </div>
           </section>
         )}

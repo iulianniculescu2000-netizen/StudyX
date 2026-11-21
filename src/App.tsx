@@ -67,6 +67,7 @@ const FlashcardHub = lazy(() => import('./pages/FlashcardHub'));
 const KnowledgeVault = lazy(() => import('./pages/KnowledgeVault'));
 const Residency = lazy(() => import('./pages/Residency'));
 const ResidencyDiscipline = lazy(() => import('./pages/ResidencyDiscipline'));
+const ResidencyBank = lazy(() => import('./pages/ResidencyBank'));
 const Organizare = lazy(() => import('./pages/Organizare'));
 const FlashcardSession = lazy(() => import('./pages/FlashcardSession'));
 const Notes = lazy(() => import('./pages/Notes'));
@@ -210,7 +211,7 @@ function AppContent({ splashVisible }: { splashVisible: boolean }) {
     if (splashVisible) return;
     const loaders = [
       () => import('./pages/QuizList'), () => import('./pages/Stats'), () => import('./pages/FlashcardHub'),
-      () => import('./pages/Residency'), () => import('./pages/ResidencyDiscipline'), () => import('./pages/Organizare'),
+      () => import('./pages/Residency'), () => import('./pages/ResidencyDiscipline'), () => import('./pages/ResidencyBank'), () => import('./pages/Organizare'),
       () => import('./pages/KnowledgeVault'), () => import('./pages/Settings'), () => import('./pages/FolderView'),
       () => import('./pages/QuizDetail'), () => import('./pages/Notes'), () => import('./pages/DailyReview'),
     ];
@@ -289,6 +290,7 @@ function AppContent({ splashVisible }: { splashVisible: boolean }) {
                   <Route path="/rezidentiat" element={<PageRoute><Residency /></PageRoute>} />
                   <Route path="/rezidentiat/organizare" element={<PageRoute><Organizare /></PageRoute>} />
                   <Route path="/rezidentiat/flashcarduri" element={<PageRoute><FlashcardHub scope="rezidentiat" /></PageRoute>} />
+                  <Route path="/rezidentiat/banca" element={<PageRoute><ResidencyBank /></PageRoute>} />
                   <Route path="/rezidentiat/:folderId" element={<PageRoute><ResidencyDiscipline /></PageRoute>} />
                   <Route path="/flashcards" element={<PageRoute><FlashcardHub /></PageRoute>} />
                   <Route path="/flashcards/session/:id" element={<PageRoute><FlashcardSession /></PageRoute>} />
