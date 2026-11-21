@@ -49,11 +49,6 @@ export function isBundledLibraryBookName(name: string): boolean {
   return REZIDENTIAT_LIBRARY_BOOKS.some((book) => book.name === name);
 }
 
-export function isLibraryBookImported(book: RezidentiatLibraryBook): boolean {
-  // A failed or interrupted import must not count: it would hide the book from "De adăugat" and never be retried.
-  return useAIStore.getState().knowledgeSources.some((source) => source.name === book.name && isSourceReady(source) && source.indexStatus !== 'indexing');
-}
-
 /**
  * Cărțile incluse deja importate al căror index nu vine din textul curat de acum (de ex. importate când se folosea textul OCR):
  * lungimea textului indexat diferă de cea a textului curat. Întoarce sursa împreună cu cartea ei.

@@ -8,6 +8,7 @@ import PageSkeleton from '../components/ui/PageSkeleton';
 import EmptyState from '../components/ui/EmptyState';
 import SectionLabel from '../components/ui/SectionLabel';
 import ProgressRing from '../components/residency/ProgressRing';
+import { Chevron, Collapse } from '../components/organizare/ui';
 import ImportQuizButton from '../components/ImportQuizButton';
 import { ImportQuizFolderDialog } from '../components/residency/RezidentiatFlashcardDialogs';
 import { useQuizStore } from '../store/quizStore';
@@ -23,7 +24,7 @@ function shortTitle(title: string, name: string): string {
   return stripped || title;
 }
 
-function ChapterRow({ node, open, onToggle, first }: { node: BankChapter; open: boolean; onToggle: () => void; first: boolean }) {
+function ChapterRow({ node, open, mounted, onToggle, first }: { node: BankChapter; open: boolean; mounted: boolean; onToggle: () => void; first: boolean }) {
   const theme = useTheme();
   const navigate = useNavigate();
   const next = node.quizzes[0];
@@ -44,10 +45,12 @@ function ChapterRow({ node, open, onToggle, first }: { node: BankChapter; open: 
           </div>
         </div>
         <span className="text-[12.5px] font-semibold tabular-nums" style={{ color: theme.text3 }}>{node.progress}%</span>
-        <ChevronRight size={16} aria-hidden style={{ color: theme.text3, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 180ms ease' }} />
+        <Chevron open={open} />
       </button>
-      {open && (
-        <div className="px-4 pb-3.5">
+      <Collapse open={open}>
+        {/* Mounted at the first opening, then kept: closing animates instead of vanishing. */}
+        {mounted && (
+        <div className="px-4 pb-3.5" inert={!open || undefined}>
           <div className="mb-2 flex flex-wrap items-center gap-2">
             {next && (
               <Link
@@ -91,7 +94,8 @@ function ChapterRow({ node, open, onToggle, first }: { node: BankChapter; open: 
             ))}
           </div>
         </div>
-      )}
+        )}
+      </Collapse>
     </div>
   );
 }
@@ -107,6 +111,7 @@ export default function ResidencyBank() {
   const hydrated = useQuizStore((state) => state._hasHydrated);
   const tree = useMemo(() => buildBankTree(overview), [overview]);
   const [openChapter, setOpenChapter] = useState<number | null>(null);
+  const [seenChapters, setSeenChapters] = useState<ReadonlySet<number>>(() => new Set());
   const [choosingFolder, setChoosingFolder] = useState(false);
   const [importFolder, setImportFolder] = useState<string | null>(null);
 
@@ -159,7 +164,11 @@ export default function ResidencyBank() {
                   node={node}
                   first={index === 0}
                   open={openChapter === node.chapter.index}
-                  onToggle={() => setOpenChapter((current) => (current === node.chapter.index ? null : node.chapter.index))}
+                  mounted={seenChapters.has(node.chapter.index)}
+                  onToggle={() => {
+                    setSeenChapters((seen) => (seen.has(node.chapter.index) ? seen : new Set(seen).add(node.chapter.index)));
+                    setOpenChapter((current) => (current === node.chapter.index ? null : node.chapter.index));
+                  }}
                 />
               ))}
             </div>

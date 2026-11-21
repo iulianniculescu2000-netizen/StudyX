@@ -67,5 +67,4 @@ export function truncateLabel(text: string, max = 12): string {
   return `${t.slice(0, max - 1).trimEnd()}…`;
 }
 
-export const formatRo = ro;
 export const percent = (share: number) => `${Math.round(clamp(finite(share), 0, 1) * 100)}%`;

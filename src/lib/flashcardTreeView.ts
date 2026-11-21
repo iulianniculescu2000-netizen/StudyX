@@ -49,8 +49,6 @@ export interface DeckStats {
   mastered: number;
 }
 
-export interface SummaryLike extends DeckLike, DeckStats {}
-
 /** Etichetă scurtă cu numărul capitolului din carte, ex. „Cap. 8” (din planul: „Kumar, Cap. 08. Sepsisul…”). */
 export function bookChapterTag(chapter: Pick<CurriculumChapter, 'index'>): string | null {
   const full = curriculumChapters()[chapter.index];

@@ -17,9 +17,6 @@ type TierInput = Pick<AIKnowledgeSource, 'name' | 'folderId'>;
 /** Ordinea importanței: cărțile primele. */
 export const TIER_RANK: Record<SourceTier, number> = { book: 0, bank: 1, general: 2 };
 
-/** Eticheta scurtă pentru interfață și citări. */
-export const TIER_LABEL: Record<SourceTier, string> = { book: 'Carte de bază', bank: 'Material', general: 'Bibliotecă' };
-
 /** Nivelul unei surse. O carte inclusă rămâne `book` oriunde ar fi pusă în bibliotecă. */
 export function sourceTier(source: TierInput, folders: ReadonlyArray<AILibraryFolder>): SourceTier {
   if (isBundledLibraryBookName(source.name)) return 'book';

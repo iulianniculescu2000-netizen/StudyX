@@ -1647,6 +1647,8 @@ button.press-feedback:not(:disabled):active {
   /* Organizare tabs are all kept rendered: the shown one only fades in (display none → block restarts the animation). */
   animation: org-pane-in var(--dur-base) var(--ease-standard);
 }
+/* Inside an Organizare tab the cards cascade on every switch: a shorter cascade (same 40 ms step, 4 at most) keeps it brisk. */
+.org-pane .fx-rise { animation-delay: calc(min(var(--i, 0), 4) * 40ms); }
 @keyframes org-pane-in {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
@@ -1657,7 +1659,7 @@ button.press-feedback:not(:disabled):active {
 :root:is([data-performance="lite"], [data-power-save="true"]) .org-pane { animation: none; }
 .fx-rise {
   animation: fx-rise var(--dur-base) var(--ease-standard) backwards;
-  animation-delay: calc(min(var(--i, 0), 4) * 32ms);
+  animation-delay: calc(min(var(--i, 0), 8) * 40ms);
 }
 @keyframes fx-rise {
   from { opacity: 0; transform: translateY(5px); }

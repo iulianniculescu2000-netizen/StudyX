@@ -192,16 +192,6 @@ export interface AIQuestionResult {
   topUpRounds?: number;
 }
 
-export interface AINextQuestionState {
-  previousQuestions: string[];
-  weakTopics: WeakTopic[];
-  recentMistakes: RecentMistake[];
-  accuracy: number;
-  streak: number;
-  availableTime?: number;
-  preferredDifficulty?: Difficulty;
-}
-
 export interface AdaptiveDifficultyInput {
   accuracy: number;
   streak: number;
@@ -229,12 +219,6 @@ export interface ChunkRecord {
   chapter?: string;
 }
 
-export interface CoverageRecord {
-  topic: string;
-  coverageScore: number;
-  lastUpdated: number;
-}
-
 export interface ValidateJsonResult<T> {
   ok: boolean;
   value?: T;
@@ -258,13 +242,6 @@ export interface HintResult {
   light: string;
   medium: string;
   full: string;
-}
-
-export interface TutorSessionState {
-  currentTopic: string;
-  difficulty: Difficulty;
-  progress: number;
-  questionIds: string[];
 }
 
 /**

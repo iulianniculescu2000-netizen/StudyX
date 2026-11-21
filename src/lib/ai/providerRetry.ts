@@ -2,8 +2,6 @@
  * Pure helpers for provider retry / fallback decisions, kept free of stores and fetch so they are unit-testable.
  */
 
-export type RetryProviderId = 'groq' | 'google' | 'mistral';
-
 /** Statuses that say "the provider is busy or down right now" — worth a short retry, then the next provider. */
 export function isTransientStatus(status: number): boolean {
   return status === 408 || status === 425 || status === 429 || (status >= 500 && status <= 599);

@@ -30,7 +30,7 @@ export default function ResidencyNav({ deckCount, startingDeck, onOrganizare, on
             title={item.hint}
             disabled={item.busy}
             onClick={item.onClick}
-            className="press-feedback flex flex-1 items-center justify-center gap-1.5 rounded-[10px] px-2 py-2 text-[13px] font-semibold"
+            className={`press-feedback flex flex-1 items-center justify-center gap-1.5 rounded-[10px] px-2 py-2 text-[13px] font-semibold transition-colors ${current ? '' : 'hover:bg-[var(--hover-fill)]'}`}
             style={current
               ? { background: 'var(--glass-panel)', color: theme.text, outline: '1px solid var(--hairline)' }
               : { color: theme.text2 }}
