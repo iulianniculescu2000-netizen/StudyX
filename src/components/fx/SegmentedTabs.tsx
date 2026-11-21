@@ -53,14 +53,18 @@ export default function SegmentedTabs<T extends string>({
   const activeIndex = tabs.findIndex((tab) => tab.id === value);
 
   // Pe ecran îngust banda derulează: tabul activ trebuie să rămână la vedere.
+  // Read after the frame, not in the effect: reading layout here forced a synchronous layout of the whole page that had just mounted.
   useEffect(() => {
-    const strip = stripRef.current;
-    const button = buttons.current[activeIndex];
-    if (!strip || !button || strip.scrollWidth <= strip.clientWidth) return;
-    const left = button.offsetLeft;
-    const right = left + button.offsetWidth;
-    if (left < strip.scrollLeft + 28) strip.scrollTo?.({ left: Math.max(0, left - 28), behavior: 'smooth' });
-    else if (right > strip.scrollLeft + strip.clientWidth - 28) strip.scrollTo?.({ left: right - strip.clientWidth + 28, behavior: 'smooth' });
+    const frame = requestAnimationFrame(() => {
+      const strip = stripRef.current;
+      const button = buttons.current[activeIndex];
+      if (!strip || !button || strip.scrollWidth <= strip.clientWidth) return;
+      const left = button.offsetLeft;
+      const right = left + button.offsetWidth;
+      if (left < strip.scrollLeft + 28) strip.scrollTo?.({ left: Math.max(0, left - 28), behavior: 'smooth' });
+      else if (right > strip.scrollLeft + strip.clientWidth - 28) strip.scrollTo?.({ left: right - strip.clientWidth + 28, behavior: 'smooth' });
+    });
+    return () => cancelAnimationFrame(frame);
   }, [activeIndex, stripRef]);
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {

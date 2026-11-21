@@ -233,7 +233,8 @@ export default function Passes({ pass, onPass, focus = null, onFocusDone, lateOn
               <Collapse open={open}>
                 <div style={{ borderTop: '1px solid var(--hairline)' }}>
                   {(open || seen[`${pass}:${g}`]) && shown.map((t, n) => (
-                    <div key={t.index} style={{ borderTop: n === 0 ? undefined : '1px solid var(--hairline)' }}>
+                    // content-visibility: rows below the fold are not laid out until they scroll near (this tab has ~2500 nodes).
+                    <div key={t.index} style={{ borderTop: n === 0 ? undefined : '1px solid var(--hairline)', contentVisibility: 'auto', containIntrinsicSize: 'auto 58px' }}>
                       <TopicRow
                         topic={t}
                         ph={pass}

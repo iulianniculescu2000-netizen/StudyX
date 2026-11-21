@@ -564,13 +564,6 @@
   box-shadow: var(--elev-1), var(--edge);
 }
 
-/* While Organizare swaps tabs the panels would re-blur on every frame under a fading parent, and snap to the blurred look at the end. */
-[data-switching="true"] .glass-panel {
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  background: var(--glass-panel-strong);
-}
-
 .glass-panel::before {
   content: "";
   position: absolute;
@@ -1650,6 +1643,18 @@ button.press-feedback:not(:disabled):active {
     linear-gradient(180deg, var(--glass-sheen), transparent 32%);
   opacity: 1;
 }
+.org-pane {
+  /* Organizare tabs are all kept rendered: the shown one only fades in (display none → block restarts the animation). */
+  animation: org-pane-in var(--dur-base) var(--ease-standard);
+}
+@keyframes org-pane-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .org-pane { animation: none; }
+}
+:root:is([data-performance="lite"], [data-power-save="true"]) .org-pane { animation: none; }
 .fx-rise {
   animation: fx-rise var(--dur-base) var(--ease-standard) backwards;
   animation-delay: calc(min(var(--i, 0), 4) * 32ms);

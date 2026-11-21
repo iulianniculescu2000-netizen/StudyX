@@ -1,4 +1,4 @@
-import { Suspense, lazy, memo, startTransition, useCallback, useEffect, useMemo, useOptimistic, useRef, useState } from 'react';
+import { Activity, Suspense, lazy, memo, startTransition, type ReactNode, useCallback, useEffect, useMemo, useOptimistic, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import { useBack } from '../hooks/useBack';
@@ -125,23 +125,20 @@ export default function Organizare() {
   const goBack = useBack('/rezidentiat');
   const [today] = useState(() => toDay(new Date()));
   const plan = usePlan();
+  // Every tab is prepared in the background once the plan is ready (React keeps hidden tabs rendered at low priority), so a switch
+  // is a show/hide plus a short fade: nothing heavy mounts while the animation runs.
+  const [prepared, setPrepared] = useState(false);
   useEffect(() => {
     if (!plan) return;
-    const handle = scheduleIdleTask(preloadAllTabs);
+    const handle = scheduleIdleTask(() => {
+      preloadAllTabs();
+      setPrepared(true);
+    });
     return () => cancelIdleTask(handle);
   }, [plan]);
   const stored = useOrganizareStore((state) => state.byProfile[profileId]?.state);
   const scroller = useRef<HTMLDivElement>(null);
   const sentinel = useRef<HTMLDivElement>(null);
-  const stage = useRef<HTMLDivElement>(null);
-  // Height of the tab that is leaving, held until the new one has entered: without it the page collapses for a moment
-  // between exit and enter (the footer card jumps up, then down again). Written straight to the DOM: no extra re-render of the tab.
-  const releaseStage = () => {
-    const el = stage.current;
-    if (!el) return;
-    el.style.minHeight = '';
-    delete el.dataset.switching;
-  };
   const importer = useRef<HTMLInputElement>(null);
   const [stuck, setStuck] = useState(false);
   const [tabRef, tabFade] = useScrollFade<HTMLDivElement>();
@@ -184,12 +181,6 @@ export default function Organizare() {
     if (nextPass) out.f = String(nextPass);
     if (extra?.topic !== undefined) out.topic = String(extra.topic);
     if (extra?.late) out.v = 'restante';
-    // The old tab stays on screen until the new one is ready, then exit and enter run back to back.
-    const el = stage.current;
-    if (el) {
-      el.style.minHeight = `${el.offsetHeight}px`;
-      el.dataset.switching = 'true';
-    }
     startTransition(() => setParams(out));
   }, [setParams]);
 
@@ -256,15 +247,27 @@ export default function Organizare() {
   } : null), [plan, state, win, today, profileId, update, setStatus, goTo, overview]);
 
   const exam = state?.exam ?? '';
-  const content = (() => {
-    switch (tab) {
-      case 'topicuri': return <Passes key={params.get('v') ?? ''} pass={pass} onPass={(p) => goTo('topicuri', p)} focus={focus} onFocusDone={clearFocus} lateOnly={params.get('v') === 'restante'} />;
-      case 'saptamani': return <Weeks />;
-      case 'ritm': return <Rhythm />;
-      case 'ghid': return <Guide />;
-      default: return <Overview />;
-    }
-  })();
+  // Each pane is one element with a stable identity, so showing or hiding a tab does not re-render its (large) subtree:
+  // only the ones whose own inputs changed do. The page itself re-renders on every store change, the panes do not.
+  const lateOnly = params.get('v') === 'restante';
+  const panes = useMemo(() => {
+    const pane = (id: TabId, body: ReactNode) => (
+      <div className="org-pane">
+        {(id === 'panou' || id === 'saptamani') && <CatchUpBanner />}
+        <Suspense fallback={<Loading />}>{body}</Suspense>
+      </div>
+    );
+    return {
+      panou: pane('panou', <Overview />),
+      topicuri: pane('topicuri', <Passes key={lateOnly ? 'restante' : ''} pass={pass} onPass={(p) => goTo('topicuri', p)} focus={focus} onFocusDone={clearFocus} lateOnly={lateOnly} />),
+      saptamani: pane('saptamani', <Weeks />),
+      ritm: pane('ritm', <Rhythm />),
+      ghid: pane('ghid', <Guide />),
+    } satisfies Record<TabId, ReactNode>;
+  }, [pass, focus, clearFocus, goTo, lateOnly]);
+
+  // A new tab starts at the top.
+  useEffect(() => { scroller.current?.scrollTo({ top: 0 }); }, [tab]);
 
   // pb-28: the last row can scroll up past the floating „Revino sus” button and the assistant.
   return (
@@ -346,21 +349,11 @@ export default function Organizare() {
 
         {api ? (
           <OrganizareContext.Provider value={api}>
-            <div ref={stage}>
-            {/* A new tab starts at the top, but only once the old one has faded out: scrolling earlier made it jump while still visible. */}
-            <AnimatePresence mode="wait" initial={false} onExitComplete={() => scroller.current?.scrollTo({ top: 0 })}>
-              <motion.div
-                key={tab}
-                onAnimationComplete={(definition) => { if (typeof definition === 'object' && (definition as { opacity?: number }).opacity === 1) releaseStage(); }}
-                initial={calmMotion ? false : { opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0, transition: t.modal }}
-                exit={calmMotion ? undefined : { opacity: 0, y: -4, transition: t.modalExit }}
-              >
-                {(tab === 'panou' || tab === 'saptamani') && <CatchUpBanner />}
-                <Suspense fallback={<Loading />}>{content}</Suspense>
-              </motion.div>
-            </AnimatePresence>
-            </div>
+            {TABS.map((entry) => (prepared || entry.id === tab) && (
+              <Activity key={entry.id} mode={entry.id === tab ? 'visible' : 'hidden'}>
+                {panes[entry.id]}
+              </Activity>
+            ))}
 
             <Card className="mt-8 flex flex-wrap items-center justify-between gap-3 !p-4" spot={false}>
               <div>
