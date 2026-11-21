@@ -564,6 +564,13 @@
   box-shadow: var(--elev-1), var(--edge);
 }
 
+/* While Organizare swaps tabs the panels would re-blur on every frame under a fading parent, and snap to the blurred look at the end. */
+[data-switching="true"] .glass-panel {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: var(--glass-panel-strong);
+}
+
 .glass-panel::before {
   content: "";
   position: absolute;
@@ -1645,7 +1652,7 @@ button.press-feedback:not(:disabled):active {
 }
 .fx-rise {
   animation: fx-rise var(--dur-base) var(--ease-standard) backwards;
-  animation-delay: calc(min(var(--i, 0), 8) * 40ms);
+  animation-delay: calc(min(var(--i, 0), 4) * 32ms);
 }
 @keyframes fx-rise {
   from { opacity: 0; transform: translateY(5px); }

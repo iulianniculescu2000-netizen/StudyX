@@ -1,0 +1,80 @@
+<!doctype html><html lang="ro"><head><meta charset="utf-8"><title>Rezidențiat – mockup 1.4</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{font-family:-apple-system,"Segoe UI",Inter,system-ui,sans-serif;display:flex;gap:24px;padding:24px;background:#d9dce1}
+.pane{width:560px;border-radius:20px;padding:34px 30px 36px;--bg:#f5f5f7;--card:#fff;--text:#1d1d1f;--t2:#515154;--t3:#86868b;--hair:rgba(0,0,0,.08);--fill:rgba(0,0,0,.05);--acc:#0071e3;--acct:#0062c4;--ok:#1a9b4b;background:var(--bg);color:var(--text)}
+.pane.dark{--bg:#000;--card:#1c1c1e;--text:#f5f5f7;--t2:#c7c7cc;--t3:#8e8e93;--hair:rgba(255,255,255,.1);--fill:rgba(255,255,255,.08);--acc:#0a84ff;--acct:#64b0ff}
+header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:22px}
+h1{font-size:30px;font-weight:700;letter-spacing:-.02em}
+.sub{font-size:13px;color:var(--t3);margin-top:3px}
+.ghost{font-size:13px;font-weight:600;color:var(--acct);background:var(--fill);border-radius:99px;padding:8px 14px}
+.hero{background:var(--card);border-radius:22px;padding:22px;box-shadow:0 1px 2px rgba(0,0,0,.05),0 8px 28px rgba(0,0,0,.06)}
+.eyebrow{font-size:12px;color:var(--t3);font-weight:500}
+.hero h2{font-size:21px;font-weight:650;letter-spacing:-.01em;margin:6px 0 3px}
+.hero p{font-size:13px;color:var(--t3)}
+.bar{height:5px;border-radius:9px;background:var(--fill);margin:18px 0 8px;overflow:hidden}.bar i{display:block;height:100%;width:0%;background:var(--acc);border-radius:9px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.row small{font-size:12px;color:var(--t3)}
+.cta{background:var(--acc);color:#fff;font-weight:600;font-size:14px;border-radius:99px;padding:10px 24px}
+h3{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--t3);margin:30px 4px 8px}
+.list{background:var(--card);border-radius:18px;overflow:hidden}
+.item{display:flex;align-items:center;gap:13px;padding:13px 16px}
+.item+.item{border-top:1px solid var(--hair)}
+.ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:16px;flex:none}
+.item b{display:block;font-size:14.5px;font-weight:600}
+.item span.d{display:block;font-size:12.5px;color:var(--t3);margin-top:1px}
+.item .go{margin-left:auto;display:flex;align-items:center;gap:10px;color:var(--t3);font-size:12.5px}
+.chev{color:var(--t3);font-size:18px}
+.mini{width:54px;height:4px;background:var(--fill);border-radius:9px;overflow:hidden}.mini i{display:block;height:100%;background:var(--acc)}
+.more{margin-top:22px;display:flex;gap:8px;flex-wrap:wrap}
+.chip{font-size:12.5px;font-weight:550;color:var(--acct);background:var(--fill);border-radius:99px;padding:7px 13px}
+.cap{font:600 12px system-ui;text-align:center;color:#555;margin-bottom:8px}
+
+.seg{display:flex;gap:4px;background:var(--fill);border-radius:12px;padding:3px;margin-bottom:22px}
+.seg span{flex:1;text-align:center;font-size:13px;font-weight:600;padding:8px 0;border-radius:9px;color:var(--t2)}
+.seg span.on{background:var(--card);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.iconbtn{width:36px;height:36px;border-radius:99px;background:color-mix(in srgb,var(--acc) 14%,transparent);outline:1px solid color-mix(in srgb,var(--acc) 40%,transparent);display:grid;place-items:center;color:var(--acct)}
+.acts{display:flex;gap:8px}
+.welcome{text-align:center;padding:8px 10px 20px}
+.welcome .em{font-size:46px}
+.welcome h2{font-size:22px;font-weight:700;letter-spacing:-.015em;margin:6px 0 4px}
+.welcome p{font-size:13.5px;color:var(--t3)}
+.banks{display:grid;gap:12px}
+.bank{position:relative;overflow:hidden;border-radius:22px;padding:20px;color:#fff;display:flex;align-items:center;gap:16px}
+.bank.a{background:linear-gradient(135deg,#0a84ff,#5e5ce6)}
+.bank.b{background:linear-gradient(135deg,#30b0c7,#34c759)}
+.bank .big{font-size:40px;flex:none;filter:drop-shadow(0 4px 8px rgba(0,0,0,.25))}
+.bank b{display:block;font-size:17px;font-weight:700}
+.bank span.d{display:block;font-size:12.5px;opacity:.9;margin-top:2px}
+.bank .pill{margin-left:auto;background:#fff;color:#0a4fb8;font-weight:700;font-size:13px;border-radius:99px;padding:9px 18px;flex:none}
+.bank:after{content:"";position:absolute;right:-30px;top:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.12)}
+.all{margin:14px auto 0;display:table;color:var(--acct);font-weight:650;font-size:13.5px;background:var(--fill);border-radius:99px;padding:9px 18px}
+.drop{margin-top:26px;border:2px dashed color-mix(in srgb,var(--acc) 55%,transparent);border-radius:22px;padding:26px 18px;text-align:center;background:color-mix(in srgb,var(--acc) 6%,transparent)}
+.drop .em{font-size:30px}
+.drop b{display:block;font-size:15px;margin:6px 0 2px}
+.drop span{font-size:12.5px;color:var(--t3)}
+.drop .btn{display:inline-block;margin-top:12px;background:var(--acc);color:#fff;font-weight:650;font-size:13px;border-radius:99px;padding:9px 20px}
+</style></head><body>
+<div><div class="cap">LIGHT</div><div class="pane">
+<header><div><h1>Rezidențiat</h1><div class="sub">Grile reale, cărți și carduri, într-un singur loc.</div></div><div class="acts"><div class="iconbtn"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></svg></div><div class="iconbtn"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div></div></header>
+<div class="seg"><span class="on">Grile</span><span>Organizare</span><span>Flashcarduri</span><span>Întreabă</span></div>
+<div class="welcome"><div class="em">🚀</div><h2>Să începem!</h2><p>Alege o bancă de grile și ești gata de exersat.</p></div>
+<div class="banks">
+ <div class="bank a"><div class="big">🩺</div><div><b>Lawrence + Kumar</b><span class="d">~2.050 de grile reale, verificate</span></div><div class="pill">Adaugă</div></div>
+ <div class="bank b"><div class="big">📚</div><div><b>Modele Grile</b><span class="d">~2.175 de grile, pe patologie</span></div><div class="pill">Adaugă</div></div>
+</div>
+<div class="all">✨ Adaugă tot dintr-o dată</div>
+<div class="drop"><div class="em">📄</div><b>Ai propriile materiale?</b><span>Trage aici un PDF cu capitole, note sau culegeri</span><br><div class="btn">Alege un PDF</div></div>
+</div></div>
+<div><div class="cap">DARK</div><div class="pane dark">
+<header><div><h1>Rezidențiat</h1><div class="sub">Grile reale, cărți și carduri, într-un singur loc.</div></div><div class="acts"><div class="iconbtn"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></svg></div><div class="iconbtn"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div></div></header>
+<div class="seg"><span class="on">Grile</span><span>Organizare</span><span>Flashcarduri</span><span>Întreabă</span></div>
+<div class="welcome"><div class="em">🚀</div><h2>Să începem!</h2><p>Alege o bancă de grile și ești gata de exersat.</p></div>
+<div class="banks">
+ <div class="bank a"><div class="big">🩺</div><div><b>Lawrence + Kumar</b><span class="d">~2.050 de grile reale, verificate</span></div><div class="pill">Adaugă</div></div>
+ <div class="bank b"><div class="big">📚</div><div><b>Modele Grile</b><span class="d">~2.175 de grile, pe patologie</span></div><div class="pill">Adaugă</div></div>
+</div>
+<div class="all">✨ Adaugă tot dintr-o dată</div>
+<div class="drop"><div class="em">📄</div><b>Ai propriile materiale?</b><span>Trage aici un PDF cu capitole, note sau culegeri</span><br><div class="btn">Alege un PDF</div></div>
+</div></div>
+</body></html>

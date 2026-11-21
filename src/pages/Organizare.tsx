@@ -1,4 +1,4 @@
-import { Suspense, lazy, startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, memo, startTransition, useCallback, useEffect, useMemo, useOptimistic, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import { useBack } from '../hooks/useBack';
@@ -51,6 +51,47 @@ const TABS = [
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
 
+/**
+ * The tab buttons with their sliding pill. Kept in its own component with its own optimistic state: the pill moves the moment
+ * the click lands (a small re-render), while the page waits for the new tab to be ready. Optimistic state at page level made the
+ * urgent render re-render the whole leaving tab first (up to 400 ms from Topicuri).
+ */
+const TabList = memo(function TabList({ tab, onSelect }: { tab: TabId; onSelect: (next: TabId) => void }) {
+  const theme = useTheme();
+  const { calmMotion } = useAdaptiveMotion();
+  const [shownTab, setShownTab] = useOptimistic<TabId, TabId>(tab, (_current, next) => next);
+  return (
+    <div role="tablist" aria-label="Secțiunile planului" className="flex flex-shrink-0 items-center gap-1">
+      {TABS.map((entry) => {
+        const active = entry.id === shownTab;
+        return (
+          <button
+            key={entry.id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => startTransition(() => { setShownTab(entry.id); onSelect(entry.id); })}
+            onPointerEnter={() => preloadTab(entry.id)}
+            onFocus={() => preloadTab(entry.id)}
+            className="relative flex-shrink-0 rounded-[var(--r-sm)] px-3.5 py-2 text-[13.5px]"
+            style={{ color: active ? theme.text : theme.text2, fontWeight: active ? 600 : 500 }}
+          >
+            {active && (
+              <motion.span
+                layoutId="organizare-tab-pill"
+                className="absolute inset-0 rounded-[var(--r-sm)]"
+                style={{ background: theme.surface, boxShadow: 'var(--hairline-ring), var(--elev-1)' }}
+                transition={calmMotion ? { duration: 0 } : spring.nav}
+              />
+            )}
+            <span className="relative">{entry.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+});
+
 function usePlan(): Plan | null {
   const [plan, setPlan] = useState<Plan | null>(null);
   useEffect(() => {
@@ -94,8 +135,13 @@ export default function Organizare() {
   const sentinel = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   // Height of the tab that is leaving, held until the new one has entered: without it the page collapses for a moment
-  // between exit and enter (the footer card jumps up, then down again).
-  const [heldHeight, setHeldHeight] = useState<number | null>(null);
+  // between exit and enter (the footer card jumps up, then down again). Written straight to the DOM: no extra re-render of the tab.
+  const releaseStage = () => {
+    const el = stage.current;
+    if (!el) return;
+    el.style.minHeight = '';
+    delete el.dataset.switching;
+  };
   const importer = useRef<HTMLInputElement>(null);
   const [stuck, setStuck] = useState(false);
   const [tabRef, tabFade] = useScrollFade<HTMLDivElement>();
@@ -139,7 +185,11 @@ export default function Organizare() {
     if (extra?.topic !== undefined) out.topic = String(extra.topic);
     if (extra?.late) out.v = 'restante';
     // The old tab stays on screen until the new one is ready, then exit and enter run back to back.
-    setHeldHeight(stage.current?.offsetHeight ?? null);
+    const el = stage.current;
+    if (el) {
+      el.style.minHeight = `${el.offsetHeight}px`;
+      el.dataset.switching = 'true';
+    }
     startTransition(() => setParams(out));
   }, [setParams]);
 
@@ -290,49 +340,21 @@ export default function Organizare() {
               )}
             </AnimatePresence>
             {/* Only the tabs are in the tablist: the back button that appears when the bar sticks is not a tab. */}
-            <div role="tablist" aria-label="Secțiunile planului" className="flex flex-shrink-0 items-center gap-1">
-            {TABS.map((t) => {
-              const active = t.id === tab;
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => goTo(t.id)}
-                  onPointerEnter={() => preloadTab(t.id)}
-                  onFocus={() => preloadTab(t.id)}
-                  className="relative flex-shrink-0 rounded-[var(--r-sm)] px-3.5 py-2 text-[13.5px]"
-                  style={{ color: active ? theme.text : theme.text2, fontWeight: active ? 600 : 500 }}
-                >
-                  {active && (
-                    <motion.span
-                      layoutId="organizare-tab-pill"
-                      className="absolute inset-0 rounded-[var(--r-sm)]"
-                      style={{ background: theme.surface, boxShadow: 'var(--hairline-ring), var(--elev-1)' }}
-                      transition={calmMotion ? { duration: 0 } : spring.nav}
-                    />
-                  )}
-                  <span className="relative">{t.label}</span>
-                </button>
-              );
-            })}
-            </div>
+            <TabList tab={tab} onSelect={goTo} />
           </div>
         </nav>
 
         {api ? (
           <OrganizareContext.Provider value={api}>
-            <div ref={stage} style={{ minHeight: heldHeight ?? undefined }}>
+            <div ref={stage}>
             {/* A new tab starts at the top, but only once the old one has faded out: scrolling earlier made it jump while still visible. */}
             <AnimatePresence mode="wait" initial={false} onExitComplete={() => scroller.current?.scrollTo({ top: 0 })}>
               <motion.div
                 key={tab}
-                onAnimationComplete={(definition) => { if (typeof definition === 'object' && (definition as { opacity?: number }).opacity === 1) setHeldHeight(null); }}
-                initial={calmMotion ? false : { opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={calmMotion ? undefined : { opacity: 0, y: -6 }}
-                transition={t.modal}
+                onAnimationComplete={(definition) => { if (typeof definition === 'object' && (definition as { opacity?: number }).opacity === 1) releaseStage(); }}
+                initial={calmMotion ? false : { opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0, transition: t.modal }}
+                exit={calmMotion ? undefined : { opacity: 0, y: -4, transition: t.modalExit }}
               >
                 {(tab === 'panou' || tab === 'saptamani') && <CatchUpBanner />}
                 <Suspense fallback={<Loading />}>{content}</Suspense>

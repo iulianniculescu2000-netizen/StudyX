@@ -1,7 +1,18 @@
 import { parseDay } from './engine';
 
 type Format = Intl.DateTimeFormatOptions;
-const fmt = (day: string, options: Format) => parseDay(day).toLocaleDateString('ro-RO', options);
+// One Intl.DateTimeFormat per option set: toLocaleDateString builds a new one on every call, which cost 85-150 ms on the
+// Săptămâni and Ritm tabs (hundreds of dates).
+const formatters = new Map<string, Intl.DateTimeFormat>();
+const fmt = (day: string, options: Format) => {
+  const key = JSON.stringify(options);
+  let formatter = formatters.get(key);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat('ro-RO', options);
+    formatters.set(key, formatter);
+  }
+  return formatter.format(parseDay(day));
+};
 
 /** "6 oct." */
 export const shortDay = (day: string) => fmt(day, { day: 'numeric', month: 'short' });
