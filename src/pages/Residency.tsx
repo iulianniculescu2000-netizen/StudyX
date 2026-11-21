@@ -1,7 +1,7 @@
 import { plural } from '../lib/plural';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ChevronRight, Layers, Loader2, MessageCircle, Play, Scissors, Stethoscope, HeartPulse, CalendarRange } from 'lucide-react';
+import { BookOpen, ChevronRight, Play, Scissors, Stethoscope, HeartPulse } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
 import { useQuizStore } from '../store/quizStore';
 import { useFolderStore } from '../store/folderStore';
@@ -22,10 +22,11 @@ import { startKumarDeckRoute } from '../lib/startKumarDeck';
 import { adoptStrayResidencyQuizzes } from '../lib/rezidentiatPlacement';
 import { useUserStore } from '../store/userStore';
 import { useOrganizareStore } from '../store/organizareStore';
-import { daysUntil } from '../lib/organizare';
 import FxPage from '../components/fx/FxPage';
 import PageHeader from '../components/ui/PageHeader';
 import SectionLabel from '../components/ui/SectionLabel';
+import ResidencyNav from '../components/residency/ResidencyNav';
+import ProgressRing from '../components/residency/ProgressRing';
 import PageSkeleton from '../components/ui/PageSkeleton';
 import DuplicatesPanel from '../components/residency/DuplicatesPanel';
 import GlassIconStack from '../components/depth/GlassIconStack';
@@ -39,41 +40,6 @@ function DisciplineIcon({ name, size = 20 }: { name: string; size?: number }) {
   if (key === 'chirurgie') return <Scissors size={size} />;
   if (key === 'medicina-interna') return <HeartPulse size={size} />;
   return <Stethoscope size={size} />;
-}
-
-function ResourceRow({
-  icon,
-  title,
-  detail,
-  onClick,
-  busy,
-  first,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  detail: string;
-  onClick: () => void;
-  busy?: boolean;
-  first?: boolean;
-}) {
-  const theme = useTheme();
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="fine-row flex w-full items-center gap-3 px-4 py-3 text-left"
-      style={{ borderRadius: 0, borderTop: first ? undefined : '1px solid var(--hairline)' }}
-    >
-      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[var(--r-sm)]" style={{ background: `${theme.accent}18`, color: theme.accentText }}>
-        {icon}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="text-[14px] font-semibold" style={{ color: theme.text }}>{title}</div>
-        <div className="truncate text-[12px]" style={{ color: theme.text3 }}>{detail}</div>
-      </div>
-      {busy ? <Loader2 size={16} className="animate-spin" style={{ color: theme.text3 }} /> : <ChevronRight size={16} style={{ color: theme.text3 }} />}
-    </button>
-  );
 }
 
 export default function Residency() {
@@ -96,9 +62,7 @@ export default function Residency() {
   const profileId = useUserStore((state) => state.activeProfileId) ?? 'default';
   const plan = useOrganizareStore((state) => state.byProfile[profileId]?.summary ?? null);
   const [today] = useState(() => new Date());
-  const planDetail = plan
-    ? `${plan.phase <= 4 ? `Trecerea ${plan.phase} din 4 · ${plan.done} din ${plural(plan.total, 'topic', 'topicuri')}` : 'Simulări și menținere'} · ${plural(daysUntil(plan.exam, today), 'zi', 'zile')} până la examen`
-    : 'Planul tău pe patru treceri, săptămâni și ritm zilnic';
+  const [booksOpen, setBooksOpen] = useState(() => linked !== null);
 
   // Sets an AI agent filed straight into the section root are moved into "Grile" so none is stranded.
   // Runs once the profile's data is in the stores: with empty stores it would find nothing and never run again.
@@ -146,9 +110,28 @@ export default function Residency() {
           actions={(
             <>
               <TourHelpButton tour="residency" label="Vezi turul secțiunii Rezidențiat" />
+              <button
+                type="button"
+                onClick={() => setBooksOpen((open) => !open)}
+                aria-expanded={booksOpen}
+                aria-label={booksOpen ? 'Ascunde cărțile de bază' : 'Arată cărțile de bază'}
+                title="Cărțile de bază"
+                className="fine-chip press-feedback flex h-9 w-9 items-center justify-center rounded-full"
+                style={{ color: theme.accentText }}
+              >
+                <BookOpen size={17} aria-hidden />
+              </button>
               <RezidentiatQuizActions onAddBook={addBook.open} addingBook={addBook.busy !== null} />
             </>
           )}
+        />
+
+        <ResidencyNav
+          deckCount={deckCount}
+          startingDeck={startingDeck}
+          onOrganizare={() => navigate('/rezidentiat/organizare')}
+          onFlashcards={() => (deckCount > 0 ? navigate('/rezidentiat/flashcarduri') : void openKumarDeck())}
+          onAsk={() => setChatOpen(true)}
         />
 
         {plan && !planProgress.focus && <PlanCard summary={plan} today={today} onOpen={() => navigate('/rezidentiat/organizare')} />}
@@ -159,11 +142,12 @@ export default function Residency() {
           onOpen={() => {
             const chapter = planProgress.focus?.chapter;
             if (!chapter) return;
+            setBooksOpen(true);
             setShelfFocus((previous) => ({ code: chapter.book, index: chapter.index, token: (previous?.token ?? 0) + 1 }));
           }}
         />
 
-        {resume && (
+        {resume && !planProgress.focus && (
           <div
             className="glass-panel fx-rise flex items-center gap-3.5 rounded-2xl px-4 py-3.5"
             style={{ '--i': 2 } as CSSProperties}
@@ -185,30 +169,32 @@ export default function Residency() {
           </div>
         )}
 
-        <BundledBooksSection overview={overview} plan={planProgress} focus={shelfFocus} />
+        {booksOpen && <BundledBooksSection overview={overview} plan={planProgress} focus={shelfFocus} />}
 
         {hasBank && (
           <section data-tutorial="residency-disciplines">
             <SectionLabel className="mb-2">Discipline</SectionLabel>
             <div className="grid gap-3 sm:grid-cols-2">
               {disciplines.map((discipline, index) => (
-                <div key={discipline.folder.id} className="fx-rise" style={{ '--i': index + 3 } as CSSProperties}>
+                <div
+                  key={discipline.folder.id}
+                  className={`fx-rise ${disciplines.length % 2 === 1 && index === disciplines.length - 1 ? 'sm:col-span-2' : ''}`}
+                  style={{ '--i': index + 3 } as CSSProperties}
+                >
                   <Link
                     to={`/rezidentiat/${discipline.folder.id}`}
-                    className="glass-panel fx-lift fx-spot press-feedback block rounded-2xl p-4"
+                    className="glass-panel fx-lift fx-spot press-feedback flex h-full flex-col gap-4 rounded-2xl p-[18px]"
                   >
                     <div className="flex items-start justify-between">
                       <GlassIconStack icon={<DisciplineIcon name={discipline.folder.name} />} color={theme.accentText} />
-                      <ChevronRight size={16} style={{ color: theme.text3 }} />
+                      <ProgressRing percent={discipline.progress} label={`${discipline.progress}% parcurs`} />
                     </div>
-                    <div className="mt-3 text-[16px] font-semibold" style={{ color: theme.text }}>{discipline.folder.name}</div>
-                    <div className="text-[12.5px]" style={{ color: theme.text3 }}>
-                      {plural(discipline.specialties.length, 'specialitate', 'specialități')} · {plural(discipline.questionCount, 'grilă', 'grile')}
+                    <div>
+                      <div className="text-[16px] font-semibold" style={{ color: theme.text }}>{discipline.folder.name}</div>
+                      <div className="mt-0.5 text-[12.5px]" style={{ color: theme.text3 }}>
+                        {plural(discipline.specialties.length, 'specialitate', 'specialități')} · {plural(discipline.questionCount, 'grilă', 'grile')}
+                      </div>
                     </div>
-                    <div className="mt-3.5 h-1 overflow-hidden rounded-full" style={{ background: 'var(--fill-subtle)' }}>
-                      <div className="h-full rounded-full" style={{ width: `${discipline.progress}%`, background: theme.accent }} />
-                    </div>
-                    <div className="mt-1.5 text-[11.5px]" style={{ color: theme.text3 }}>{discipline.progress}% parcurs</div>
                   </Link>
                 </div>
               ))}
@@ -233,32 +219,6 @@ export default function Residency() {
           </div>
         )}
         {hasBank && showDuplicates && duplicates.duplicateCount > 0 && <DuplicatesPanel report={duplicates} />}
-
-        <section data-tutorial="residency-resources">
-          <SectionLabel className="mb-2">Resurse</SectionLabel>
-          <div className="glass-panel overflow-hidden rounded-2xl">
-            <ResourceRow
-              first
-              icon={<CalendarRange size={18} />}
-              title="Organizare"
-              detail={planDetail}
-              onClick={() => navigate('/rezidentiat/organizare')}
-            />
-            <ResourceRow
-              icon={<Layers size={18} />}
-              title="Flashcarduri"
-              detail={deckCount > 0 ? `${deckCount} ${deckCount === 1 ? 'pachet' : 'pachete'} · pe capitole, repetare spațiată` : 'Concepte cheie din manual, pe capitole'}
-              onClick={() => (deckCount > 0 ? navigate('/rezidentiat/flashcarduri') : void openKumarDeck())}
-              busy={startingDeck}
-            />
-            <ResourceRow
-              icon={<MessageCircle size={18} />}
-              title="Întreabă din cărți"
-              detail="Răspunsuri din cărțile de bază, cu pagina; materialele completează"
-              onClick={() => setChatOpen(true)}
-            />
-          </div>
-        </section>
 
         <MaterialsBank onAdd={addBook.open} adding={addBook.busy} />
 

@@ -56,7 +56,7 @@ const overviewSteps: TourStep[] = [
     {
       id: 'residency-resources',
       title: 'Resurse',
-      body: 'Cărțile de bază (Kumar, Lawrence, Sinopsis) vin cu aplicația și sunt sursa de adevăr; materialele tale le completează. Aici ai Organizarea, cardurile și un chat care răspunde din cărți, cu pagina. Grilele generate de AI intră singure în Grile › specialitate.',
+      body: 'Sus ai Organizarea, flashcardurile și un chat care răspunde din cărți, cu pagina. Pictograma de carte de lângă „+” arată cărțile de bază (Kumar, Lawrence, Sinopsis), care vin cu aplicația și sunt sursa de adevăr; materialele tale le completează. Grilele generate de AI intră singure în Grile › specialitate.',
       icon: <BookOpen size={22} />,
       target: '[data-tutorial="residency-resources"]',
       targetPadding: 8,
