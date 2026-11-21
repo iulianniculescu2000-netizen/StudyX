@@ -13,9 +13,9 @@ export function useAddRezidentiatBook() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
-  const onChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []).filter((file) => file.name.toLowerCase().endsWith('.pdf'));
-    event.target.value = '';
+  const addFiles = async (picked: File[]) => {
+    if (busy) return;
+    const files = picked.filter((file) => file.name.toLowerCase().endsWith('.pdf'));
     if (files.length === 0) return;
     try {
       const { parsePDF } = await import('../ai/pdfParser');
@@ -38,8 +38,15 @@ export function useAddRezidentiatBook() {
     }
   };
 
+  const onChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const picked = Array.from(event.target.files || []);
+    event.target.value = '';
+    void addFiles(picked);
+  };
+
   return {
     busy,
+    addFiles,
     open: () => { if (!busy) inputRef.current?.click(); },
     inputProps: { type: 'file' as const, ref: inputRef, accept: '.pdf,application/pdf', multiple: true, className: 'hidden', onChange },
   };

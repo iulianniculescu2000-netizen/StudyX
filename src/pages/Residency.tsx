@@ -205,11 +205,12 @@ export default function Residency() {
         )}
         {hasBank && showDuplicates && duplicates.duplicateCount > 0 && <DuplicatesPanel report={duplicates} />}
 
-        <MaterialsBank onAdd={addBook.open} adding={addBook.busy} />
-
         <div data-tutorial="residency-import" className="empty:hidden">
           <ImportPanel />
         </div>
+
+        <MaterialsBank onAdd={addBook.open} adding={addBook.busy} onDropFiles={(files) => void addBook.addFiles(files)} />
+
       </div>
     </FxPage>
   );

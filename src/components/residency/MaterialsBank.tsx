@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, type DragEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { FileText, Loader2, Plus } from 'lucide-react';
 import { useTheme } from '../../theme/ThemeContext';
@@ -16,20 +16,61 @@ interface Props {
   onAdd: () => void;
   /** Textul de progres cât se adaugă un PDF, sau null. */
   adding: string | null;
+  /** PDF-uri trase pe zona de adăugare. */
+  onDropFiles?: (files: File[]) => void;
 }
 
 /**
  * Banca de materiale: capitolele, notele și culegerile studentului, indexate în Biblioteca AI. Completează cărțile de bază
  * (nu le înlocuiesc), deci secțiunea e mai compactă: câte sunt, ultimele adăugate, sincronizarea și adăugarea.
  */
-export default function MaterialsBank({ onAdd, adding }: Props) {
+export default function MaterialsBank({ onAdd, adding, onDropFiles }: Props) {
   const theme = useTheme();
+  const [dragging, setDragging] = useState(false);
   const { books } = useResidencyBooks();
   const folders = useAIStore((state) => state.libraryFolders);
   const root = useMemo(() => findRezidentiatRootFolder(folders), [folders]);
   const materials = useMemo(() => books.filter((source) => !isBundledLibraryBookName(source.name)), [books]);
   const recent = useMemo(() => [...materials].sort((a, b) => b.addedAt - a.addedAt).slice(0, RECENT), [materials]);
   const fragments = useMemo(() => materials.reduce((sum, source) => sum + (source.chunkCount ?? 0), 0), [materials]);
+
+  const onDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setDragging(false);
+    if (adding === null) onDropFiles?.(Array.from(event.dataTransfer.files));
+  };
+
+  if (materials.length === 0 && !adding) {
+    return (
+      <section data-tutorial="residency-bank" aria-labelledby="materials-bank-title">
+        <div
+          onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={onDrop}
+          className="rounded-[var(--r-lg)] px-5 py-7 text-center transition-colors"
+          style={{
+            border: `2px dashed ${theme.accent}${dragging ? 'cc' : '73'}`,
+            background: `${theme.accent}${dragging ? '18' : '0F'}`,
+          }}
+        >
+          <div className="text-[30px] leading-none" aria-hidden>📄</div>
+          <h2 id="materials-bank-title" className="mt-2 text-[15px] font-bold" style={{ color: theme.text }}>Ai propriile materiale?</h2>
+          <p className="mt-0.5 text-[12.5px]" style={{ color: theme.text3 }}>Trage aici un PDF cu capitole, note sau culegeri. Cărțile de bază merg și fără ele.</p>
+          <button
+            type="button"
+            onClick={onAdd}
+            className="press-feedback mt-3.5 rounded-full px-5 py-2 text-[13px] font-semibold text-white hover:brightness-110"
+            style={{ background: theme.accent }}
+          >
+            Alege un PDF
+          </button>
+        </div>
+        <div className="mt-3">
+          <BookLibraryTools />
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section data-tutorial="residency-bank" aria-labelledby="materials-bank-title">

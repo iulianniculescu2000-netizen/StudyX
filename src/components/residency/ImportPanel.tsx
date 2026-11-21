@@ -1,10 +1,16 @@
 import { useMemo, useState } from 'react';
-import { Download, Loader2 } from 'lucide-react';
+import { Loader2, Sparkles } from 'lucide-react';
 import { useTheme } from '../../theme/ThemeContext';
-import SectionLabel from '../ui/SectionLabel';
 import { useQuizStore } from '../../store/quizStore';
 import { useToastStore } from '../../store/toastStore';
 import { importRezidentiatBank, isBankImported, REZIDENTIAT_BANKS } from '../../lib/rezidentiatBank';
+
+/** Fiecare bancă își ia o culoare și o emoji, ca să nu arate ca o listă de fișiere. */
+const LOOKS = [
+  { emoji: '🩺', gradient: 'linear-gradient(135deg, #0a84ff, #5e5ce6)' },
+  { emoji: '📚', gradient: 'linear-gradient(135deg, #30b0c7, #34c759)' },
+  { emoji: '🧬', gradient: 'linear-gradient(135deg, #ff9f0a, #ff375f)' },
+];
 
 interface PendingItem {
   key: string;
@@ -52,47 +58,61 @@ export default function ImportPanel() {
 
   if (pending.length === 0) return null;
 
+  const first = pending.length === REZIDENTIAT_BANKS.length;
+
   return (
-    <section>
-      <div className="mb-2 flex items-center justify-between">
-        <SectionLabel>Bănci de grile de adăugat</SectionLabel>
-        {pending.length > 1 && (
-          <button
-            type="button"
-            onClick={() => void runItems(pending, 'all')}
-            disabled={!!busyKey}
-            className="flex items-center gap-1.5 text-[12.5px] font-semibold disabled:opacity-60"
-            style={{ color: theme.accentText }}
-          >
-            {busyKey === 'all' && <Loader2 size={12} className="animate-spin" />}
-            {busyKey === 'all' ? 'Se adaugă…' : 'Adaugă tot'}
-          </button>
-        )}
+    <section aria-labelledby="bank-import-title">
+      <div className="px-2 pb-5 pt-2 text-center">
+        <div className="text-[44px] leading-none" aria-hidden>{first ? '🚀' : '✨'}</div>
+        <h2 id="bank-import-title" className="mt-2 text-[22px] font-bold tracking-tight" style={{ color: theme.text }}>
+          {first ? 'Să începem!' : 'Mai ai bănci de adăugat'}
+        </h2>
+        <p className="mt-1 text-[13.5px]" style={{ color: theme.text3 }}>
+          {first ? 'Alege o bancă de grile și ești gata de exersat.' : 'Adaugă-le când vrei, grilele se așază singure pe specialități.'}
+        </p>
       </div>
-      <div className="glass-panel overflow-hidden rounded-2xl">
-        {pending.map((item, index) => (
-          <div
-            key={item.key}
-            className="flex items-center gap-3 px-4 py-3"
-            style={{ borderTop: index === 0 ? undefined : '1px solid var(--hairline)' }}
-          >
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-[14px] font-semibold" style={{ color: theme.text }}>{item.label}</div>
-              <div className="truncate text-[12px]" style={{ color: theme.text3 }}>{item.description}</div>
-            </div>
-            <button
-              type="button"
-              onClick={() => void runItems([item], item.key)}
-              disabled={!!busyKey}
-              className="fine-chip press-feedback flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold disabled:opacity-60"
-              style={{ color: theme.accentText }}
+      <div className="grid gap-3">
+        {pending.map((item, index) => {
+          const look = LOOKS[index % LOOKS.length];
+          const busy = busyKey === item.key || busyKey === 'all';
+          return (
+            <div
+              key={item.key}
+              className="fx-lift relative flex items-center gap-4 overflow-hidden rounded-[var(--r-lg)] p-5 text-white"
+              style={{ background: look.gradient }}
             >
-              {busyKey === item.key || busyKey === 'all' ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-              {busyKey === item.key || busyKey === 'all' ? 'Se adaugă…' : 'Adaugă'}
-            </button>
-          </div>
-        ))}
+              <span aria-hidden className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full" style={{ background: 'rgba(255,255,255,0.12)' }} />
+              <span aria-hidden className="relative flex-shrink-0 text-[40px] leading-none">{look.emoji}</span>
+              <div className="relative min-w-0 flex-1">
+                <div className="truncate text-[17px] font-bold">{item.label}</div>
+                <div className="text-[12.5px] opacity-90">{item.description}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => void runItems([item], item.key)}
+                disabled={!!busyKey}
+                className="press-feedback relative flex flex-shrink-0 items-center gap-1.5 rounded-full bg-white px-[18px] py-2 text-[13px] font-bold disabled:opacity-70"
+                style={{ color: '#0a4fb8' }}
+              >
+                {busy && <Loader2 size={13} className="animate-spin" aria-hidden />}
+                {busy ? 'Se adaugă…' : 'Adaugă'}
+              </button>
+            </div>
+          );
+        })}
       </div>
+      {pending.length > 1 && (
+        <button
+          type="button"
+          onClick={() => void runItems(pending, 'all')}
+          disabled={!!busyKey}
+          className="fine-chip press-feedback mx-auto mt-4 flex items-center gap-1.5 rounded-full px-[18px] py-2 text-[13.5px] font-semibold disabled:opacity-60"
+          style={{ color: theme.accentText }}
+        >
+          {busyKey === 'all' ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <Sparkles size={14} aria-hidden />}
+          {busyKey === 'all' ? 'Se adaugă…' : 'Adaugă tot dintr-o dată'}
+        </button>
+      )}
     </section>
   );
 }
