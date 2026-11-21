@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams, Link, Navigate } from 'react-router-dom';
 import { rezidentiatHrefForFolder } from '../lib/rezidentiatRoutes';
+import { AI_GRILE_FOLDER_NAME } from '../lib/rezidentiatPlacement';
 import { startQuizMix } from '../lib/quizMixSession';
 import { isFolderSessionQuiz } from '../lib/rezidentiatOverview';
 import { QUIZ_COLOR_HEX } from '../theme/colorMaps';
@@ -16,7 +17,7 @@ import ImportQuizButton from '../components/ImportQuizButton';
 import ExamSplitModal from '../components/ExamSplitModal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { isFlashcardDeck } from '../lib/deckKind';
-import { isRezidentiatRootFolder } from '../lib/rezidentiatRoot';
+import { isRezidentiatRootFolder, isUnderRezidentiatRoot } from '../lib/rezidentiatRoot';
 import PageHeader from '../components/ui/PageHeader';
 import EmptyState from '../components/ui/EmptyState';
 import PageSkeleton from '../components/ui/PageSkeleton';
@@ -120,10 +121,24 @@ export default function FolderView() {
   // (kept separate from the year's coursework) — sending its own "back" there
   // would point at a list that never shows it. Its true home is its own page.
   const isRezidentiatRoot = !!folder && isRezidentiatRootFolder(folder);
+  // A folder of your own inside Rezidențiat (Rezidențiat › Grile › …) is opened from the Rezidențiat page, and "back" returns there.
+  // The generic parent link led to the "Grile" container, which the Rezidențiat router then treats as a discipline.
+  const plainName = (name: string) => name.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
+  const inRezidentiat = !!folder && !isRezidentiatRoot && isUnderRezidentiatRoot(folder.id, folders);
+  const parentIsContainer = !!parentFolder && (isRezidentiatRootFolder(parentFolder) || (
+    plainName(parentFolder.name) === plainName(AI_GRILE_FOLDER_NAME) && !!parentFolder.parentId
+    && folders.some((f) => f.id === parentFolder.parentId && isRezidentiatRootFolder(f))
+  ));
+  const parentRezidentiatHref = inRezidentiat && parentFolder && !parentIsContainer ? rezidentiatHrefForFolder(parentFolder.id, folders) : null;
   const backHref = folder
-    ? (folder.parentId ? `/folder/${folder.parentId}` : isRezidentiatRoot ? '/rezidentiat' : '/quizzes')
+    ? (inRezidentiat && (parentIsContainer || !parentFolder)
+      ? '/rezidentiat'
+      : inRezidentiat && parentFolder ? (parentRezidentiatHref ?? `/folder/${parentFolder.id}?plain=1`)
+      : folder.parentId ? `/folder/${folder.parentId}` : isRezidentiatRoot ? '/rezidentiat' : '/quizzes')
     : null;
-  const backLabel = folder ? (parentFolder ? parentFolder.name : isRezidentiatRoot ? 'Rezidențiat' : 'Toate grilele') : null;
+  const backLabel = folder
+    ? (inRezidentiat && (parentIsContainer || !parentFolder) ? 'Rezidențiat' : parentFolder ? parentFolder.name : isRezidentiatRoot ? 'Rezidențiat' : 'Toate grilele')
+    : null;
 
   const openSubfolderForm = () => {
     if (!folder) return;
