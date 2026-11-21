@@ -92,6 +92,10 @@ export default function Organizare() {
   const stored = useOrganizareStore((state) => state.byProfile[profileId]?.state);
   const scroller = useRef<HTMLDivElement>(null);
   const sentinel = useRef<HTMLDivElement>(null);
+  const stage = useRef<HTMLDivElement>(null);
+  // Height of the tab that is leaving, held until the new one has entered: without it the page collapses for a moment
+  // between exit and enter (the footer card jumps up, then down again).
+  const [heldHeight, setHeldHeight] = useState<number | null>(null);
   const importer = useRef<HTMLInputElement>(null);
   const [stuck, setStuck] = useState(false);
   const [tabRef, tabFade] = useScrollFade<HTMLDivElement>();
@@ -135,11 +139,9 @@ export default function Organizare() {
     if (extra?.topic !== undefined) out.topic = String(extra.topic);
     if (extra?.late) out.v = 'restante';
     // The old tab stays on screen until the new one is ready, then exit and enter run back to back.
+    setHeldHeight(stage.current?.offsetHeight ?? null);
     startTransition(() => setParams(out));
   }, [setParams]);
-
-  // A new tab starts at the top, not wherever the last one was scrolled to.
-  useEffect(() => { scroller.current?.scrollTo({ top: 0 }); }, [tab]);
 
   // The tab bar sticks to the top once the header has scrolled away; only then does it make room for a back button.
   useEffect(() => {
@@ -321,18 +323,22 @@ export default function Organizare() {
 
         {api ? (
           <OrganizareContext.Provider value={api}>
-            {(tab === 'panou' || tab === 'saptamani') && <CatchUpBanner />}
-            <AnimatePresence mode="wait" initial={false}>
+            <div ref={stage} style={{ minHeight: heldHeight ?? undefined }}>
+            {/* A new tab starts at the top, but only once the old one has faded out: scrolling earlier made it jump while still visible. */}
+            <AnimatePresence mode="wait" initial={false} onExitComplete={() => scroller.current?.scrollTo({ top: 0 })}>
               <motion.div
                 key={tab}
+                onAnimationComplete={(definition) => { if (typeof definition === 'object' && (definition as { opacity?: number }).opacity === 1) setHeldHeight(null); }}
                 initial={calmMotion ? false : { opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={calmMotion ? undefined : { opacity: 0, y: -6 }}
                 transition={t.modal}
               >
+                {(tab === 'panou' || tab === 'saptamani') && <CatchUpBanner />}
                 <Suspense fallback={<Loading />}>{content}</Suspense>
               </motion.div>
             </AnimatePresence>
+            </div>
 
             <Card className="mt-8 flex flex-wrap items-center justify-between gap-3 !p-4" spot={false}>
               <div>
