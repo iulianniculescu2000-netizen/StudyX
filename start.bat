@@ -17,6 +17,9 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr :5173 ^| findstr LISTENING 2^
 )
 taskkill /F /IM electron.exe /T 2>nul
 
+for /f "delims=" %%b in ('git rev-parse --abbrev-ref HEAD 2^>nul') do set "SX_BRANCH=%%b"
+for /f "delims=" %%c in ('git log -1 --format^=%%h_%%cs 2^>nul') do set "SX_COMMIT=%%c"
+echo     Cod: %CD%  ramura !SX_BRANCH!  ultima modificare !SX_COMMIT!
 echo [3/3] Pornim StudyX...
 call npm run electron:dev
 

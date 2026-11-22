@@ -30,7 +30,7 @@
     "prepare-update": "npm.cmd run build && node scripts/prepare-update.cjs",
     "publish-update": "node scripts/publish-update.cjs",
     "updates:sync-local": "node scripts/sync-updates-local.cjs",
-    "electron:dev": "cross-env.cmd NODE_ENV=development concurrently.cmd \"vite.cmd\" \"wait-on.cmd http://localhost:5173 && electron.cmd .\"",
+    "electron:dev": "cross-env.cmd NODE_ENV=development concurrently.cmd \"vite.cmd --strictPort\" \"wait-on.cmd http://localhost:5173 && electron.cmd .\"",
     "electron:build": "node scripts/patch-nsis-ro.cjs && npm.cmd run generate-icon && npm.cmd run build && electron-builder.cmd",
     "electron:build:dir": "npm.cmd run generate-icon && npm.cmd run build && electron-builder.cmd --dir",
     "electron:publish": "node scripts/publish-release.cjs",
