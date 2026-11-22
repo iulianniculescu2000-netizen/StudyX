@@ -23,6 +23,8 @@
     "verify:runtime": "node scripts/verify-runtime.cjs",
     "release:guard": "node scripts/release-guard.cjs",
     "qa:features": "node scripts/qa-features.cjs",
+    "perf:measure": "node scripts/perf-measure.mjs",
+    "ui:shoot": "node scripts/shoot-ui.mjs",
     "verify:all": "npm.cmd run security:scan && npm.cmd run lint && npm.cmd run build && npm.cmd run test:run && npm.cmd run verify:runtime",
     "preview": "vite preview",
     "dist": "npm.cmd run electron:build",
