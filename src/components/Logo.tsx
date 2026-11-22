@@ -15,25 +15,32 @@ interface LogoProps {
  * approved concept. The pulse "draws" in a loop and its peak dot breathes;
  * both collapse to a static frame under reduced-motion/low-power.
  */
+function PulseGradient({ id }: { id: string }) {
+  return (
+    <defs>
+      <linearGradient id={id} x1="112" y1="76" x2="152" y2="134" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#0A84FF" />
+        <stop offset="100%" stopColor="#5E5CE6" />
+      </linearGradient>
+    </defs>
+  );
+}
+
 export default function Logo({ size = 40, className = '' }: LogoProps) {
   const { calmMotion } = useAdaptiveMotion();
   const gradientId = `logo-pulse-${useId()}`;
+  const dotGradientId = `${gradientId}-dot`;
 
-  return (
+  const mark = (
     <svg
       width={size}
       height={size}
       viewBox="0 0 200 200"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className={className}
+      className={calmMotion ? className : 'block'}
     >
-      <defs>
-        <linearGradient id={gradientId} x1="112" y1="76" x2="152" y2="134" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#0A84FF" />
-          <stop offset="100%" stopColor="#5E5CE6" />
-        </linearGradient>
-      </defs>
+      <PulseGradient id={gradientId} />
 
       <rect className="logo-tile" width="200" height="200" rx="52" fill="#0F0F12" />
 
@@ -60,15 +67,32 @@ export default function Logo({ size = 40, className = '' }: LogoProps) {
         // Se desenează o singură dată; doar punctul de vârf mai pulsează, încet, și numai fără mișcare redusă.
         transition={calmMotion ? { duration: 0 } : { duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
       />
-      <motion.circle
-        cx="128"
-        cy="76"
-        r="5"
-        fill={`url(#${gradientId})`}
-        style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
-        animate={calmMotion ? {} : { scale: [1, 1.35, 1], opacity: [0.85, 1, 0.85] }}
-        transition={calmMotion ? { duration: 0 } : { duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
-      />
+      {/* Fără mișcare: punctul stă în desen, ca înainte. */}
+      {calmMotion && <circle cx="128" cy="76" r="5" fill={`url(#${gradientId})`} />}
     </svg>
+  );
+
+  if (calmMotion) return mark;
+
+  // Punctul care „respiră” stă într-un SVG propriu, suprapus exact peste desen (aceeași cutie, același viewBox),
+  // și pulsează prin CSS pe acest SVG (.logo-dot-pulse: transform + opacitate, pe compozitor). Aceleași cadre
+  // cheie, durată și curbă ca animația framer de dinainte; doar că nu mai trezește firul principal la fiecare cadru.
+  return (
+    <span className={`relative inline-block ${className}`} style={{ width: size, height: size, lineHeight: 0 }}>
+      {mark}
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 200 200"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+        focusable="false"
+        className="logo-dot-pulse pointer-events-none absolute left-0 top-0"
+      >
+        <PulseGradient id={dotGradientId} />
+        <circle cx="128" cy="76" r="5" fill={`url(#${dotGradientId})`} />
+      </svg>
+    </span>
   );
 }

@@ -1727,6 +1727,19 @@ button.press-feedback:not(:disabled):active {
 }
 .embed-frame[data-ready="true"] { opacity: 1; transform: none; }
 
+/* ── Punctul din logo (src/components/Logo.tsx) ─────────────────────────────
+   Pulsează pe SVG-ul propriu, suprapus peste desen: transform + opacitate rulate pe compozitor.
+   Aceleași cadre ca vechea animație framer ([1, 1.35, 1], [0.85, 1, 0.85], 2.4 s, easeInOut pe segment);
+   originea e centrul punctului (128, 76) din viewBox-ul 200 × 200. */
+.logo-dot-pulse {
+  transform-origin: 64% 38%;
+  animation: logo-dot-pulse 2.4s cubic-bezier(0.42, 0, 0.58, 1) infinite;
+}
+@keyframes logo-dot-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50% { transform: scale(1.35); opacity: 1; }
+}
+
 /* ── Pip, mascota asistentului (src/components/Mascot.tsx) ──────────────────
    Mișcarea există doar pe .pip-motion; starea vine din data-state (idle | thinking | asleep). */
 .pip-eyes { transform-box: fill-box; transform-origin: center; }
@@ -1769,7 +1782,7 @@ button:hover > .pip-motion .pip-hand,
   --dur-slow: 0.2s;
 }
 :root:is([data-performance="lite"], [data-power-save="true"]) :is(
-  .glow-pulse, .float-gentle, .shimmer-text, .animate-streak-fire, .streaming-cursor,
+  .glow-pulse, .float-gentle, .shimmer-text, .animate-streak-fire, .streaming-cursor, .logo-dot-pulse,
   .skeleton-block, .fx-mesh i, .animated-background-orb, .animated-background-orb--drift, .fx-rise,
   .pip-motion .pip-float, .pip-motion .pip-eyes, .pip-motion .pip-ant,
   .pip-motion[data-state="thinking"] .pip-dots circle, .premium-modal
@@ -1818,7 +1831,7 @@ button:hover > .pip-motion .pip-hand,
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-  .glow-pulse, .float-gentle, .shimmer-text, .animate-streak-fire, .streaming-cursor,
+  .glow-pulse, .float-gentle, .shimmer-text, .animate-streak-fire, .streaming-cursor, .logo-dot-pulse,
   .skeleton-block, .fx-mesh i, .animated-background-orb, .animated-background-orb--drift, .fx-rise {
     animation: none !important;
   }
