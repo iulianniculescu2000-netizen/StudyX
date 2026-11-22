@@ -1166,6 +1166,20 @@ function createWindow() {
     scheduleWindowStateSave(mainWindow);
   });
   mainWindow.on('resize', () => scheduleWindowStateSave(mainWindow));
+  // Windows, fereastră fără ramă: după maximizare, restaurare, snap sau revenirea din tavă, Chromium poate păstra suprafața
+  // veche și lasă o bandă neagră în dreapta/jos până la următoarea redimensionare. Cerem o redesenare când limitele s-au așezat.
+  let repaintTimer = null;
+  const repaintAfterBoundsChange = () => {
+    if (repaintTimer) clearTimeout(repaintTimer);
+    repaintTimer = setTimeout(() => {
+      repaintTimer = null;
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      try { mainWindow.webContents.invalidate(); } catch { /* ignore */ }
+    }, 80);
+  };
+  for (const event of ['maximize', 'unmaximize', 'restore', 'show', 'resized', 'enter-full-screen', 'leave-full-screen']) {
+    mainWindow.on(event, repaintAfterBoundsChange);
+  }
   mainWindow.on('move', () => scheduleWindowStateSave(mainWindow));
   mainWindow.on('blur', () => persistWindowState(mainWindow));
   
