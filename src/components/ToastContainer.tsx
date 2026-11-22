@@ -35,23 +35,22 @@ export default function ToastContainer() {
 
   return (
     <Portal>
-      {/* Bottom-right, above the AI launcher and the "back to top" button: at the top they covered page titles and header
-          buttons (Biblioteca AI: AI Studio, Adaugă, OCR). They rise in with a soft spring. */}
+      {/* Apple-style banners: anchored top-center, drop in with a soft spring bounce. */}
       <div
         role="status"
         aria-live="polite"
         aria-atomic="false"
-        className="pointer-events-none fixed bottom-[104px] right-6 z-[9999] flex w-[380px] max-w-[calc(100vw-2rem)] flex-col items-end gap-2.5"
+        className="fixed top-14 left-1/2 z-[9999] flex w-full -translate-x-1/2 flex-col items-center gap-2.5 px-4 pointer-events-none"
       >
         <AnimatePresence mode="popLayout">
           {visible.map((toast) => (
             <motion.div
               key={toast.id}
               layout
-              /* Ancorat jos: urcă de jos și iese spre dreapta, fără să împingă brusc celelalte (layout). */
-              initial={calmMotion ? { opacity: 0 } : { opacity: 0, y: 14, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1, transition: t.toast }}
-              exit={{ opacity: 0, ...(calmMotion ? {} : { x: 24 }), transition: t.toastExit }}
+              /* Ancorat sus: intră din y negativ (oglinda lui toastIn, care urcă de jos). */
+              initial={calmMotion ? { opacity: 0 } : { opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0, transition: t.toast }}
+              exit={{ opacity: 0, ...(calmMotion ? {} : { y: -12 }), transition: t.toastExit }}
               role={toast.type === 'error' ? 'alert' : undefined}
               className="pointer-events-auto flex w-full max-w-[380px] items-start gap-3 rounded-[var(--r-lg)] px-3.5 py-3"
               style={{
