@@ -49,6 +49,8 @@ const WhatsNewTour = lazy(() => import('./components/WhatsNewTour'));
 const WelcomeFilm = lazy(() => import('./components/film/WelcomeFilm'));
 const GlobalSearch = lazy(() => import('./components/GlobalSearch'));
 const TourEngine = lazy(() => import('./tutorial/TourEngine'));
+// Diagnostic de randare (Ctrl+Shift+P), doar în dezvoltare: în producție condiția e falsă și modulul nu e inclus.
+const PerfOverlay = import.meta.env.DEV ? lazy(() => import('./dev/PerfOverlay')) : null;
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const QuizList = lazy(() => import('./pages/QuizList'));
@@ -317,6 +319,7 @@ function AppContent({ splashVisible }: { splashVisible: boolean }) {
       <TitleTooltips />
       <BookViewerHost />
       <KeyboardShortcuts />
+      {PerfOverlay && <Suspense fallback={null}><PerfOverlay /></Suspense>}
       {activeProfileId && !splashVisible && (
         <Suspense fallback={null}>
           <TourEngine profileId={activeProfileId} />
