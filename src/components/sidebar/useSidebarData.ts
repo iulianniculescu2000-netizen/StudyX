@@ -1,5 +1,6 @@
 import { isTopicPracticeQuiz } from '../../lib/topicMastery';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
+import { useNow } from '../../hooks/useNow';
 import { useFolderStore } from '../../store/folderStore';
 import { useQuizStore } from '../../store/quizStore';
 import { useStatsStore } from '../../store/statsStore';
@@ -18,11 +19,8 @@ export function useSidebarData() {
   const totalAnswered = useStatsStore((s) =>
     Object.values(s.questionStats).reduce((a, q) => a + q.timesCorrect + q.timesWrong, 0));
 
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 60000);
-    return () => clearInterval(interval);
-  }, []);
+  // Ceasul pentru scadențe: tic în fiecare minut, oprit cât timp fereastra e minimizată (la revenire se actualizează imediat).
+  const now = useNow(60000).getTime();
 
   // Aceeași sursă ca /review și /daily-review: doar grile existente, fără intrări retrase, ascunse sau de pachete șterse.
   // Selector primitiv: numărul scadent se recalculează la fiecare schimbare din statistici, dar sidebar-ul se redesenează doar dacă numărul diferă.

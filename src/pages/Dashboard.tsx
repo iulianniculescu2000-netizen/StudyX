@@ -1,5 +1,5 @@
 import { formatStudyTime } from '../lib/formatStudyTime';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { BookOpen, Clock, Flame, Plus, Target } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
@@ -45,6 +45,7 @@ import { localDateStr } from '../lib/studyPlan';
 import { useAdaptiveMotion } from '../hooks/useAdaptiveMotion';
 import { useCountUp } from '../hooks/useCountUp';
 import { useViewportProfile } from '../hooks/useViewportProfile';
+import { hourBucket, useNow } from '../hooks/useNow';
 
 function DashboardActions({ compact }: { compact: boolean }) {
   const theme = useTheme();
@@ -139,7 +140,8 @@ export default function Dashboard() {
   const username = useUserStore((s) => s.username);
   const activeProfileId = useUserStore((s) => s.activeProfileId);
   const studyPlan = useOrganizareStore((state) => (activeProfileId ? state.byProfile[activeProfileId]?.summary ?? null : null));
-  const [now, setNow] = useState(() => new Date());
+  // Verifică ora în fiecare minut, ca înainte, dar redesenează Panoul doar când se schimbă ora sau ziua (salut, dată).
+  const now = useNow(60000, hourBucket);
   const quizzes = useQuizStore((s) => s.quizzes);
   const sessions = useQuizStore((s) => s.sessions);
   const _hasHydrated = useQuizStore((s) => s._hasHydrated);
@@ -164,10 +166,6 @@ export default function Dashboard() {
   const animatedStreak = useCountUp(liveStreak);
   const animatedAccuracy = useCountUp(accuracy);
 
-  useEffect(() => {
-    const intervalId = setInterval(() => setNow(new Date()), 60000);
-    return () => clearInterval(intervalId);
-  }, []);
   const hour = now.getHours();
 
   // Aceeași coadă ca pagina Sesiune zilnică: carduri, grile scadente și greșeli deschise.
