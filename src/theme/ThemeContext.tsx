@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useRef, useSyncExternalStore, type ReactNode, useLayoutEffect, useCallback } from 'react';
+import { createContext, useContext, useRef, useSyncExternalStore, type ReactNode, useLayoutEffect } from 'react';
 import { THEMES, resolveThemeMode, type Theme, type ThemeId } from './themes';
 import { detectDeviceCapabilities, resolvePerformanceProfile } from '../lib/deviceTier';
 import { notifyNativeTheme } from '../lib/nativeTheme';
@@ -7,28 +7,28 @@ import { useThemeStore } from '../store/themeStore';
 
 const ThemeContext = createContext<Theme>(THEMES.dark);
 
-function usePerformanceProfile() {
+function subscribePerformanceEnv(onChange: () => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+  const motionQuery = typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  const dataQuery = typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-reduced-data: reduce)') : null;
+  motionQuery?.addEventListener?.('change', onChange);
+  dataQuery?.addEventListener?.('change', onChange);
+  window.addEventListener('resize', onChange, { passive: true });
+  return () => {
+    motionQuery?.removeEventListener?.('change', onChange);
+    dataQuery?.removeEventListener?.('change', onChange);
+    window.removeEventListener('resize', onChange);
+  };
+}
+
+function usePerformanceProfile(): 'full' | 'lite' {
   const performanceMode = useRuntimeStore((state) => state.performanceMode);
   const lowPowerMode = useRuntimeStore((state) => state.lowPowerMode);
-  const getProfile = useCallback(
+  return useSyncExternalStore(
+    subscribePerformanceEnv,
     () => resolvePerformanceProfile(detectDeviceCapabilities(), performanceMode, lowPowerMode),
-    [performanceMode, lowPowerMode],
+    () => 'full' as const,
   );
-  const [profile, setProfile] = useState<'full' | 'lite'>(getProfile);
-
-  useEffect(() => {
-    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const update = () => setProfile(getProfile());
-    update();
-    motionQuery.addEventListener('change', update);
-    window.addEventListener('resize', update, { passive: true });
-    return () => {
-      motionQuery.removeEventListener('change', update);
-      window.removeEventListener('resize', update);
-    };
-  }, [performanceMode, lowPowerMode, getProfile]);
-
-  return profile;
 }
 
 const DARK_QUERY = '(prefers-color-scheme: dark)';
@@ -118,7 +118,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       // Native form controls, scrollbars and Tailwind's `dark:` variants follow the resolved theme.
       root.style.colorScheme = theme.isDark ? 'dark' : 'light';
       root.classList.toggle('dark', theme.isDark);
-      document.body.style.background = theme.bg;
+      document.body.style.backgroundColor = theme.bg;
       document.body.style.color = theme.text;
       document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.bg);
       notifyNativeTheme(mode, resolved, theme.bg);

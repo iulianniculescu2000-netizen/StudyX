@@ -363,16 +363,29 @@ export default function App() {
 
     beginStartupSession();
     window.electronAPI?.appReady();
-    const timer = setTimeout(() => setSplashVisible(false), splashDurationMs);
-    return () => clearTimeout(timer);
+
+    let startupCompleted = false;
+    const markStartupComplete = () => {
+      if (startupCompleted) return;
+      startupCompleted = true;
+      completeStartupSession();
+    };
+
+    // Marchează pornirea completă la ~500ms după montare (sau la închidere curată),
+    // independent de splash, ca o închidere rapidă în producție să nu declanșeze fals `hadUncleanExit`.
+    const completeTimer = window.setTimeout(markStartupComplete, 500);
+    window.addEventListener('pagehide', markStartupComplete);
+    window.addEventListener('beforeunload', markStartupComplete);
+
+    const splashTimer = setTimeout(() => setSplashVisible(false), splashDurationMs);
+    return () => {
+      clearTimeout(splashTimer);
+      window.clearTimeout(completeTimer);
+      window.removeEventListener('pagehide', markStartupComplete);
+      window.removeEventListener('beforeunload', markStartupComplete);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- splashDurationMs is fixed for the lifetime of this mount (calmMotion doesn't change mid-boot)
   }, [addToast, safeStartupEnabled, setHealthReport, setLowPowerModeForThisSessionOnly]);
-
-  useEffect(() => {
-    if (splashVisible) return;
-    const timer = window.setTimeout(() => completeStartupSession(), 600);
-    return () => window.clearTimeout(timer);
-  }, [splashVisible]);
 
   return (
     <HashRouter>

@@ -31,7 +31,7 @@ export function inspectPreviousStartup() {
 
   // `previous.active` still being true here already IS the "didn't finish
   // booting last time" signal — completeStartupSession() flips it to false
-  // ~600ms after the splash hides, on every normal launch. (This used to be
+  // ~500ms after mount (or on clean pagehide/beforeunload) on every normal launch. (This used to be
   // written as `age > 0`, which is always true by construction — a no-op
   // that happened to read as a real condition. The caller used to also
   // persist the resulting lowPowerMode flag, so a single stuck flag here
