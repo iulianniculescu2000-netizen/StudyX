@@ -262,8 +262,8 @@
   --r-full: 999px;
   /* Blur pentru sticlă */
   --blur-1: 12px;
-  --blur-2: 24px;
-  --blur-3: 30px;
+  --blur-2: 16px;
+  --blur-3: 24px;
   /* Durate și curbe (oglindă în src/theme/motion.ts) */
   --dur-instant: 0.12s;
   --dur-fast: 0.2s;
@@ -1040,12 +1040,6 @@ button.press-feedback:not(:disabled):active {
   animation-timing-function: var(--ease-standard);
 }
 
-/* .premium-card-hover, .interactive-lift și .lift-card sunt acum alias-uri ale lui .fx-lift (vezi mai jos);
-   cardul premium cade pe un nivel mai sus (elev-3) la hover. */
-.premium-card-hover:hover {
-  box-shadow: var(--elev-3), var(--edge);
-}
-
 .soft-divider {
   border-color: color-mix(in srgb, var(--border2) 78%, transparent);
 }
@@ -1070,6 +1064,14 @@ button.press-feedback:not(:disabled):active {
   -webkit-backdrop-filter: blur(var(--blur-2)) saturate(150%);
   border-bottom: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
   box-shadow: var(--elev-1), inset 0 1px 0 var(--glass-highlight);
+}
+
+/* În tema Luminos implicită sticla cardurilor e 90–96% opacă, deci blur-ul din spate abia se vede
+   (≤4 niveluri de culoare pe suprafețe, măsurat pe 8 pagini), dar costă GPU la fiecare cadru în care aura se mișcă.
+   Se aplică doar cardurilor cu fundalul implicit (fără fundal propriu, translucid, în stil sau clasă). */
+:root[data-theme-id="light"] .glass-panel:not([style*="background"]):not([class*="bg-"]) {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 /* Lite: blur-ul vine din tokeni (--blur-*), elev-4 coboară la elev-3 (vezi blocul de tokeni); aici doar saturația. */
@@ -1522,6 +1524,51 @@ button.press-feedback:not(:disabled):active {
   box-shadow: var(--elev-2), inset 0 1px 0 var(--glass-highlight);
 }
 
+/* Card de grilă (QuizCard): efectele de hover/focus-within stau în CSS ca scroll-ul să nu re-randeze React. */
+.quiz-card {
+  border: 1px solid var(--hairline);
+}
+.quiz-card:hover {
+  border-color: color-mix(in srgb, var(--card-badge, var(--accent)) 38%, transparent);
+}
+.quiz-card-orb {
+  opacity: 0.08;
+  transition: opacity var(--dur-slow) var(--ease-standard);
+}
+.quiz-card:hover .quiz-card-orb {
+  opacity: 0.4;
+}
+.quiz-card-actions,
+.quiz-card-play {
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity var(--dur-fast) var(--ease-standard),
+    translate var(--dur-fast) var(--ease-standard);
+}
+.quiz-card-actions {
+  translate: 0 -4px;
+}
+.quiz-card-play {
+  translate: 0 4px;
+}
+.quiz-card:hover .quiz-card-actions,
+.quiz-card:focus-within .quiz-card-actions,
+.quiz-card:hover .quiz-card-play,
+.quiz-card:focus-within .quiz-card-play {
+  opacity: 1;
+  translate: 0 0;
+  pointer-events: auto;
+}
+@media (hover: none) {
+  .quiz-card-actions,
+  .quiz-card-play {
+    opacity: 1;
+    translate: 0 0;
+    pointer-events: auto;
+  }
+}
+
 .fine-chip {
   border: 1px solid var(--hairline);
   background: transparent;
@@ -1671,21 +1718,48 @@ button.press-feedback:not(:disabled):active {
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
+  contain: strict;
 }
+/* Gradiente radiale moi pre-estompate (fără filter: blur(70px), care costa 3 straturi GPU uriașe la fiecare cadru). */
 .fx-mesh i {
   position: absolute;
   border-radius: 50%;
-  filter: blur(70px);
   animation: fx-drift 22s ease-in-out infinite alternate;
 }
-.fx-mesh i:nth-child(1) { width: 460px; height: 460px; left: -120px; top: -140px; background: color-mix(in srgb, var(--accent) 24%, transparent); }
-.fx-mesh i:nth-child(2) { width: 420px; height: 420px; right: -140px; top: 22%; background: rgba(175, 130, 255, 0.22); animation-duration: 28s; animation-delay: -8s; }
-.fx-mesh i:nth-child(3) { width: 460px; height: 460px; left: 24%; bottom: -240px; background: rgba(60, 200, 170, 0.19); animation-duration: 25s; animation-delay: -14s; }
+.fx-mesh i:nth-child(1) {
+  width: 680px;
+  height: 680px;
+  left: -230px;
+  top: -250px;
+  background: radial-gradient(circle closest-side, color-mix(in srgb, var(--accent) 24%, transparent), transparent 72%);
+}
+.fx-mesh i:nth-child(2) {
+  width: 620px;
+  height: 620px;
+  right: -240px;
+  top: calc(22% - 100px);
+  background: radial-gradient(circle closest-side, rgba(175, 130, 255, 0.22), transparent 72%);
+  animation-duration: 28s;
+  animation-delay: -8s;
+}
+.fx-mesh i:nth-child(3) {
+  width: 680px;
+  height: 680px;
+  left: calc(24% - 110px);
+  bottom: -350px;
+  background: radial-gradient(circle closest-side, rgba(60, 200, 170, 0.19), transparent 72%);
+  animation-duration: 25s;
+  animation-delay: -14s;
+}
 @keyframes fx-drift {
   to { transform: translate(60px, 40px) scale(1.12); }
 }
-:root[data-theme="dark"] .fx-mesh i:nth-child(2) { background: rgba(150, 110, 255, 0.16); }
-:root[data-theme="dark"] .fx-mesh i:nth-child(3) { background: rgba(40, 190, 160, 0.11); }
+:root[data-theme="dark"] .fx-mesh i:nth-child(2) {
+  background: radial-gradient(circle closest-side, rgba(150, 110, 255, 0.16), transparent 72%);
+}
+:root[data-theme="dark"] .fx-mesh i:nth-child(3) {
+  background: radial-gradient(circle closest-side, rgba(40, 190, 160, 0.11), transparent 72%);
+}
 
 /* ── Buton „înapoi” (BackPill) și intrarea fină a paginilor încorporate ───── */
 .back-pill {
@@ -1767,6 +1841,28 @@ button:hover > .pip-motion .pip-hand,
 @keyframes pip-dot { 0%, 100% { opacity: 0.3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
 @keyframes pip-wave { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-28deg); } }
 
+/* Pip autonom în straturi HTML (LayeredPip din Mascot.tsx): aceleași bucle, durate și curbe ca .pip-motion de mai sus,
+   dar pe straturi proprii (transform/opacitate pe compozitor). Straturile acoperă exact viewBox-ul de 104 × 108 unități,
+   deci 3 unități = 2.7778% din înălțime, iar originile sunt aceleași puncte ca `transform-box: fill-box` de pe SVG:
+   ochii (60, 54) → 50% 53.7037%; mâna, 20% 80% din cercul ei (96.4, 59.6) → 85% 58.8889%. */
+.pip-layer { position: absolute; inset: 0; }
+.pip-layered .pip-eyes { transform-origin: 50% 53.7037%; }
+.pip-layered .pip-hand { transform-origin: 85% 58.8889%; }
+.pip-layered .pip-gaze { transform-origin: 0 0; }
+.pip-layered .pip-float { animation: pip-float-layer 3.4s ease-in-out infinite; }
+.pip-layered .pip-eyes { animation: pip-blink 4.6s infinite; }
+.pip-layered .pip-ant { animation: pip-ant 2.2s ease-in-out infinite; }
+.pip-layered[data-state="thinking"] .pip-ant { animation-duration: 0.7s; }
+.pip-layered[data-state="asleep"] .pip-float { animation-duration: 6s; }
+.pip-layered[data-state="asleep"] .pip-eyes { animation: none; }
+.pip-layered[data-state="thinking"] .pip-dot { animation: pip-dot-layer 1s ease-in-out infinite; }
+.pip-layered[data-state="thinking"] .pip-dot:nth-child(2) { animation-delay: 0.2s; }
+.pip-layered[data-state="thinking"] .pip-dot:nth-child(3) { animation-delay: 0.4s; }
+button:hover > .pip-layered .pip-hand,
+.pip-layered .pip-hand[data-wave="true"] { animation: pip-wave 0.6s ease-in-out 3; }
+@keyframes pip-float-layer { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2.7778%); } }
+@keyframes pip-dot-layer { 0%, 100% { opacity: 0.3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-2.7778%); } }
+
 /* ═══════════════════════════════════════════════════════════════════════════
    ── Mișcare redusă: lite, economisire de energie și prefers-reduced-motion ──
    Sursa unică. Toate animațiile infinite decorative se opresc aici (fiecare
@@ -1785,7 +1881,8 @@ button:hover > .pip-motion .pip-hand,
   .glow-pulse, .float-gentle, .shimmer-text, .animate-streak-fire, .streaming-cursor, .logo-dot-pulse,
   .skeleton-block, .fx-mesh i, .animated-background-orb, .animated-background-orb--drift, .fx-rise,
   .pip-motion .pip-float, .pip-motion .pip-eyes, .pip-motion .pip-ant,
-  .pip-motion[data-state="thinking"] .pip-dots circle, .premium-modal
+  .pip-motion[data-state="thinking"] .pip-dots circle, .premium-modal,
+  .pip-layered .pip-float, .pip-layered .pip-eyes, .pip-layered .pip-ant, .pip-layered[data-state="thinking"] .pip-dot
 ) {
   animation: none;
 }
@@ -1817,6 +1914,10 @@ button:hover > .pip-motion .pip-hand,
 :root:is([data-performance="lite"], [data-power-save="true"]) .embed-frame {
   transition: opacity var(--dur-slow) ease;
   transform: none;
+}
+:root:is([data-performance="lite"], [data-power-save="true"]) :is(.quiz-card-actions, .quiz-card-play) {
+  translate: none;
+  transition: opacity var(--dur-instant) var(--ease-standard);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1852,6 +1953,7 @@ button:hover > .pip-motion .pip-hand,
   .premium-modal { animation: none !important; }
   .fx-mesh { display: none; }
   .embed-frame { transform: none; }
+  .quiz-card-actions, .quiz-card-play { translate: none !important; }
 }
 
 /* Inelul de focus: în afara straturilor și cu !important, ca să nu fie bătut de

@@ -63,14 +63,8 @@ const QuizCard = memo(function QuizCard({ quiz, index = 0, showDelete = false }:
   const navigate = useNavigate();
   const colorId = quiz.color || CATEGORY_COLOR_MAP[quiz.category] || 'blue';
   const colors = CARD_COLOR_MAP[colorId] ?? CARD_COLOR_MAP.blue;
-  const multipleCount = quiz.questions.filter(q => q.multipleCorrect).length;
+  const hasMultiple = quiz.questions.some(q => q.multipleCorrect);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [hovered, setHovered] = useState(false);
-  const [focusWithin, setFocusWithin] = useState(false);
-  // Pin / edit / delete / play used to exist only while the mouse hovered the card, so they were
-  // unreachable by keyboard and on touch screens. Keyboard focus and touch devices show them too.
-  const [touchOnly] = useState(() => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(hover: none)').matches);
-  const showActions = hovered || focusWithin || touchOnly;
   const [dragging, setDragging] = useState(false);
   const isFlashcard = isFlashcardDeck(quiz);
   const quizPath = isFlashcard ? `/flashcards/session/${quiz.id}` : `/quiz/${quiz.id}`;
@@ -88,35 +82,28 @@ const QuizCard = memo(function QuizCard({ quiz, index = 0, showDelete = false }:
   };
 
   return (
-    <motion.div
+    <div
       data-testid="quiz-card"
       data-quiz-id={quiz.id}
       {...(index === 0 ? { 'data-tutorial': 'quiz-card' } : {})}
       draggable
       onDragStartCapture={handleDragStart}
       onDragEndCapture={handleDragEnd}
-      onHoverStart={() => setHovered(true)}
-      onHoverEnd={() => setHovered(false)}
-      onFocusCapture={() => setFocusWithin(true)}
-      onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocusWithin(false); }}
       // overflow-clip, nu hidden: un card hidden poate fi derulat intern când confirmarea primește focus (decalaj de ~65 px).
-      className={`relative group rounded-[var(--r-xl)] overflow-clip glass-panel elev-hover-2 fine-card ${calmMotion ? '' : 'fx-rise'}`}
+      className={`quiz-card relative group rounded-[var(--r-xl)] overflow-clip glass-panel elev-hover-2 fine-card ${calmMotion ? '' : 'fx-rise'}`}
       style={{
         '--i': Math.min(index, 8),
-        background: hovered
-          ? `linear-gradient(135deg, ${colors.from}26 0%, ${colors.to}26 100%)`
-          : `linear-gradient(135deg, ${colors.from}12 0%, ${colors.to}12 100%)`,
-        border: `1px solid ${hovered ? colors.badge + '60' : 'var(--hairline)'}`,
+        '--card-from': colors.from,
+        '--card-to': colors.to,
+        '--card-badge': colors.badge,
         opacity: dragging ? 0.55 : 1,
       } as CSSProperties}
     >
       {/* Ambient glow orb - foarte lent */}
       <div
-        className="absolute -top-20 -right-20 w-44 h-44 rounded-full pointer-events-none"
+        className="quiz-card-orb absolute -top-20 -right-20 w-44 h-44 rounded-full pointer-events-none"
         style={{
           background: `radial-gradient(circle, ${colors.badge}90, transparent 70%)`,
-          opacity: hovered ? 0.4 : 0.08,
-          transition: `opacity ${dur.slow}s var(--ease-standard)`,
         }}
       />
 
@@ -128,7 +115,7 @@ const QuizCard = memo(function QuizCard({ quiz, index = 0, showDelete = false }:
           </div>
 
           <div className="flex items-center gap-2 flex-wrap justify-end">
-            {multipleCount > 0 && (
+            {hasMultiple && (
               <div
                 className="flex items-center gap-1 px-2.5 py-1 rounded-[var(--r-sm)] text-[9px] font-black uppercase tracking-widest"
                 style={{ background: `${theme.accent}18`, color: theme.accentText, border: `1px solid ${theme.accent}35` }}
@@ -170,70 +157,58 @@ const QuizCard = memo(function QuizCard({ quiz, index = 0, showDelete = false }:
         </div>
       </Link>
 
-      {/* Floating Action Bar (Edit / Delete / Pin) - fade + catifea */}
-      <AnimatePresence>
-        {showActions && !confirmDelete && (
-          <motion.div
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: calmMotion ? dur.instant : dur.fast, ease: ease.standard }}
-            className="absolute top-5 right-5 flex items-center gap-1 p-1.5 rounded-[var(--r-md)] z-20"
-            // Opaque tint instead of .glass-panel: that class sets position: relative outside any layer (the bar joined the
-            // card's flow and made it 44px taller on hover) and its blur would nest inside the card's own backdrop-filter.
-            style={{ background: 'var(--glass-panel-strong)', border: '1px solid var(--glass-border)', boxShadow: 'var(--elev-3), inset 0 1px 0 var(--glass-highlight)' }}
-          >
-            <button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePin(quiz.id); }}
-              className={`p-2 rounded-[var(--r-sm)] transition-colors hover:bg-[var(--hover-fill)] press-feedback ${FOCUS_RING}`}
-              style={{ color: quiz.pinned ? '#FFD60A' : theme.text2 }}
-              title={quiz.pinned ? 'Scoate Pin' : 'Fixează (Pin)'}>
-              {quiz.pinned ? <PinOff size={15} /> : <Pin size={15} />}
-            </button>
+      {/* Floating Action Bar (Edit / Delete / Pin) - fade + catifea (CSS hover/focus-within/touch) */}
+      {!confirmDelete && (
+        <div
+          className="quiz-card-actions absolute top-5 right-5 flex items-center gap-1 p-1.5 rounded-[var(--r-md)] z-20"
+          // Opaque tint instead of .glass-panel: that class sets position: relative outside any layer (the bar joined the
+          // card's flow and made it 44px taller on hover) and its blur would nest inside the card's own backdrop-filter.
+          style={{ background: 'var(--glass-panel-strong)', border: '1px solid var(--glass-border)', boxShadow: 'var(--elev-3), inset 0 1px 0 var(--glass-highlight)' }}
+        >
+          <button
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePin(quiz.id); }}
+            className={`p-2 rounded-[var(--r-sm)] transition-colors hover:bg-[var(--hover-fill)] press-feedback ${FOCUS_RING}`}
+            style={{ color: quiz.pinned ? '#FFD60A' : theme.text2 }}
+            title={quiz.pinned ? 'Scoate Pin' : 'Fixează (Pin)'}>
+            {quiz.pinned ? <PinOff size={15} /> : <Pin size={15} />}
+          </button>
 
-            {showDelete && (
-              <>
-                <div className="w-px h-4 mx-1" style={{ background: theme.border }} />
-                <button
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/create?edit=${quiz.id}`); }}
-                  className={`p-2 rounded-[var(--r-sm)] transition-colors hover:bg-blue-500/15 press-feedback ${FOCUS_RING}`}
-                  style={{ color: theme.accentText }}
-                  title="Editează">
-                  <Pencil size={15} />
-                </button>
-                <button
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setConfirmDelete(true); }}
-                  className={`p-2 rounded-[var(--r-sm)] transition-colors hover:bg-red-500/15 press-feedback ${FOCUS_RING}`}
-                  style={{ color: theme.danger }}
-                  title="Șterge">
-                  <Trash2 size={15} />
-                </button>
-              </>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+          {showDelete && (
+            <>
+              <div className="w-px h-4 mx-1" style={{ background: theme.border }} />
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/create?edit=${quiz.id}`); }}
+                className={`p-2 rounded-[var(--r-sm)] transition-colors hover:bg-blue-500/15 press-feedback ${FOCUS_RING}`}
+                style={{ color: theme.accentText }}
+                title="Editează">
+                <Pencil size={15} />
+              </button>
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setConfirmDelete(true); }}
+                className={`p-2 rounded-[var(--r-sm)] transition-colors hover:bg-red-500/15 press-feedback ${FOCUS_RING}`}
+                style={{ color: theme.danger }}
+                title="Șterge">
+                <Trash2 size={15} />
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
-      {/* Quick Play button — lift luxos */}
-      <AnimatePresence>
-        {showActions && !confirmDelete && (
-          <motion.button
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 2 }}
-            transition={{ duration: calmMotion ? dur.instant : dur.fast, ease: ease.standard }}
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(playPath); }}
-            className={`press-feedback absolute bottom-6 right-6 flex items-center gap-1.5 px-5 py-2.5 rounded-[var(--r-md)] text-[11px] font-black uppercase tracking-widest ${FOCUS_RING}`}
-            style={{
-              background: colors.badge,
-              color: '#FFFFFF',
-              boxShadow: 'var(--elev-2), inset 0 1px 0 var(--glass-highlight)',
-            }}
-          >
-            <Play size={13} fill="white" /> {isFlashcard ? 'Studiază' : 'Joacă'}
-          </motion.button>
-        )}
-      </AnimatePresence>
+      {/* Quick Play button — lift luxos (CSS hover/focus-within/touch) */}
+      {!confirmDelete && (
+        <button
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(playPath); }}
+          className={`quiz-card-play press-feedback absolute bottom-6 right-6 z-20 flex items-center gap-1.5 px-5 py-2.5 rounded-[var(--r-md)] text-[11px] font-black uppercase tracking-widest ${FOCUS_RING}`}
+          style={{
+            background: colors.badge,
+            color: '#FFFFFF',
+            boxShadow: 'var(--elev-2), inset 0 1px 0 var(--glass-highlight)',
+          }}
+        >
+          <Play size={13} fill="white" /> {isFlashcard ? 'Studiază' : 'Joacă'}
+        </button>
+      )}
 
       {/* Inline delete confirm */}
       <AnimatePresence>
@@ -267,7 +242,7 @@ const QuizCard = memo(function QuizCard({ quiz, index = 0, showDelete = false }:
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 });
 

@@ -151,8 +151,25 @@ export default function Dashboard() {
   const knowledgeSources = useScopedSources('general');
   const startTutorial = useTutorialStore((state) => state.startTutorial);
 
-  const accuracy = useStatsStore((s) => s.getAccuracy());
-  const hasAnswers = useStatsStore((s) => Object.values(s.questionStats).some((stat) => !stat.retired && stat.timesCorrect + stat.timesWrong > 0));
+  const { accuracy, hasAnswers, hasMistakes } = useMemo(() => {
+    let total = 0;
+    let correct = 0;
+    let mistakes = false;
+    for (const stat of Object.values(questionStats ?? {})) {
+      if (!stat || stat.retired) continue;
+      const answered = stat.timesCorrect + stat.timesWrong;
+      if (answered > 0) {
+        total += answered;
+        correct += stat.timesCorrect;
+      }
+      if ((stat.timesWrong ?? 0) > 0) mistakes = true;
+    }
+    return {
+      accuracy: total > 0 ? Math.round((correct / total) * 100) : 0,
+      hasAnswers: total > 0,
+      hasMistakes: mistakes,
+    };
+  }, [questionStats]);
 
   // Real week-over-week deltas. Every stat card used to show a fixed "▲ 2%".
   const trends = useMemo(() => computeDashboardTrends(quizzes, sessions), [quizzes, sessions]);
@@ -162,7 +179,7 @@ export default function Dashboard() {
   const quizOnlyCount = ownQuizCount + residencyQuizCount;
   const animatedQuizzes = useCountUp(ownQuizCount);
   // currentStreak is only recalculated when a session is recorded: after a skipped day it stays stale.
-  const liveStreak = effectiveStreak(streak, localDateStr());
+  const liveStreak = useMemo(() => effectiveStreak(streak, localDateStr(now)), [streak, now]);
   const animatedStreak = useCountUp(liveStreak);
   const animatedAccuracy = useCountUp(accuracy);
 
@@ -208,10 +225,10 @@ export default function Dashboard() {
     hasQuizzes: quizzes.some((quiz) => !isFlashcardDeck(quiz)),
     hasFlashcards: quizzes.some((quiz) => isFlashcardDeck(quiz)),
     hasLibrary: knowledgeSources.some((source) => source.indexStatus === 'ready'),
-    hasMistakes: Object.values(questionStats ?? {}).some((stat) => !stat?.retired && (stat?.timesWrong ?? 0) > 0),
+    hasMistakes,
     dueCount,
     mobile,
-  }), [quizzes, knowledgeSources, questionStats, dueCount, mobile]);
+  }), [quizzes, knowledgeSources, hasMistakes, dueCount, mobile]);
 
   const recentQuizzes = useMemo(
     // Pachetul-sursă arhivat după împărțirea pe capitole și pachetele de capitol nu inundă lista de recente.
@@ -223,6 +240,10 @@ export default function Dashboard() {
   );
 
   const greeting = hour < 12 ? 'Bună dimineața' : hour < 18 ? 'Bună ziua' : 'Bună seara';
+  const subtitle = useMemo(
+    () => now.toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
+    [now],
+  );
   const stats: DashboardStat[] = [
     { label: 'Grile', numeric: ownQuizCount, display: String(animatedQuizzes), suffix: '', color: theme.accentText, icon: BookOpen, delta: trends.quizzes, hint: residencyQuizCount > 0 ? `+ ${residencyQuizCount} ${residencyQuizCount === 1 ? 'set' : 'seturi'} în Rezidențiat` : undefined },
     // A streak has no meaningful week-over-week percentage — the number itself
@@ -241,7 +262,6 @@ export default function Dashboard() {
   }
 
   const title = username ? `${greeting}, ${username}` : greeting;
-  const subtitle = now.toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   return (
     <DashboardErrorBoundary>

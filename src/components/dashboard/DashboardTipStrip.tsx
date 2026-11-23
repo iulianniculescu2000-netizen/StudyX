@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight, X } from 'lucide-react';
 import { useTheme } from '../../theme/ThemeContext';
 import { useAdaptiveMotion } from '../../hooks/useAdaptiveMotion';
+import { usePageVisible } from '../../hooks/usePageVisible';
 import { dur, ease } from '../../theme/motion';
 import { selectRelevantTips, type AppTipContext } from '../../data/appTips';
 
@@ -25,6 +26,7 @@ export default function DashboardTipStrip({ context }: { context: AppTipContext 
   const theme = useTheme();
   const navigate = useNavigate();
   const { calmMotion } = useAdaptiveMotion();
+  const pageVisible = usePageVisible();
 
   const today = new Date().toISOString().slice(0, 10);
   const [dismissed, setDismissed] = useState(() => {
@@ -43,12 +45,12 @@ export default function DashboardTipStrip({ context }: { context: AppTipContext 
   });
 
   useEffect(() => {
-    if (dismissed || tips.length < 2) return;
+    if (dismissed || tips.length < 2 || !pageVisible) return;
     const timer = window.setInterval(() => {
       setIndex((value) => (value + 1) % tips.length);
     }, calmMotion ? ROTATION_MS * 1.75 : ROTATION_MS);
     return () => window.clearInterval(timer);
-  }, [dismissed, tips.length, calmMotion]);
+  }, [dismissed, tips.length, calmMotion, pageVisible]);
 
   if (dismissed || tips.length === 0) return null;
 

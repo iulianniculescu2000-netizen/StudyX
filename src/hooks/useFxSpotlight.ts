@@ -25,6 +25,7 @@ export function useFxSpotlight(): void {
     let lastTilt: HTMLElement | null = null;
     let pending: PointerEvent | null = null;
     let frame = 0;
+    let scrollingUntil = 0;
     const clear = (el: HTMLElement | null) => {
       el?.style.removeProperty('--mx');
       el?.style.removeProperty('--my');
@@ -35,6 +36,7 @@ export function useFxSpotlight(): void {
     };
     const update = () => {
       frame = 0;
+      if (performance.now() < scrollingUntil) return;
       const event = pending;
       if (!event) return;
       const element = event.target instanceof Element ? event.target : null;
@@ -58,13 +60,19 @@ export function useFxSpotlight(): void {
         tilt.style.setProperty('--tilt-y', `${(-Math.max(-0.5, Math.min(0.5, py)) * TILT_Y * 2).toFixed(2)}deg`);
       }
     };
+    const onScroll = () => {
+      scrollingUntil = performance.now() + 120;
+    };
     const onMove = (event: PointerEvent) => {
+      if (performance.now() < scrollingUntil) return;
       pending = event;
       if (!frame) frame = requestAnimationFrame(update);
     };
     document.addEventListener('pointermove', onMove, { passive: true });
+    document.addEventListener('scroll', onScroll, { passive: true, capture: true });
     return () => {
       document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('scroll', onScroll, true);
       if (frame) cancelAnimationFrame(frame);
       clear(last);
       clearTilt(lastTilt);

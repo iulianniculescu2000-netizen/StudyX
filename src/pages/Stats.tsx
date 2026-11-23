@@ -94,10 +94,34 @@ export default function Stats() {
   const totalStudyTime = useStatsStore((s) => s.totalStudyTime);
   const questionStats = useStatsStore((s) => s.questionStats);
   const getWeakQuestions = useStatsStore((s) => s.getWeakQuestions);
-  const accuracy = useStatsStore((s) => s.getAccuracy());
+  const accuracy = useMemo(() => {
+    let total = 0;
+    let correct = 0;
+    for (const stat of Object.values(questionStats ?? {})) {
+      if (!stat || stat.retired) continue;
+      total += stat.timesCorrect + stat.timesWrong;
+      correct += stat.timesCorrect;
+    }
+    return total > 0 ? Math.round((correct / total) * 100) : 0;
+  }, [questionStats]);
 
+  const validStatKeys = useMemo(() => existingStatKeys(quizzes), [quizzes]);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- getWeakQuestions citește din store; recalculăm când se schimbă statisticile
-  const weakQuestions = useMemo(() => getWeakQuestions(5, existingStatKeys(useQuizStore.getState().quizzes)), [getWeakQuestions, questionStats]);
+  const weakQuestions = useMemo(() => getWeakQuestions(5, validStatKeys), [getWeakQuestions, questionStats, validStatKeys]);
+  const weakQuestionItems = useMemo(() => {
+    const quizById = new Map(quizzes.map((q) => [q.id, q]));
+    return weakQuestions.flatMap((ws) => {
+      const quiz = quizById.get(ws.quizId);
+      const question = quiz?.questions.find((q) => q.id === ws.questionId);
+      if (!question || !quiz) return [];
+      return [{
+        ws,
+        quiz,
+        question,
+        acc: Math.round((ws.timesCorrect / (ws.timesCorrect + ws.timesWrong)) * 100),
+      }];
+    });
+  }, [weakQuestions, quizzes]);
   const quizAccuracy = useMemo(() => accuracyByQuiz(questionStats), [questionStats]);
   const folders = useFolderStore((s) => s.folders);
   // Aceleași cifre pentru chip-urile arătate și pentru raportul AI: subiectele slabe, cu categoriile ca rezervă.
@@ -199,6 +223,9 @@ export default function Stats() {
     return { day: dayStr, sesiuni: count, acuratete: avg };
   }), [sessionsByDay]);
 
+  const accuracyTrendDays = useMemo(() => last14Days.filter((d) => d.acuratete > 0), [last14Days]);
+  const chartTooltip = useMemo(() => <CustomTooltip theme={theme} />, [theme]);
+
   // Accuracy per quiz
   const quizAccuracyData = useMemo(() => quizzes
     .map(q => ({
@@ -211,9 +238,15 @@ export default function Stats() {
   [quizzes, sessionCountByQuiz, quizAccuracy]);
 
 
-  const bestScore = sessions.length > 0
-    ? Math.max(...sessions.map(s => Math.round((s.score / s.total) * 100)))
-    : 0;
+  const bestScore = useMemo(() => {
+    let best = 0;
+    for (const s of sessions) {
+      if (s.total <= 0) continue;
+      const pct = Math.round((s.score / s.total) * 100);
+      if (pct > best) best = pct;
+    }
+    return best;
+  }, [sessions]);
 
   // Radar chart: accuracy per category
   const radarData = useMemo(() => {
@@ -233,13 +266,19 @@ export default function Stats() {
       ? Math.round((recent.reduce((sum, s) => sum + s.score / s.total, 0) / recent.length) * 100)
       : null;
     // Aceeași definiție ca /review: greșită măcar o dată și nestabilizată, doar din întrebări existente.
-    const weakCount = countWeakStats(questionStats ?? {}, existingStatKeys(quizzes));
+    const weakCount = countWeakStats(questionStats ?? {}, validStatKeys);
     const dueCount = buildDueItems(questionStats ?? {}, quizzes).length;
     return { recentAcc, weakCount, dueCount };
-  }, [sessions, quizzes, questionStats]);
+  }, [sessions, quizzes, questionStats, validStatKeys]);
 
   const level = useStudyLevel();
   useAchievementWatcher();
+
+  const liveStreak = useMemo(() => effectiveStreak(streak, localDateStr()), [streak]);
+  const barTransition = useMemo(
+    () => (calmMotion ? { duration: dur.instant } : { duration: dur.slow, ease: ease.emphasized }),
+    [calmMotion],
+  );
 
   if (!hydrated) {
     return (
@@ -248,9 +287,6 @@ export default function Stats() {
       </FxPage>
     );
   }
-
-  const liveStreak = effectiveStreak(streak, localDateStr());
-  const barTransition = calmMotion ? { duration: dur.instant } : { duration: dur.slow, ease: ease.emphasized };
 
   return (
     <FxPage className="px-4 py-6 sm:px-8 sm:py-10">
@@ -454,19 +490,19 @@ export default function Stats() {
                 Activitate (ultimele 14 zile)
               </h2>
               <Suspense fallback={<ChartSkeleton />}>
-                <ActivityBarChart data={last14Days} theme={theme} tooltip={<CustomTooltip theme={theme} />} />
+                <ActivityBarChart data={last14Days} theme={theme} tooltip={chartTooltip} />
               </Suspense>
             </StatsCard>
 
             {/* Accuracy trend */}
-            {last14Days.some(d => d.acuratete > 0) && (
+            {accuracyTrendDays.length > 0 && (
               <StatsCard index={7}>
                 <h2 className="font-semibold mb-4 flex items-center gap-2" style={{ color: theme.text }}>
                   <Activity size={16} style={{ color: theme.success }} aria-hidden="true" />
                   Tendință acuratețe (%)
                 </h2>
                 <Suspense fallback={<ChartSkeleton height={160} />}>
-                  <AccuracyTrendChart data={last14Days.filter(d => d.acuratete > 0)} theme={theme} tooltip={<CustomTooltip theme={theme} />} />
+                  <AccuracyTrendChart data={accuracyTrendDays} theme={theme} tooltip={chartTooltip} />
                 </Suspense>
               </StatsCard>
             )}
@@ -606,19 +642,14 @@ export default function Stats() {
               </StatsCard>
             )}
 
-            {weakQuestions.length > 0 && (
+            {weakQuestionItems.length > 0 && (
               <StatsCard index={8}>
                 <h2 className="font-semibold mb-4 flex items-center gap-2" style={{ color: theme.text }}>
                   <Target size={16} style={{ color: theme.danger }} />
                   Întrebări slabe (necesită atenție)
                 </h2>
                 <div className="space-y-2">
-                  {weakQuestions.map((ws, wi) => {
-                    const quiz = quizzes.find(q => q.id === ws.quizId);
-                    const question = quiz?.questions.find(q => q.id === ws.questionId);
-                    if (!question || !quiz) return null;
-                    const acc = Math.round(ws.timesCorrect / (ws.timesCorrect + ws.timesWrong) * 100);
-                    return (
+                  {weakQuestionItems.map(({ ws, quiz, question, acc }, wi) => (
                       <button
                         key={ws.questionId}
                         onClick={() => navigate(`/play/${quiz.id}`, { state: { wrongQuestionsOnly: [ws.questionId] } })}
@@ -636,8 +667,7 @@ export default function Stats() {
                           <ArrowRight size={14} style={{ color: theme.text3 }} />
                         </span>
                       </button>
-                    );
-                  })}
+                  ))}
                 </div>
               </StatsCard>
             )}

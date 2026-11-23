@@ -47,11 +47,14 @@ describe('Pip conversation lifecycle', () => {
     const keyboard = listen.mock.calls.find(([type]) => type === 'keydown');
     expect(pointer).toBeDefined();
     expect(keyboard).toBeDefined();
-    expect(container.querySelector('svg')).toHaveClass('pip-motion');
+    // Pip-ul autonom e desenat în straturi (buclele rulează pe compozitor); rădăcina poartă starea.
+    const root = container.querySelector('.pip');
+    expect(root).toHaveClass('pip-layered');
+    expect(root?.querySelectorAll('.pip-float, .pip-eyes, .pip-ant, .pip-hand, .pip-gaze')).toHaveLength(5);
     act(() => { vi.advanceTimersByTime(120_000); });
-    expect(container.querySelector('svg')).toHaveAttribute('data-state', 'asleep');
+    expect(container.querySelector('.pip')).toHaveAttribute('data-state', 'asleep');
     act(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' })); });
-    expect(container.querySelector('svg')).toHaveAttribute('data-state', 'idle');
+    expect(container.querySelector('.pip')).toHaveAttribute('data-state', 'idle');
     unmount();
     expect(remove).toHaveBeenCalledWith('pointermove', pointer![1]);
     expect(remove).toHaveBeenCalledWith('keydown', keyboard![1]);
