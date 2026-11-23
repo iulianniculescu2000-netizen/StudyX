@@ -42,9 +42,17 @@ export default function Sidebar() {
   const addToast = useToastStore((state) => state.addToast);
   const [storedCollapsed, toggleStoredCollapsed] = useSidebarCollapsed();
   const [overlayOpen, setOverlayOpen] = useState(false);
+  const [prevNarrowScreen, setPrevNarrowScreen] = useState(narrowScreen);
+  if (prevNarrowScreen !== narrowScreen) {
+    setPrevNarrowScreen(narrowScreen);
+    if (!narrowScreen && overlayOpen) {
+      setOverlayOpen(false);
+    }
+  }
   // Pe ecran îngust preferința salvată nu se aplică: bara e restrânsă, iar deschiderea e temporară.
-  const collapsed = narrowScreen ? !overlayOpen : storedCollapsed;
-  const overlay = narrowScreen && overlayOpen;
+  const effectiveOverlayOpen = narrowScreen && overlayOpen;
+  const collapsed = narrowScreen ? !effectiveOverlayOpen : storedCollapsed;
+  const overlay = effectiveOverlayOpen;
   const toggleCollapsed = narrowScreen ? () => setOverlayOpen((open) => !open) : toggleStoredCollapsed;
   const {
     dueCount, totalAnswered, activeQuizCount, newQuizCount, uncategorizedCount, folderQuizCount, visibleFolders,
@@ -103,7 +111,7 @@ export default function Sidebar() {
     <motion.div
       ref={rootRef}
       onClickCapture={(event) => {
-        if (overlay && (event.target as HTMLElement).closest('a')) setOverlayOpen(false);
+        if (overlay && event.target instanceof Element && event.target.closest('a')) setOverlayOpen(false);
       }}
       animate={{ width: collapsed ? RAIL_WIDTH : compact ? 224 : 240 }}
       transition={calmMotion ? { duration: dur.instant } : t.panel}

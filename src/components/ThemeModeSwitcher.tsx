@@ -76,8 +76,8 @@ export default function ThemeModeSwitcher({ variant = 'segmented', label }: { va
       role="radiogroup"
       aria-label="Aspect"
       data-testid="theme-toggle"
-      className="inline-flex w-full max-w-md gap-0.5 rounded-[var(--r-md)] p-[3px]"
-      style={{ background: 'var(--fill-subtle)', border: `0.5px solid ${theme.hairline}` }}
+      className="grid w-full max-w-md grid-cols-3 gap-1 rounded-[var(--r-md)] p-1"
+      style={{ background: 'var(--fill-subtle)', border: `1px solid ${theme.hairline}` }}
     >
       {THEME_MODES.map((option) => {
         const Icon = ICONS[option];
@@ -89,13 +89,14 @@ export default function ThemeModeSwitcher({ variant = 'segmented', label }: { va
             role="radio"
             aria-checked={active}
             onClick={() => setMode(option)}
-            className="focus-ring-premium relative flex flex-1 items-center justify-center gap-1.5 rounded-[var(--r-sm)] px-3 py-2 text-[12.5px] font-semibold"
+            className="focus-ring-premium relative flex min-w-0 items-center justify-center gap-1.5 rounded-[var(--r-sm)] px-3 py-2 text-[12.5px] font-semibold"
             style={{ color: active ? theme.text : theme.text3, transition: 'color var(--dur-fast) var(--ease-standard)' }}
           >
             {active && (
               <motion.span
                 layoutId={`theme-pill-${pillId}`}
-                className="absolute inset-0 rounded-[var(--r-sm)]"
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 rounded-[var(--r-sm)]"
                 style={{
                   background: theme.surface,
                   boxShadow: 'var(--elev-1), var(--hairline-ring)',
@@ -103,9 +104,9 @@ export default function ThemeModeSwitcher({ variant = 'segmented', label }: { va
                 transition={calmMotion ? { duration: 0 } : spring.nav}
               />
             )}
-            <span className="relative z-10 flex items-center gap-1.5">
-              <Icon size={14} strokeWidth={2} />
-              {LABELS[option]}
+            <span className="relative z-10 flex min-w-0 max-w-full items-center gap-1.5">
+              <Icon size={14} strokeWidth={2} className="shrink-0" />
+              <span className="truncate">{LABELS[option]}</span>
             </span>
           </button>
         );

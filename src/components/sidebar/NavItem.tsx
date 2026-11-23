@@ -26,43 +26,29 @@ export default function NavItem({
       to={to}
       end={end}
       aria-label={collapsed ? (typeof badge === 'number' || (typeof badge === 'string' && badge.trim()) ? `${label}, ${badge}` : label) : undefined}
-      className="rounded-[var(--r-md)] focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
-      style={{ textDecoration: 'none', display: 'block' }}
+      className={`group relative isolate flex items-center rounded-[var(--r-md)] focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)] ${
+        collapsed ? 'mx-auto h-11 w-11 max-w-full justify-center' : 'w-full justify-start gap-[9px] px-2 py-1'
+      } ${calmMotion ? '' : 'transition-transform duration-150 active:scale-[0.97]'}`}
+      style={({ isActive }) => ({
+        textDecoration: 'none',
+        boxSizing: 'border-box',
+        border: `1px solid ${isActive ? 'var(--accent-glow)' : 'transparent'}`,
+        color: isActive ? theme.text : collapsed ? theme.text3 : theme.text2,
+        fontSize: collapsed ? undefined : 13,
+        fontWeight: collapsed ? undefined : isActive ? 650 : 500,
+        cursor: 'pointer',
+      })}
     >
       {({ isActive }) => (
-        <motion.div
-          whileTap={calmMotion ? undefined : { scale: 0.97 }}
-          whileHover={calmMotion || collapsed ? undefined : { x: 2 }}
-          transition={t.tap}
-          className="fine-row group relative isolate !bg-transparent data-[active=true]:!shadow-none flex items-center"
-          data-active={isActive}
-          style={collapsed ? {
-            width: 44,
-            height: 44,
-            margin: '0 auto',
-            justifyContent: 'center',
-            border: `1px solid ${isActive ? 'var(--accent-glow)' : 'transparent'}`,
-            color: isActive ? theme.text : theme.text3,
-            cursor: 'pointer',
-            borderRadius: 'var(--r-md)',
-          } : {
-            gap: 9,
-            padding: '4px 8px',
-            justifyContent: 'flex-start' as const,
-            border: `1px solid ${isActive ? 'var(--accent-glow)' : 'transparent'}`,
-            color: isActive ? theme.text : theme.text2,
-            fontSize: 13,
-            fontWeight: isActive ? 650 : 500,
-            cursor: 'pointer',
-            borderRadius: 'var(--r-md)',
-          }}
-        >
-          {/* Own hover layer (the CSS row hover is cancelled): fades in/out, and drops instantly on the active row so it never fights the pill. */}
-          <span
-            aria-hidden="true"
-            className={`pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 group-data-[active=true]:!opacity-0 group-data-[active=true]:!transition-none ${calmMotion ? '' : 'transition-opacity duration-150'}`}
-            style={{ zIndex: -2, borderRadius: 14, background: 'var(--hover-fill)' }}
-          />
+        <>
+          {/* Own hover layer: fades in/out on inactive rows and drops cleanly when active so it never fights the pill. */}
+          {!isActive && (
+            <span
+              aria-hidden="true"
+              className={`pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 ${calmMotion ? '' : 'transition-opacity duration-150'}`}
+              style={{ zIndex: -2, borderRadius: 13, background: 'var(--hover-fill)' }}
+            />
+          )}
           {isActive && (
             <>
               {/* Sliding pill: numeric borderRadius so framer corrects it during the layout animation (a CSS var can't be, which squashed it). */}
@@ -72,36 +58,36 @@ export default function NavItem({
                 transition={indicatorTransition}
                 className="pointer-events-none absolute inset-0"
                 // Placa de sticlă a paginii active: lumină fină sus, ca butoanele și cardurile cu adâncime.
-                style={{ zIndex: -1, borderRadius: 14, background: 'var(--accent-soft)', boxShadow: 'inset 0 1px 0 var(--glass-highlight), var(--glow-1)' }}
+                style={{ zIndex: -1, borderRadius: 13, background: 'var(--accent-soft)', boxShadow: 'inset 0 1px 0 var(--glass-highlight), var(--glow-1)' }}
               />
               {/* Bar: same spring as the pill; vertical centering by margin, not a CSS transform that framer would overwrite. */}
               <motion.span
                 layoutId="nav-active-bar"
                 aria-hidden="true"
                 transition={indicatorTransition}
-                className="pointer-events-none absolute left-0 rounded-full"
-                style={{ top: '50%', marginTop: -8, width: 3, height: 16, borderRadius: 2, background: theme.accent }}
+                className="pointer-events-none absolute rounded-full"
+                style={{ left: collapsed ? 1 : 0, top: '50%', marginTop: -8, width: 3, height: 16, borderRadius: 2, background: theme.accent }}
               />
             </>
           )}
           <IconChip icon={icon} hue={hue} active={isActive} size={collapsed ? 30 : 24} />
           {!collapsed && (
             <>
-              <span className="flex-1 truncate" style={{ transition: 'font-weight var(--dur-base) var(--ease-emphasized)' }}>{label}</span>
+              <span className="min-w-0 flex-1 truncate" style={{ transition: 'font-weight var(--dur-base) var(--ease-emphasized)' }}>{label}</span>
               {badge && (
                 <motion.span
                   key={isActive ? 'on' : 'off'}
                   initial={calmMotion ? false : { scale: 0.85, opacity: 0.6 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={t.pop}
-                  className="flex items-center"
+                  className="flex shrink-0 items-center"
                 >
                   {badge}
                 </motion.span>
               )}
             </>
           )}
-        </motion.div>
+        </>
       )}
     </NavLink>
   );

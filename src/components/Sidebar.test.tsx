@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { useFolderStore } from '../store/folderStore';
@@ -14,6 +14,27 @@ const quiz: Quiz = {
   questions: [], createdAt: 1, color: 'blue', folderId: 'f1',
 };
 
+function setViewportWidth(width: number) {
+  Object.defineProperty(window, 'innerWidth', {
+    writable: true,
+    configurable: true,
+    value: width,
+  });
+}
+
+function resizeViewportWidth(width: number) {
+  setViewportWidth(width);
+  act(() => {
+    window.dispatchEvent(new Event('resize'));
+    vi.advanceTimersByTime(32);
+  });
+}
+
+function getOverlayBackdrop(container: HTMLElement) {
+  return Array.from(container.querySelectorAll<HTMLElement>('div[aria-hidden="true"]'))
+    .find((el) => el.style.position === 'fixed') ?? null;
+}
+
 function mount(path = '/') {
   return render(
     <MemoryRouter initialEntries={[path]}>
@@ -24,6 +45,7 @@ function mount(path = '/') {
 
 describe('Sidebar (characterization)', () => {
   beforeEach(() => {
+    setViewportWidth(1280);
     localStorage.clear();
     useQuizStore.getState().reset();
     useStatsStore.getState().reset();
@@ -94,5 +116,66 @@ describe('Sidebar (characterization)', () => {
     };
     act(() => { fireEvent.drop(target, { dataTransfer }); });
     expect(useQuizStore.getState().quizzes[0].folderId).toBe('f2');
+  });
+
+  it('resets narrow overlay state across narrow -> wide -> narrow transitions without altering stored preference', () => {
+    setViewportWidth(800);
+    const { container } = mount();
+
+    // Pe fereastră îngustă pornește restrâns (rail), fără overlay.
+    expect(screen.getByLabelText('Extinde sidebar')).toBeTruthy();
+    expect(screen.queryByText('Foldere')).toBeNull();
+    expect(getOverlayBackdrop(container)).toBeNull();
+    expect(localStorage.getItem('sidebar-collapsed')).toBeNull();
+
+    // Extinderea în modul îngust deschide overlay temporar și nu scrie în localStorage.
+    fireEvent.click(screen.getByLabelText('Extinde sidebar'));
+    expect(screen.getByLabelText('Restrange sidebar')).toBeTruthy();
+    expect(screen.getByText('Foldere')).toBeTruthy();
+    expect(getOverlayBackdrop(container)).not.toBeNull();
+    expect(localStorage.getItem('sidebar-collapsed')).toBeNull();
+
+    // Trecerea pe fereastră lată închide overlay-ul și afișează sidebar-ul extins inline.
+    resizeViewportWidth(1280);
+    expect(getOverlayBackdrop(container)).toBeNull();
+    expect(screen.getByLabelText('Restrange sidebar')).toBeTruthy();
+    expect(screen.getByText('Foldere')).toBeTruthy();
+
+    // Reîngustarea trebuie să revină la rail restrâns, nu cu overlay-ul redeschis brusc.
+    resizeViewportWidth(800);
+    expect(getOverlayBackdrop(container)).toBeNull();
+    expect(screen.getByLabelText('Extinde sidebar')).toBeTruthy();
+    expect(screen.queryByText('Foldere')).toBeNull();
+
+    // Extindere + restrângere explicită în modul îngust.
+    fireEvent.click(screen.getByLabelText('Extinde sidebar'));
+    expect(getOverlayBackdrop(container)).not.toBeNull();
+    fireEvent.click(screen.getByLabelText('Restrange sidebar'));
+    expect(getOverlayBackdrop(container)).toBeNull();
+    expect(screen.getByLabelText('Extinde sidebar')).toBeTruthy();
+    expect(localStorage.getItem('sidebar-collapsed')).toBeNull();
+  });
+
+  it('preserves stored collapsed preference when returning to wide after opening narrow overlay', () => {
+    const { container } = mount();
+
+    fireEvent.click(screen.getByLabelText('Restrange sidebar'));
+    expect(localStorage.getItem('sidebar-collapsed')).toBe('true');
+    expect(screen.getByLabelText('Extinde sidebar')).toBeTruthy();
+
+    resizeViewportWidth(800);
+    fireEvent.click(screen.getByLabelText('Extinde sidebar'));
+    expect(getOverlayBackdrop(container)).not.toBeNull();
+    expect(screen.getByText('Foldere')).toBeTruthy();
+    expect(localStorage.getItem('sidebar-collapsed')).toBe('true');
+
+    resizeViewportWidth(1280);
+    expect(getOverlayBackdrop(container)).toBeNull();
+    expect(screen.getByLabelText('Extinde sidebar')).toBeTruthy();
+    expect(screen.queryByText('Foldere')).toBeNull();
+
+    resizeViewportWidth(800);
+    expect(getOverlayBackdrop(container)).toBeNull();
+    expect(screen.getByLabelText('Extinde sidebar')).toBeTruthy();
   });
 });

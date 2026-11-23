@@ -45,11 +45,11 @@ export default function SidebarNav({ collapsed, compact, dueCount, activeQuizCou
       data-tutorial="sidebar"
       role="navigation"
       aria-label="Navigare principala"
-      className={`flex-1 overflow-y-auto ${compact ? 'px-1.5 pb-1.5 pt-1.5' : 'px-2 pb-2 pt-2'} space-y-0.5 overflow-x-hidden`}
+      className={`flex-1 overflow-y-auto overflow-x-hidden space-y-0.5 ${collapsed ? 'no-scrollbar px-2' : compact ? 'px-1.5' : 'px-2'} ${compact ? 'pb-1.5 pt-1.5' : 'pb-2 pt-2'}`}
     >
         {collapsed ? (
           <Tip label={dueCount > 0 ? `${dueCount} de recapitulat azi` : 'Recapitulări la zi'}>
-            <button type="button" onClick={() => navigate('/daily-review')} aria-label="Sesiune zilnică" className="mb-2.5 flex w-full items-center justify-center rounded-2xl p-2 press-feedback" style={{ background: 'var(--accent-soft)', border: `1px solid ${theme.accent}24` }}>
+            <button type="button" onClick={() => navigate('/daily-review')} aria-label="Sesiune zilnică" className="mx-auto mb-2.5 flex h-11 w-11 max-w-full items-center justify-center rounded-[var(--r-md)] p-1.5 press-feedback" style={{ background: 'var(--accent-soft)', border: `1px solid ${theme.accent}24` }}>
               <svg width={30} height={30} viewBox="0 0 40 40" style={{ transform: 'rotate(-90deg)', flexShrink: 0 }}>
                 <circle cx="20" cy="20" r={ringRadius} fill="none" stroke={theme.surface2} strokeWidth="5" />
                 <motion.circle cx="20" cy="20" r={ringRadius} fill="none" stroke={theme.accent2} strokeWidth="5" strokeLinecap="round" strokeDasharray={ringCircumference} initial={false} animate={{ strokeDashoffset: ringOffset }} transition={{ duration: 0.6, ease: 'easeOut' }} />

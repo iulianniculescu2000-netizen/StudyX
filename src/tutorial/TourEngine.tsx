@@ -18,10 +18,22 @@ import { onFillText } from '../theme/contrastText';
 import GlassIconStack from '../components/depth/GlassIconStack';
 import TourHeroScene from '../components/depth/TourHeroScene';
 import { useTilt } from '../components/depth/useTilt';
-import type { TourContext, TourStep } from './types';
+import type { TourContext, TourDefinition, TourStep } from './types';
 import { isTourRouteCurrent } from './navigation';
 
 const resolveBody = (step: TourStep, ctx: TourContext) => (typeof step.body === 'function' ? step.body(ctx) : step.body);
+
+/**
+ * Pathname that owns a single-page tour, or `null` for multi-page (`onboarding`),
+ * multi-section (`settings`), and route-agnostic (`chat`, session/result) tours.
+ */
+function getSinglePageTourPath(tour: TourDefinition): string | null {
+  if (tour.autoStartRoute) return new URL(tour.autoStartRoute, 'https://studyx.local').pathname;
+  const routes = new Set(tour.steps.map((entry) => entry.route).filter((route): route is string => !!route));
+  if (routes.size !== 1) return null;
+  const [onlyRoute] = routes;
+  return new URL(onlyRoute, 'https://studyx.local').pathname;
+}
 
 /** Iconița unui pas, redesenată la altă mărime (pentru orbita din scena de început și final). */
 const resized = (icon: ReactNode, size: number) => (isValidElement<{ size?: number }>(icon) ? cloneElement(icon, { size }) : icon);
@@ -105,6 +117,18 @@ function ActiveTour({ tourId, profileId }: { tourId: SpotlightTourId; profileId:
   useEffect(() => {
     if (step?.route) openStepRoute(step.route);
   }, [step?.id, step?.route]);
+
+  // A single-page tour closes cleanly if the user navigates away from its page after arriving on it.
+  const ownedPath = getSinglePageTourPath(tour);
+  const reachedOwnedPathRef = useRef(false);
+  useEffect(() => {
+    if (!ownedPath) return;
+    if (pathname === ownedPath) {
+      reachedOwnedPathRef.current = true;
+      return;
+    }
+    if (reachedOwnedPathRef.current) close();
+  }, [close, ownedPath, pathname]);
 
   // An optional step whose target never shows up is skipped (in the direction the user was going).
   useEffect(() => {
